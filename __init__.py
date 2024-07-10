@@ -20,7 +20,6 @@ import time
 import threading
 from datetime import datetime, timedelta
 import numpy as np
-from waitress import serve
 
 if torch.cuda.is_available():
     print('you are using gpu to process the video camera')
@@ -865,5 +864,5 @@ if __name__ == '__main__':
 
 
 
-    serve(app, host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=8080)
 
