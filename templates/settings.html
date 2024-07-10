@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Feeding Settings{% endblock %}
+
+{% block content %}
+    {% from "includes/_formHelper.html" import render_field %}
+
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            margin-top: 30px;
+        }
+
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 2px solid #224847;
+            border-radius: 10px;
+            background-color: #f0f0f0;
+        }
+
+        .form-container h2 {
+            font-size: 30px;
+            font-weight: bold;
+            color: #224847;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            font-size: 20px;
+            font-weight: bold;
+            color: #224847;
+            text-align: right;
+        }
+
+        .form-group .form-field-wrapper {
+            margin-bottom: 10px;
+        }
+
+        .form-group .form-field-wrapper input {
+            width: 100%;
+            height: 35px;
+            font-size: 16px;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        .save-btn {
+            background-color: #224847;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 30px;
+            display: block;
+            width: 100%;
+            text-align: center;
+        }
+
+        .save-btn:hover {
+            background-color: #186b68;
+        }
+
+        @media (max-width: 767px) {
+            .form-group label {
+                text-align: left;
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <div class="form-container">
+                    <h2>Feeding Settings</h2>
+
+                    <form method="POST" action="">
+                        <div class="form-group row">
+                            <label for="first_timer" class="col-md-4 col-form-label">First timer:</label>
+                            <div class="col-md-8 form-field-wrapper">
+                                {{ render_field(form.first_timer, class="form-control") }}
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label for="second_timer" class="col-md-4 col-form-label">Second timer:</label>
+                            <div class="col-md-8 form-field-wrapper">
+                                {{ render_field(form.second_timer, class="form-control") }}
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label for="pellets" class="col-md-4 col-form-label">Number of Pellets:</label>
+                            <div class="col-md-8 form-field-wrapper">
+                                {{ render_field(form.pellets, class="form-control") }}
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label for="seconds" class="col-md-4 col-form-label">Stop in Seconds:</label>
+                            <div class="col-md-8 form-field-wrapper">
+                                {{ render_field(form.seconds, class="form-control") }}
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label for="confidence" class="col-md-4 col-form-label">Confidence:</label>
+                            <div class="col-md-8 form-field-wrapper">
+                                {{ render_field(form.confidence, class="form-control") }}
+                            </div>
+                        </div>
+
+                        <button type="submit" class="save-btn">Save</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
