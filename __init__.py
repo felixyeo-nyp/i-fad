@@ -353,6 +353,7 @@ def load_user(user_id):
 
 # Default route to redirect to login page
 @app.route('/')
+@login_required
 def index():
     return redirect(url_for('login'))
 
@@ -482,6 +483,7 @@ def get_interval():
         return jsonify({'error': 'An error occurred while retrieving interval.'}), 500
 
 @app.route('/dashboard', methods=['GET', 'POST'])
+@login_required
 def dashboard():
     edit_form = configurationForm(request.form)
     db = shelve.open('settings.db', 'r')
@@ -554,6 +556,7 @@ def pellet_counts():
 import re
 
 @app.route('/update', methods=['GET', 'POST'])
+@login_required
 def update_setting():
     setting = configurationForm(request.form)
 
