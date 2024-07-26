@@ -84,15 +84,16 @@
                     <h2>Feeding Settings</h2>
 
                     <form method="POST" action="">
+                        {{ form.csrf_token }}
                         <div class="form-group row">
-                            <label for="first_timer" class="col-md-4 col-form-label">First timer:</label>
+                            <label for="first_timer" class="col-md-4 col-form-label">First Timer:</label>
                             <div class="col-md-8 form-field-wrapper">
                                 {{ render_field(form.first_timer, class="form-control") }}
                             </div>
                         </div>
 
                         <div class="form-group row">
-                            <label for="second_timer" class="col-md-4 col-form-label">Second timer:</label>
+                            <label for="second_timer" class="col-md-4 col-form-label">Second Timer:</label>
                             <div class="col-md-8 form-field-wrapper">
                                 {{ render_field(form.second_timer, class="form-control") }}
                             </div>
