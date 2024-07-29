@@ -6,67 +6,67 @@
 <hr style="border: none; border-top: 2px solid #ddd; margin-bottom: 20px;">
 
 <div class="centered">
-<div class="row">
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                    First Feeding Time
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                    {% for id in id_array %}
-                    {{ id.get_first_timer() }}
-                    {% endfor %}
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                        First Feeding Time
+                    </div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                        {% for id in id_array %}
+                        {{ id.get_first_timer() }}
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                    Second Feeding Time
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                    {% for id in id_array %}
-                    {{ id.get_second_timer() }}
-                    {% endfor %}
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                        Second Feeding Time
+                    </div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                        {% for id in id_array %}
+                        {{ id.get_second_timer() }}
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                    Confidence (1-100%)
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                    {% for id in id_array %}
-                    {{ id.get_confidence() }}
-                    {% endfor %}
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                        Confidence (1-100%)
+                    </div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                        {% for id in id_array %}
+                        {{ id.get_confidence() }}
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                    Alert Conditions
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                    {% for id in id_array %}
-                    Stop feeding when pellets exceed {{ id.get_pellets() }} and time {{ id.get_seconds() }} seconds
-                    {% endfor %}
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                        Alert Conditions
+                    </div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                        {% for id in id_array %}
+                        Stop feeding when pellets exceed {{ id.get_pellets() }} and time {{ id.get_seconds() }} seconds
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
     <div style="clear: both;"></div>
     <div class="chart-container">
@@ -97,7 +97,6 @@ document.addEventListener('DOMContentLoaded', function () {
     let chartUpdateInterval;
     let intervalId;
 
-    // Function to fetch and apply the current interval from the server
     function fetchCurrentInterval() {
         fetch('/get_interval')
             .then(response => response.json())
@@ -105,13 +104,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 chartUpdateInterval = data.interval;
                 document.getElementById('interval').value = chartUpdateInterval / 1000; // Convert milliseconds to seconds
                 console.log(`Initial interval fetched: ${chartUpdateInterval} ms`);
-                // Initial chart setup
                 initializeChart();
             })
             .catch(error => console.error('Error fetching current interval:', error));
     }
 
-    // Function to initialize the chart with empty data
     function initializeChart() {
         myChart = new Chart(ctx, {
             type: 'line',
@@ -121,14 +118,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     label: 'Number of Pellets',
                     data: [], // Start with no data
                     fill: false,
-                    backgroundColor: 'rgba(255, 69, 96, 0.2)', // Reddish pink background color
-                    borderColor: 'rgba(255, 69, 96, 1)', // Reddish pink border color
+                    backgroundColor: 'rgba(173, 216, 230, 0.2)', // Light blue background color
+                    borderColor: 'rgba(173, 216, 230, 1)', // Light blue border color
                     borderWidth: 2,
                     pointRadius: 5,
-                    pointBackgroundColor: 'rgba(255, 69, 96, 1)', // Reddish pink points
-                    pointBorderColor: 'rgba(255, 69, 96, 1)',
+                    pointBackgroundColor: 'rgba(173, 216, 230, 1)', // Light blue points
+                    pointBorderColor: 'rgba(173, 216, 230, 1)',
                     pointHoverRadius: 8,
-                    pointHoverBackgroundColor: 'rgba(255, 69, 96, 1)',
+                    pointHoverBackgroundColor: 'rgba(173, 216, 230, 1)',
                     pointHoverBorderColor: 'rgba(220, 220, 220, 1)',
                     tension: 0.1,
                     borderCapStyle: 'round'
@@ -172,11 +169,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Fetch and add initial data to the chart
         fetchInitialChartData();
     }
 
-    // Function to fetch initial data and populate the chart
     function fetchInitialChartData() {
         fetch('/pellet_counts')
             .then(response => response.json())
@@ -185,6 +180,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (Array.isArray(data.labels) && Array.isArray(data.data)) {
                     myChart.data.labels = data.labels;
                     myChart.data.datasets[0].data = data.data;
+                    updateChartColor();
                     myChart.update();
                 } else {
                     console.error('Invalid initial data format:', data);
@@ -193,18 +189,17 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error fetching initial data:', error));
     }
 
-    // Function to update the chart data
     function updateChart() {
         fetch('/pellet_counts')
             .then(response => response.json())
             .then(data => {
                 console.log('Received data:', data);
                 if (Array.isArray(data.labels) && Array.isArray(data.data)) {
-                    // Append new data points to the existing chart dataset
                     data.labels.forEach((label, index) => {
                         myChart.data.labels.push(label);
                         myChart.data.datasets[0].data.push(data.data[index]);
                     });
+                    updateChartColor();  // Ensure the color is updated each time new data is added
                     myChart.update();
                 } else {
                     console.error('Invalid data format:', data);
@@ -213,72 +208,65 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error updating chart:', error));
     }
 
-    // Function to start the chart updates
+    function updateChartColor() {
+        const data = myChart.data.datasets[0].data;
+        const latestData = data[data.length - 1];
+        const newBorderColor = latestData <= 5 ? 'rgba(255, 0, 0, 1)' : 'rgba(173, 216, 230, 1)';
+        myChart.data.datasets[0].borderColor = newBorderColor;
+        myChart.data.datasets[0].pointBackgroundColor = newBorderColor;
+        myChart.data.datasets[0].pointBorderColor = newBorderColor;
+        myChart.data.datasets[0].pointHoverBackgroundColor = newBorderColor;
+    }
+
     function startUpdates() {
+        if (intervalId) {
+            clearInterval(intervalId);
+        }
         updateChart();
         intervalId = setInterval(updateChart, chartUpdateInterval);
     }
 
-    // Function to stop the chart updates
     function stopUpdates() {
-        clearInterval(intervalId);
-    }
-
-    // Function to reset the chart and preserve its size
-    function resetChart() {
-        if (myChart) {
-            // Get the current width and height of the canvas
-            const canvasWidth = ctx.canvas.width;
-            const canvasHeight = ctx.canvas.height;
-
-            // Destroy the current chart
-            myChart.destroy();
-
-            // Clear the canvas
-            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-            // Reset the canvas size to the original dimensions
-            ctx.canvas.width = canvasWidth;
-            ctx.canvas.height = canvasHeight;
-
-            // Re-initialize the chart
-            initializeChart();
+        if (intervalId) {
+            clearInterval(intervalId);
         }
     }
 
-    // Event listeners for buttons
+    function resetChart() {
+        if (myChart) {
+            const canvasWidth = ctx.canvas.width;
+            const canvasHeight = ctx.canvas.height;
+            myChart.destroy();
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            ctx.canvas.width = canvasWidth;
+            ctx.canvas.height = canvasHeight;
+        }
+        initializeChart();
+    }
+
     document.getElementById('startButton').addEventListener('click', startUpdates);
     document.getElementById('stopButton').addEventListener('click', stopUpdates);
     document.getElementById('resetButton').addEventListener('click', resetChart);
-
-    document.getElementById('saveIntervalButton').addEventListener('click', function (event) {
-        event.preventDefault();
-        const intervalInSeconds = document.getElementById('interval').value;
-        const intervalInMilliseconds = intervalInSeconds * 1000; // Convert seconds to milliseconds
-
-        fetch('/update_interval', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ interval: intervalInMilliseconds })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Response from server:', data);
-            if (data.message === 'Interval updated successfully') {
+    document.getElementById('saveIntervalButton').addEventListener('click', function () {
+        const newInterval = document.getElementById('interval').value;
+        if (newInterval && !isNaN(newInterval) && newInterval > 0) {
+            const newIntervalMs = newInterval * 1000; // Convert seconds to milliseconds
+            fetch('/update_interval', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ interval: newIntervalMs })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Interval updated successfully:', data);
                 alert('Interval updated successfully!');
-                chartUpdateInterval = intervalInMilliseconds;
-                stopUpdates();
-                startUpdates();
-            } else {
-                alert('Failed to update interval.');
-            }
-        })
-        .catch(error => {
-            console.error('Error updating interval:', error);
-            alert('An error occurred while updating interval.');
-        });
+                chartUpdateInterval = newIntervalMs;
+                startUpdates(); // Restart updates with the new interval
+            })
+            .catch(error => console.error('Error updating interval:', error));
+        }
     });
 
     document.getElementById('exportButton').addEventListener('click', function () {

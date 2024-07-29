@@ -85,7 +85,7 @@
 <div id="mySidebar" class="sidebar">
     <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
     {% if current_user.is_authenticated %}
-        <a class="{% if request.path == '/' %}active{% endif %}" href="/">Dashboard</a>
+        <a class="{% if request.path == '/' %}active{% endif %}" href="/dashboard">Dashboard</a>
         <a class="{% if request.path == '/update' %}active{% endif %}" href="/update">Feeding Settings</a>
         <a class="{% if request.path == '/camera_view' %}active{% endif %}" href="/camera_view">Camera View</a>
         <a href="/logout">Logout</a>
