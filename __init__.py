@@ -114,8 +114,8 @@ def load_model(model_path, num_classes):
     return model
 
 def generate_frames():
-    #cap = cv2.VideoCapture('rtsp://admin:Citi123!@192.168.1.64:554/Streaming/Channels/101')
-    cap =cv2.VideoCapture('./testing.mp4')
+    cap = cv2.VideoCapture('rtsp://admin:Citi123!@192.168.1.64:554/Streaming/Channels/101')
+    #cap =cv2.VideoCapture('./testing.mp4')
     #cap =cv2.VideoCapture(0)
 
     cap.set(cv2.CAP_PROP_FPS, 30)
