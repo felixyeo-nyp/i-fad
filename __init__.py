@@ -120,16 +120,18 @@ def generate_frames():
     retry_delay = 5  # seconds
 
     for attempt in range(max_retries):
-        cap = cv2.VideoCapture(rtsp_url)
+        cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))  # Set codec to MJPEG
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer size to minimize delay
+
         if cap.isOpened():
-            app.logger.info("Successfully opened RTSP stream on attempt {}".format(attempt + 1))
+            print(f"Successfully opened RTSP stream on attempt {attempt + 1}")
             break
         else:
-            app.logger.error(
-                "Failed to open RTSP stream on attempt {}. Retrying in {} seconds...".format(attempt + 1, retry_delay))
+            print(f"Failed to open RTSP stream on attempt {attempt + 1}. Retrying in {retry_delay} seconds...")
             time.sleep(retry_delay)
     else:
-        app.logger.error("Failed to open RTSP stream after {} attempts.".format(max_retries))
+        print(f"Failed to open RTSP stream after {max_retries} attempts.")
         return Response("Failed to open RTSP stream.", mimetype='text/plain')
 
     cap.set(cv2.CAP_PROP_FPS, 30)
@@ -187,6 +189,7 @@ def generate_frames():
 
         cnt, frame = fresh.read(sequence_number=object_count[1] + 1)
         if frame is None:
+            print("No frame received. Breaking loop.")
             break
 
         # Preprocess the frame
@@ -312,8 +315,8 @@ def generate_frames():
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
 
-    fresh.stop()
     cap.release()
+    fresh.stop()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -878,4 +881,3 @@ if __name__ == '__main__':
         db.close()
 
     app.run(host='0.0.0.0', port=8080, debug=True)
-
