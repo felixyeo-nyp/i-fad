@@ -575,15 +575,11 @@ def export_data():
 
     return send_file(file_path, as_attachment=True, download_name='consumption_data.xlsx')
 
+import random
 @app.route('/pellet_counts')
 def pellet_counts():
-    global object_count
-
-    # Simulate timestamps (current time for each label)
-    timestamps = [time.strftime('%H:%M:%S') for _ in object_count]
-
-    # Extract counts from object_count
-    counts = list(object_count.values())
+    counts = [random.randint(0, 20)]  # Generates a single random count between 0 and 20
+    timestamps = [time.strftime('%H:%M:%S')]
 
     # Prepare data for Chart.js
     data = {

@@ -8,6 +8,10 @@
         body {
             font-family: 'Times New Roman', Times, serif;
             margin-top: 30px;
+            background-image: url("{{ url_for('static', filename='wall.gif') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
 
         .form-container {
@@ -16,7 +20,7 @@
             padding: 20px;
             border: 2px solid #224847;
             border-radius: 10px;
-            background-color: #f0f0f0;
+            background-color: rgba(240, 240, 240, 0.9); /* Adding transparency */
         }
 
         .form-container h2 {
