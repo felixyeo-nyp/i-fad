@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, Res
 from wtforms import Form, StringField, RadioField, SelectField, TextAreaField, validators, ValidationError, PasswordField
 import sys
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
 import shelve
 from flask_wtf import FlaskForm
 from Forms import configurationForm, emailForm, LoginForm, RegisterForm
@@ -112,6 +112,7 @@ def load_model(model_path, num_classes):
     checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model_state_dict'])
     return model
+
 
 def generate_frames():
     #cap = cv2.VideoCapture('rtsp://admin:Citi123!@192.168.1.64:554/Streaming/Channels/101')
@@ -365,8 +366,12 @@ def generate_frames():
     fresh.stop()
     cap.release()
 
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
+
+from flask_mail import Mail
+mail = Mail(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -389,6 +394,7 @@ def load_user(user_id):
             return User(user_data['username'], user_data['email'], user_data['password'])
         else:
             return None
+
 
 # Default route to redirect to login page
 @app.route('/')
@@ -470,11 +476,10 @@ import shelve, re
 # Helper function to get settings from the database
 def get_settings():
     with shelve.open('settings.db', 'c') as db:
-        settings = db.get('settings', {'interval': 2000})  # Default interval is 2000ms
+        settings = db.get('settings', {'interval': 2000, 'threshold': 5})  # Default interval is 2000ms and default threshold is 5
         app.logger.debug(f"Settings read from database: {settings}")
     return settings
 
-# Helper function to update settings in the database
 def update_settings(new_settings):
     with shelve.open('settings.db', 'c') as db:
         db['settings'] = new_settings
@@ -520,6 +525,46 @@ def get_interval():
     except Exception as e:
         app.logger.error(f"An error occurred while retrieving interval: {str(e)}")
         return jsonify({'error': 'An error occurred while retrieving interval.'}), 500
+
+@app.route('/update_threshold', methods=['POST'])
+def update_threshold():
+    try:
+        threshold = request.json.get('threshold')
+        app.logger.debug(f"Received threshold: {threshold}")  # Debug log
+
+        # Validate threshold (should be a positive integer)
+        if threshold is not None:
+            threshold = int(threshold)
+            if threshold <= 0:
+                raise ValueError("Threshold should be a positive integer.")
+
+            # Update threshold in settings
+            settings = get_settings()
+            settings['threshold'] = threshold
+            update_settings(settings)
+            app.logger.debug(f"Threshold updated successfully to {threshold}")
+            return jsonify({'message': 'Threshold updated successfully'}), 200
+        else:
+            return jsonify({'error': 'Threshold value not provided'}), 400
+
+    except ValueError as e:
+        app.logger.error(f"Invalid threshold value: {e}")
+        return jsonify({'error': 'Invalid threshold value. Must be a positive integer.'}), 400
+
+    except Exception as e:
+        app.logger.error(f"An error occurred while updating threshold: {str(e)}")
+        return jsonify({'error': 'An error occurred while updating threshold.'}), 500
+
+@app.route('/get_threshold', methods=['GET'])
+def get_threshold():
+    try:
+        settings = get_settings()
+        app.logger.debug(f"Current threshold retrieved: {settings['threshold']}")
+        return jsonify({'threshold': settings['threshold']}), 200
+    except Exception as e:
+        app.logger.error(f"An error occurred while retrieving threshold: {str(e)}")
+        return jsonify({'error': 'An error occurred while retrieving threshold.'}), 500
+
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 @login_required
@@ -577,7 +622,7 @@ def export_data():
 import random
 @app.route('/pellet_counts')
 def pellet_counts():
-    counts = [random.randint(0, 20)]  # Generates a single random count between 0 and 20
+    counts = [random.randint(0, 50)]
     timestamps = [time.strftime('%H:%M:%S')]
 
     # Prepare data for Chart.js
@@ -731,7 +776,7 @@ def line_chart():
 #
 #
 #
-from flask import Flask, Response, send_file
+from flask import Flask, Response
 
 @app.route('/video_feed')
 def video_feed():

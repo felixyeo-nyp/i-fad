@@ -88,8 +88,21 @@
         </form>
     </div>
     <br>
+    <div style="margin-top: 20px; text-align: center;">
+        <form id="thresholdForm">
+            <label for="threshold" class="threshold-label">Low Pellet Count Threshold:</label>
+            <input type="number" id="threshold" name="threshold" required class="threshold-input" placeholder="Enter threshold">
+            <button type="button" id="saveThresholdButton" class="styled-button">Save Threshold</button>
+        </form>
+    </div>
+    <br>
+    <br>
 </div>
 
+<div id="videoFeedContainer" style="display: none">
+    <img src="{{ url_for('video_feed') }}" style="width: 100%; height: 100%; object-fit: contain;">
+</div>
+<br>
 
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -100,6 +113,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let myChart;
     let chartUpdateInterval;
     let intervalId;
+    let lowPelletCountThreshold;
 
     function fetchCurrentInterval() {
         fetch('/get_interval')
@@ -111,6 +125,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 initializeChart();
             })
             .catch(error => console.error('Error fetching current interval:', error));
+    }
+
+    function fetchCurrentThreshold() {
+        fetch('/get_threshold')
+            .then(response => response.json())
+            .then(data => {
+                lowPelletCountThreshold = data.threshold;
+                document.getElementById('threshold').value = lowPelletCountThreshold;
+                console.log(`Initial threshold fetched: ${lowPelletCountThreshold}`);
+            })
+            .catch(error => console.error('Error fetching current threshold:', error));
     }
 
     function initializeChart() {
@@ -194,33 +219,34 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateChart() {
-    fetch('/pellet_counts')
-        .then(response => response.json())
-        .then(data => {
-            console.log('Received data:', data);
-            if (Array.isArray(data.labels) && Array.isArray(data.data)) {
-                data.labels.forEach((label, index) => {
-                    myChart.data.labels.push(label);
-                    myChart.data.datasets[0].data.push(data.data[index]);
-                });
-                updateChartColor();  // Ensure the color is updated each time new data is added
-                myChart.update();
-            } else {
-                console.error('Invalid data format:', data);
-            }
-        })
-        .catch(error => console.error('Error updating chart:', error));
-}
-
+        fetch('/pellet_counts')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Received data:', data);
+                if (Array.isArray(data.labels) && Array.isArray(data.data)) {
+                    data.labels.forEach((label, index) => {
+                        myChart.data.labels.push(label);
+                        myChart.data.datasets[0].data.push(data.data[index]);
+                    });
+                    updateChartColor();  // Ensure the color is updated each time new data is added
+                    myChart.update();
+                } else {
+                    console.error('Invalid data format:', data);
+                }
+            })
+            .catch(error => console.error('Error updating chart:', error));
+    }
 
     function updateChartColor() {
         const data = myChart.data.datasets[0].data;
         const latestData = data[data.length - 1];
-        const newBorderColor = latestData <= 5 ? 'rgba(255, 0, 0, 1)' : 'rgba(173, 216, 230, 1)';
+        const newBorderColor = latestData <= lowPelletCountThreshold ? 'rgba(255, 0, 0, 1)' : 'rgba(173, 216, 230, 1)';
         myChart.data.datasets[0].borderColor = newBorderColor;
         myChart.data.datasets[0].pointBackgroundColor = newBorderColor;
         myChart.data.datasets[0].pointBorderColor = newBorderColor;
         myChart.data.datasets[0].pointHoverBackgroundColor = newBorderColor;
+
+
     }
 
     function startUpdates() {
@@ -274,41 +300,47 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    document.getElementById('exportButton').addEventListener('click', function () {
-        const chartData = myChart.data;
-        const labels = chartData.labels;
-        const dataPoints = chartData.datasets[0].data;
-
-        const dataToSend = {
-            labels: labels,
-            data: dataPoints
-        };
-
-        fetch('/export_data', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(dataToSend)
-        })
-        .then(response => response.blob())
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = 'consumption_data.xlsx';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-        })
-        .catch(error => console.error('Error exporting data:', error));
+    document.getElementById('saveThresholdButton').addEventListener('click', function () {
+        const newThreshold = document.getElementById('threshold').value;
+        if (newThreshold && !isNaN(newThreshold) && newThreshold > 0) {
+            const newThresholdValue = parseInt(newThreshold); // Convert to integer
+            fetch('/update_threshold', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ threshold: newThresholdValue })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Threshold updated successfully:', data);
+                alert('Threshold updated successfully!');
+                lowPelletCountThreshold = newThresholdValue;
+                updateChartColor(); // Update chart color with the new threshold
+                myChart.update();
+            })
+            .catch(error => console.error('Error updating threshold:', error));
+        }
     });
 
-    // Fetch the initial interval and setup the chart when the page loads
+    document.getElementById('exportButton').addEventListener('click', function () {
+        const csvContent = 'data:text/csv;charset=utf-8,' +
+            'Time,Number of Pellets\n' +
+            myChart.data.labels.map((label, index) => `${label},${myChart.data.datasets[0].data[index]}`).join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'pellet_data.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
     fetchCurrentInterval();
+    fetchCurrentThreshold(); // Fetch the initial threshold
 });
 </script>
+
 
 <style>
 .styled-button {
@@ -365,20 +397,20 @@ document.addEventListener('DOMContentLoaded', function () {
     flex-wrap: wrap;
 }
 
-#intervalForm {
+#intervalForm, #thresholdForm {
     display: flex;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
 }
 
-.interval-label {
+.interval-label, .threshold-label {
     font-size: 18px;
     font-weight: bold;
     margin-right: 10px;
 }
 
-.interval-input {
+.interval-input, .threshold-input {
     padding: 8px 12px;
     font-size: 16px;
     border: 1px solid #ddd;

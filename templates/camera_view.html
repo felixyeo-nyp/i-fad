@@ -4,7 +4,7 @@
 {% block content %}
 <br>
 <div class="video-feed-container">
-    <img src="{{ url_for('video_feed') }}" class="full-screen-gif" alt="GIF Feed">
+    <img src="{{ url_for('video_feed') }}" class="full-screen-video" alt="Video Feed">
 </div>
 <br>
 <style>
@@ -37,11 +37,13 @@ body, html {
     padding-bottom: 20px; /* Add padding to the bottom for spacing */
 }
 
-/* GIF Feed styles */
-.full-screen-gif {
-    width: 100%; /* Ensure the GIF covers the full width */
-    height: 100%; /* Ensure the GIF covers the full height */
-    object-fit: cover; /* Cover the container while maintaining aspect ratio */
+/* Video Feed styles */
+.full-screen-video {
+    max-width: 100%; /* Ensure the video does not exceed its original size */
+    max-height: 100%; /* Ensure the video does not exceed its original size */
+    width: auto;
+    height: auto;
+    object-fit: contain; /* Ensures the video fits inside its container without distortion */
     margin-bottom: 20px; /* Add margin to the bottom for spacing */
 }
 </style>
