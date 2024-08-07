@@ -369,10 +369,6 @@ def generate_frames():
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-
-from flask_mail import Mail
-mail = Mail(app)
-
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
