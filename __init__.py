@@ -418,12 +418,17 @@ def register():
         password = form.password.data
         confirm_password = form.confirm_password.data
 
-        # Check if the username already exists in the database
+        # Check if the username or email already exists in the database
         with shelve.open('users.db', 'c') as db:
-            if username in db:
-                flash('Username already exists', 'danger')
+            username_exists = username in db
+            email_exists = any(user_data['email'] == email for user_data in db.values())
+
+            if username_exists:
+                flash('Username or email already in use', 'danger')
+            elif email_exists:
+                flash('Username or email already in use', 'danger')
             else:
-                # If username is not already registered, proceed with registration
+                # If neither username nor email is already registered, proceed with registration
                 hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
                 new_user = User(username, email, hashed_password)
                 db[username] = {'username': new_user.username, 'email': new_user.email, 'password': new_user.password}
@@ -431,6 +436,7 @@ def register():
                 return redirect(url_for('login'))
 
     return render_template('register.html', form=form)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -628,6 +634,7 @@ def pellet_counts():
     }
 
     return jsonify(data)
+
 
 import re
 
