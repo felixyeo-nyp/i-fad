@@ -19,9 +19,14 @@ class configurationForm(FlaskForm):
 class RegisterForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired(), Length(min=4, max=25)])
     email = EmailField("Email", validators=[DataRequired(), Email(), Length(max=150)])
-    password = PasswordField("Password", validators=[DataRequired(), Length(min=8, max=80)])
+    password = PasswordField("Password", validators=[
+        DataRequired(),
+        Length(min=8, max=80),
+        validators.Regexp(r'(?=.*[A-Z])(?=.*[@$!%*?&])', message="Password must contain at least one uppercase letter and one special character.")
+    ])
     confirm_password = PasswordField("Confirm Password", validators=[
-        DataRequired(), Length(min=8, max=80),
+        DataRequired(),
+        Length(min=8, max=80),
         validators.EqualTo('password', message='Passwords must match')
     ])
 
