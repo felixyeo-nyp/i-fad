@@ -2,20 +2,18 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<h1 style="text-align: center; margin-top: 20px; font-size: 32px; font-weight: bold;">Dashboard</h1>
+<h1 style="text-align: center; margin-top: 20px; font-size: 32px; font-weight: bold;">DASHBOARD</h1>
 <hr style="border: none; border-top: 2px solid #ddd; margin-bottom: 20px;">
-
-
 
 <div class="centered">
     <div class="row">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card card-blue shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
                         First Feeding Time
                     </div>
-                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    <div class="h5 mb-0 font-weight-bold text-light">
                         {% for id in id_array %}
                         {{ id.get_first_timer() }}
                         {% endfor %}
@@ -25,12 +23,12 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card card-orange shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
                         Second Feeding Time
                     </div>
-                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    <div class="h5 mb-0 font-weight-bold text-light">
                         {% for id in id_array %}
                         {{ id.get_second_timer() }}
                         {% endfor %}
@@ -40,14 +38,14 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card card-green shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                        Confidence (1-100%)
+                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
+                        First Feed Amount (grams)
                     </div>
-                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    <div class="h5 mb-0 font-weight-bold text-light">
                         {% for id in id_array %}
-                        {{ id.get_confidence() }}
+                        {{ id.get_pellets() }}
                         {% endfor %}
                     </div>
                 </div>
@@ -55,314 +53,239 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card card-red shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                        Alert Conditions
+                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
+                        Feeding Duration
                     </div>
-                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    <div class="h5 mb-0 font-weight-bold text-light">
                         {% for id in id_array %}
-                        Stop feeding when pellets exceed {{ id.get_pellets() }} and time {{ id.get_seconds() }} seconds
+                        Stop feeding after {{ id.get_seconds() }} seconds
                         {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <div style="clear: both;"></div>
-    <div class="chart-container">
-        <canvas id="consumptionChart"></canvas>
-        <div class="button-container">
-            <button id="startButton" class="styled-button">Start</button>
-            <button id="stopButton" class="styled-button">Stop</button>
-            <button id="resetButton" class="styled-button">Reset</button>
-            <button id="exportButton" class="styled-button">Export Data</button>
-        </div>
-    </div>
-    <div style="margin-top: 20px; text-align: center;">
-        <form id="intervalForm">
-            <label for="interval" class="interval-label">Update Interval (Seconds):</label>
-            <input type="number" id="interval" name="interval" required class="interval-input" placeholder="Enter seconds">
-            <button type="button" id="saveIntervalButton" class="styled-button">Save Interval</button>
-        </form>
-    </div>
-    <br>
-    <div style="margin-top: 20px; text-align: center;">
-        <form id="thresholdForm">
-            <label for="threshold" class="threshold-label">Low Pellet Count Threshold:</label>
-            <input type="number" id="threshold" name="threshold" required class="threshold-input" placeholder="Enter threshold">
-            <button type="button" id="saveThresholdButton" class="styled-button">Save Threshold</button>
-        </form>
-    </div>
-    <br>
-    <br>
 </div>
 
-<div id="videoFeedContainer" style="display: none">
-    <img src="{{ url_for('video_feed') }}" style="width: 100%; height: 100%; object-fit: contain;">
-</div>
-<br>
+<!-- Chart Area -->
+<div class="centered mt-5">
+    <!-- Chart Canvas -->
+    <div class="mt-4 chart-container">
+        <h2>LEFTOVER PELLETS FOR THE PAST WEEK (by feeding time)</h2>
+        <canvas id="pelletChart" width="600" height="400"></canvas>
+        <br>
+        <button id="firstFeedBtn" class="styled-button me-2" onclick="updateChart('first_feed')">First Feed</button>
+        <button id="secondFeedBtn" class="styled-button" onclick="updateChart('second_feed')">Second Feed</button>
+    </div>
 
+    <div class="mt-4 chart-container">
+        <h2>TOTAL LEFTOVER PELLETS FOR THE PAST WEEK </h2>
+        <canvas id="totalPelletChart" width="600" height="400"></canvas>
+        <br>
+        <button class="styled-button" onclick="exportTotalFeedData()">Export Data</button>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const ctx = document.getElementById('consumptionChart').getContext('2d');
-    let myChart;
-    let chartUpdateInterval;
-    let intervalId;
-    let lowPelletCountThreshold;
+    let chart, totalChart;
 
-    function fetchCurrentInterval() {
-        fetch('/get_interval')
-            .then(response => response.json())
-            .then(data => {
-                chartUpdateInterval = data.interval;
-                document.getElementById('interval').value = chartUpdateInterval / 1000; // Convert milliseconds to seconds
-                console.log(`Initial interval fetched: ${chartUpdateInterval} ms`);
-                initializeChart();
-            })
-            .catch(error => console.error('Error fetching current interval:', error));
+    // Static data for last 7 days
+    const labels = ['03 Oct', '04 Oct', '05 Oct', '06 Oct', '07 Oct', '08 Oct', '09 Oct'];
+
+    // Static data for first and second feed
+    const firstFeedData = [35, 30, 28, 33, 27, 29, 32];
+    const secondFeedData = [42, 40, 45, 38, 41, 39, 37];
+
+    // Static data for total leftover pellet count
+    const totalFeedData = [77, 70, 73, 71, 68, 68, 69];
+
+    // Function to update chart with the feed data
+    function updateChart(feedType) {
+        if (feedType === 'first_feed') {
+            chart.data.datasets[0].data = firstFeedData;
+        } else if (feedType === 'second_feed') {
+            chart.data.datasets[0].data = secondFeedData;
+        }
+        chart.update();
     }
 
-    function fetchCurrentThreshold() {
-        fetch('/get_threshold')
-            .then(response => response.json())
-            .then(data => {
-                lowPelletCountThreshold = data.threshold;
-                document.getElementById('threshold').value = lowPelletCountThreshold;
-                console.log(`Initial threshold fetched: ${lowPelletCountThreshold}`);
-            })
-            .catch(error => console.error('Error fetching current threshold:', error));
-    }
-
-    function initializeChart() {
-        myChart = new Chart(ctx, {
+    // Initialize chart on page load
+    window.onload = function () {
+        const ctx = document.getElementById('pelletChart').getContext('2d');
+        chart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: [], // Start with no labels
+                labels: labels,
                 datasets: [{
-                    label: 'Number of Pellets',
-                    data: [], // Start with no data
-                    fill: false,
-                    backgroundColor: 'rgba(173, 216, 230, 0.2)', // Light blue background color
-                    borderColor: 'rgba(173, 216, 230, 1)', // Light blue border color
-                    borderWidth: 2,
-                    pointRadius: 5,
-                    pointBackgroundColor: 'rgba(173, 216, 230, 1)', // Light blue points
-                    pointBorderColor: 'rgba(173, 216, 230, 1)',
-                    pointHoverRadius: 8,
-                    pointHoverBackgroundColor: 'rgba(173, 216, 230, 1)',
-                    pointHoverBorderColor: 'rgba(220, 220, 220, 1)',
-                    tension: 0.1,
-                    borderCapStyle: 'round'
+                    label: 'Pellet Count',
+                    data: firstFeedData,  // Default data is first feed
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 2
                 }]
             },
             options: {
                 scales: {
-                    x: {
-                        display: true,
-                        title: {
-                            display: true,
-                            text: 'Time'
-                        }
-                    },
                     y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Number of Pellets'
-                        }
-                    }
-                },
-                plugins: {
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    legend: {
-                        display: true,
-                        position: 'top',
-                    },
-                    title: {
-                        display: true,
-                        text: 'Rate Of Consumption',
-                        font: {
-                            size: 20,
-                            weight: 'bold'
-                        }
+                        beginAtZero: true
                     }
                 }
             }
         });
 
-        fetchInitialChartData();
-    }
-
-    function fetchInitialChartData() {
-        fetch('/pellet_counts')
-            .then(response => response.json())
-            .then(data => {
-                console.log('Initial data:', data);
-                if (Array.isArray(data.labels) && Array.isArray(data.data)) {
-                    myChart.data.labels = data.labels;
-                    myChart.data.datasets[0].data = data.data;
-                    updateChartColor();
-                    myChart.update();
-                } else {
-                    console.error('Invalid initial data format:', data);
+        const ctx2 = document.getElementById('totalPelletChart').getContext('2d');
+        totalChart = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Pellet Count',
+                    data: totalFeedData,
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
-            })
-            .catch(error => console.error('Error fetching initial data:', error));
-    }
+            }
+        });
 
-    function updateChart() {
-        fetch('/pellet_counts')
-            .then(response => response.json())
-            .then(data => {
-                console.log('Received data:', data);
-                if (Array.isArray(data.labels) && Array.isArray(data.data)) {
-                    data.labels.forEach((label, index) => {
-                        myChart.data.labels.push(label);
-                        myChart.data.datasets[0].data.push(data.data[index]);
-                    });
-                    updateChartColor();  // Ensure the color is updated each time new data is added
-                    myChart.update();
-                } else {
-                    console.error('Invalid data format:', data);
-                }
-            })
-            .catch(error => console.error('Error updating chart:', error));
-    }
+        // Load the first feed (8:05 AM) data by default
+        updateChart('first_feed');
+    };
 
-    function updateChartColor() {
-        const data = myChart.data.datasets[0].data;
-        const latestData = data[data.length - 1];
-        const newBorderColor = latestData <= lowPelletCountThreshold ? 'rgba(255, 0, 0, 1)' : 'rgba(173, 216, 230, 1)';
-        myChart.data.datasets[0].borderColor = newBorderColor;
-        myChart.data.datasets[0].pointBackgroundColor = newBorderColor;
-        myChart.data.datasets[0].pointBorderColor = newBorderColor;
-        myChart.data.datasets[0].pointHoverBackgroundColor = newBorderColor;
-
-
-    }
-
-    function startUpdates() {
-        if (intervalId) {
-            clearInterval(intervalId);
-        }
-        updateChart();
-        intervalId = setInterval(updateChart, chartUpdateInterval);
-    }
-
-    function stopUpdates() {
-        if (intervalId) {
-            clearInterval(intervalId);
-        }
-    }
-
-    function resetChart() {
-        if (myChart) {
-            const canvasWidth = ctx.canvas.width;
-            const canvasHeight = ctx.canvas.height;
-            myChart.destroy();
-            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-            ctx.canvas.width = canvasWidth;
-            ctx.canvas.height = canvasHeight;
-        }
-        initializeChart();
-    }
-
-    document.getElementById('startButton').addEventListener('click', startUpdates);
-    document.getElementById('stopButton').addEventListener('click', stopUpdates);
-    document.getElementById('resetButton').addEventListener('click', resetChart);
-    document.getElementById('saveIntervalButton').addEventListener('click', function () {
-        const newInterval = document.getElementById('interval').value;
-        if (newInterval && !isNaN(newInterval) && newInterval > 0) {
-            const newIntervalMs = newInterval * 1000; // Convert seconds to milliseconds
-            fetch('/update_interval', {
+        // Function to handle data export for total feed chart
+        function exportTotalFeedData() {
+            fetch('/export_data', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ interval: newIntervalMs })
+                body: JSON.stringify({
+                    labels: labels,
+                    data: totalFeedData
+                })
             })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Interval updated successfully:', data);
-                alert('Interval updated successfully!');
-                chartUpdateInterval = newIntervalMs;
-                startUpdates(); // Restart updates with the new interval
+            .then(response => {
+                return response.blob(); // Get the file as a blob
             })
-            .catch(error => console.error('Error updating interval:', error));
-        }
-    });
-
-    document.getElementById('saveThresholdButton').addEventListener('click', function () {
-        const newThreshold = document.getElementById('threshold').value;
-        if (newThreshold && !isNaN(newThreshold) && newThreshold > 0) {
-            const newThresholdValue = parseInt(newThreshold); // Convert to integer
-            fetch('/update_threshold', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ threshold: newThresholdValue })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'leftover_feed_data.xlsx'; // Naming the file for total feed data
+                document.body.appendChild(a); // Append the link to the body
+                a.click(); // Trigger the download
+                a.remove(); // Remove the link after download
             })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Threshold updated successfully:', data);
-                alert('Threshold updated successfully!');
-                lowPelletCountThreshold = newThresholdValue;
-                updateChartColor(); // Update chart color with the new threshold
-                myChart.update();
-            })
-            .catch(error => console.error('Error updating threshold:', error));
-        }
-    });
-
-    document.getElementById('exportButton').addEventListener('click', function () {
-        const csvContent = 'data:text/csv;charset=utf-8,' +
-            'Time,Number of Pellets\n' +
-            myChart.data.labels.map((label, index) => `${label},${myChart.data.datasets[0].data[index]}`).join('\n');
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement('a');
-        link.setAttribute('href', encodedUri);
-        link.setAttribute('download', 'pellet_data.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    });
-
-    fetchCurrentInterval();
-    fetchCurrentThreshold(); // Fetch the initial threshold
-});
+            .catch(error => {
+                console.error('Error exporting data:', error);
+            });
+    }
 </script>
 
-
 <style>
+body {
+    background-color: #2f3136;
+    color: #ffffff;
+    font-family: 'Arial', sans-serif;
+}
+
+h1 {
+    font-size: 32px;
+    font-weight: bold;
+    color: white;
+    text-align: center;
+    margin-top: 20px;
+}
+
+h2 {
+    font-size: 18px;
+    color: white;
+    text-align: center;
+    margin-top: 20px;
+}
+
+hr {
+    border: none;
+    border-top: 2px solid #555;
+    margin-bottom: 20px;
+}
+
+.centered {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.card {
+    background-color: #393d45;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: scale(1.05);
+}
+
+.card-blue {
+    border-left: 5px solid #0096FF;
+}
+
+.card-orange {
+    border-left: 5px solid #f39c12;
+}
+
+.card-green {
+    border-left: 5px solid #2ecc71;
+}
+
+.card-red {
+    border-left: 5px solid #e74c3c;
+}
+
+.card .card-body {
+    color: #ffffff;
+}
+
+.card .card-body .text-xs {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #ddd;
+}
+
+.card .card-body .h5 {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
 .styled-button {
+    background-color: #3498db;
+    color: #ffffff;
     padding: 10px 20px;
     font-size: 16px;
-    cursor: pointer;
     border: none;
     border-radius: 5px;
-    background-color: #f0f0f0;
-    color: #333;
-    transition: background-color 0.3s, transform 0.3s, box-shadow 0.3s;
-    width: 150px;
-    height: 40px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
 }
 
 .styled-button:hover {
-    background-color: #ddd;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    background-color: #2980b9;
+    transform: scale(1.05);
 }
 
 .styled-button:active {
@@ -376,47 +299,17 @@ document.addEventListener('DOMContentLoaded', function () {
 }
 
 .chart-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    max-width: 100%;
-}
-
-#consumptionChart {
-    width: 100%;
-    height: auto;
-}
-
-.button-container {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
+    background-color: #393d45;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     margin-top: 20px;
-    width: 100%;
-    flex-wrap: wrap;
 }
 
-#intervalForm, #thresholdForm {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.interval-label, .threshold-label {
-    font-size: 18px;
-    font-weight: bold;
-    margin-right: 10px;
-}
-
-.interval-input, .threshold-input {
-    padding: 8px 12px;
-    font-size: 16px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    width: 150px;
-    margin-right: 10px;
+canvas {
+    background-color: white;
+    border-radius: 8px;
+    padding: 10px;
 }
 
 @media (max-width: 767px) {
@@ -425,9 +318,6 @@ document.addEventListener('DOMContentLoaded', function () {
         margin-bottom: 20px;
     }
 
-    .styled-button {
-        width: 100%;
-    }
-}
 </style>
+
 {% endblock %}

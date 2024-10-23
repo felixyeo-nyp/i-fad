@@ -6,70 +6,114 @@
 
     <style>
         body {
-            font-family: 'Times New Roman', Times, serif;
-            margin-top: 30px;
-            background-image: url("{{ url_for('static', filename='wall.gif') }}");
+            font-family: 'Arial', sans-serif;
+            background-image: url("{{ url_for('static', filename='wall4.jpg') }}");
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .form-container {
-            max-width: 600px;
+            max-width: 500px;
             margin: 0 auto;
-            padding: 20px;
-            border: 2px solid #224847;
-            border-radius: 10px;
-            background-color: rgba(240, 240, 240, 0.9); /* Adding transparency */
+            padding: 40px;
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .form-container h2 {
             font-size: 30px;
             font-weight: bold;
-            color: #224847;
-            margin-bottom: 20px;
             text-align: center;
+            color: white;
+            margin-bottom: 20px;
         }
 
-        .form-group {
+        .form-container input {
+            width: 100%;
+            height: 45px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 25px;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
             margin-bottom: 15px;
         }
 
-        .form-group label {
-            font-size: 20px;
+        .input-group label {
+            font-size: 16px;
             font-weight: bold;
-            color: #224847;
+            color: white;
             text-align: right;
         }
 
-        .form-group .form-field-wrapper {
-            margin-bottom: 10px;
+        .input-group .input-group-text {
+            background-color: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .form-group .form-field-wrapper input {
-            width: 100%;
-            height: 35px;
+        .input-group .form-control {
+            border-radius: 25px;
+            border: solid;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
             font-size: 16px;
-            padding: 5px;
-            box-sizing: border-box;
+        }
+
+        .input-group input::placeholder{
+            color: white;
         }
 
         .save-btn {
-            background-color: #224847;
-            color: white;
+            background-color: #E8E8E8;
+            color: #000;
             border: none;
-            padding: 10px 20px;
+            padding: 10px 0;
             font-size: 18px;
+            font-weight: bold;
+            color: white;
             cursor: pointer;
-            border-radius: 5px;
-            margin-top: 30px;
+            border-radius: 25px;
+            display: block;
+            margin-top: 25px;
             display: block;
             width: 100%;
             text-align: center;
         }
 
         .save-btn:hover {
-            background-color: #186b68;
+            background-color: #89CFF0;
+        }
+
+        .extra-options {
+            text-align: center;
+            margin-top: 15px;
+            color: white;
+        }
+
+        .extra-options a {
+            color: white;
+            font-weight: bold;
+            text-decoration: underline;
         }
 
         @media (max-width: 767px) {
@@ -82,28 +126,40 @@
     </style>
 
     <div class="container">
-        <div class="row">
-            <div class="col-12">
-                <div class="form-container">
-                    <h2>Login</h2>
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                      {% if messages %}
-                        {% for category, message in messages %}
-                          <div class="alert alert-{{ category }}">
-                            {{ message }}
-                          </div>
-                        {% endfor %}
-                      {% endif %}
-                    {% endwith %}
-                    <form method="POST" action="{{ url_for('login') }}">
-                        {{ form.hidden_tag() }}
-                        {{ render_field(form.username, class="form-control") }}
-                        {{ render_field(form.password, class="form-control") }}
-                        <button type="submit" class="save-btn">Login</button>
-                    </form>
-                    <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+        <div class="form-container">
+            <h2>Login</h2>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }}">
+                    {{ message }}
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('login') }}">
+                {{ form.hidden_tag() }}
+
+                <!-- Username Field with Icon -->
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                    {{ render_field(form.username, class="form-control", placeholder="Username") }}
                 </div>
+
+                <!-- Password Field with Icon -->
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                    {{ render_field(form.password, class="form-control", placeholder="Password") }}
+                </div>
+
+                <button type="submit" class="save-btn">Login</button>
+            </form>
+
+            <div class="extra-options">
+                <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
             </div>
         </div>
     </div>
 {% endblock %}
+
