@@ -1,29 +1,36 @@
-import datetime
-from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify
+# Flask-related imports #
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, send_file, session
 from wtforms import Form, StringField, RadioField, SelectField, TextAreaField, validators, ValidationError, PasswordField
 import sys
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
-import shelve
+import shelve, re
 from flask_wtf import FlaskForm
-from Forms import configurationForm, emailForm, LoginForm, RegisterForm
+from Forms import configurationForm, emailForm, LoginForm, RegisterForm, MFAForm
+from flask_mail import Mail, Message
+import random
 
-j = datetime.datetime.now()
-print(j)
-Time_Record_dict = {}
-Line_Chart_Data_dict = {}
-Email_dict = {}
-
+# Object detection & processing-related imports #
 import torch
 import torchvision
 import cv2
 import torchvision.models as models
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-import time
+
+# Datetime-related imports #
+import datetime, time
 import threading
 from datetime import datetime, timedelta
 import numpy as np
 
+# File-reader-related imports #
+import openpyxl
+from openpyxl.styles import Font
+
+# OOP-related imports #
+from OOP import *
+
+# Back-end codes for object detection & processing #
 if torch.cuda.is_available():
     print('you are using gpu to process the video camera')
 else:
@@ -58,7 +65,6 @@ class FreshestFrame(threading.Thread):
             counter += 1
             with self.condition:
                 self.frame = img if rv else None
-                #self.pellets_num = counter
                 self.condition.notify_all()
             if self.callback:
                 self.callback(img)
@@ -113,18 +119,10 @@ def load_model(model_path, num_classes):
     model.load_state_dict(checkpoint['model_state_dict'])
     return model
 
-
 def generate_frames():
-    #cap = cv2.VideoCapture('rtsp://admin:Citi123!@192.168.1.64:554/Streaming/Channels/101')
-    cap =cv2.VideoCapture('./sample.mp4')
-    #cap =cv2.VideoCapture(0)
-
+    cap = cv2.VideoCapture('rtsp://admin:Citi123!@192.168.1.64:554/Streaming/Channels/101')
     cap.set(cv2.CAP_PROP_FPS, 30)
-
     fresh = FreshestFrame(cap)
-
-
-
 
     # Load the Faster R-CNN model from the .pth file
     num_classes = 2  # Assuming 2 classes for 'Pellets' and background
@@ -138,7 +136,6 @@ def generate_frames():
     global object_count
     object_count = {1: 0}
 
-
     feeding = False
     feeding_timer = None
 
@@ -146,22 +143,17 @@ def generate_frames():
     Time_Record_dict = db['Time_Record']
     db.close()
 
-
     setting = Time_Record_dict.get('Time_Record_Info')
 
     hours, minutes = setting.get_first_timer().split(':')
     hours1, minutes1 = setting.get_second_timer().split(':')
 
-
     first_feeding_time = int(hours)
     first_feeding_time_min = int(minutes)
-
-
     second_feeding_time = int(hours1)
     second_feeding_time_min = int(minutes1)
 
     confidence = float(setting.get_confidence())/100
-
 
     showing_timer = None
     line_chart_timer, email_TF = (None,False)
@@ -170,15 +162,9 @@ def generate_frames():
     formatted_desired_time = None
     current_datetime = datetime.now()
 
-
-
-
-
-
     while True:
         # Process the predictions and update object count
         temp_object_count = {1: 0}  # Initialize count for the current frame
-
 
         current_time = datetime.now().time()
         if (current_time.hour == first_feeding_time or current_time.hour == second_feeding_time) and (current_time.minute == first_feeding_time_min or current_time.minute == second_feeding_time_min) and current_time.second == 0:
@@ -187,12 +173,9 @@ def generate_frames():
             showing_timer = None
             line_chart_timer = time.time()
 
-
-
         cnt, frame = fresh.read(sequence_number=object_count[1] + 1)
         if frame is None:
             break
-
 
         # Preprocess the frame
         img_tensor = torchvision.transforms.ToTensor()(frame).to(device)
@@ -202,44 +185,24 @@ def generate_frames():
         with torch.no_grad():
             predictions = model(img_tensor)
 
-        # processed_labels = set()  # Keep track of processed labels
-
         for i in range(len(predictions[0]['labels'])):
             label = predictions[0]['labels'][i].item()
-
-            # if label in processed_labels:
-            #     continue
-
-            # processed_labels.add(label)
 
             if label in class_labels:
                 box = predictions[0]['boxes'][i].cpu().numpy().astype(int) # used to define the size of the object
                 score = predictions[0]['scores'][i].item() #the probability of the object
 
-
-
-                # if label == 2 and score > 0.3:
-                #     # Draw bounding box and label on the frame
-                #     cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 0, 255),
-                #                   2)  # (0,255,0) is the color (blue, green, yellow)
-                #     cv2.putText(frame, f'{class_labels[label]}: {score:.2f}', (box[0], box[1] - 10),
-                #                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
-                # 0.95 is the highest, while we are looking for 90% of the probability
                 if (label == 1 and score > confidence):
                     # Draw bounding box and label on the frame
                     cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2) #(0,255,0) is the color (blue, green, yellow)
                     cv2.putText(frame, f'{class_labels[label]}: {score:.2f}', (box[0], box[1] - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-
                     temp_object_count[label] += 1
 
                     # Start feeding timer if pellets are detected
                     if label == 1 and feeding_timer is None and feeding:
                         feeding_timer = time.time()
-
-
 
         # store the pellets number to the object count which is permanently
         for label, count in temp_object_count.items():
@@ -259,7 +222,6 @@ def generate_frames():
             # change to None when there is no pellets
             elif object_count[1] == 0:
                 feeding_timer = None
-
 
         # Display the frame with detections and object count
         for label, count in object_count.items():
@@ -308,7 +270,6 @@ def generate_frames():
                         Line_chart_objects = Line_Chart_Data_dict.get(today_date)
                         print(Line_chart_objects.get_date(),': ', Line_chart_objects.get_timeRecord())
 
-
                     print('running in website')
                 else:
                     cv2.putText(frame, "Stop Feeding", text_position_feed,
@@ -335,9 +296,6 @@ def generate_frames():
                     text_position = (frame.shape[1] - text_size[0] - 10, 30 * 4)
                     cv2.putText(frame, formatted_desired_time, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
 
-
-
-
                 else:
                     # Add one day to the current date and time
                     next_day = current_datetime + timedelta(days=1)
@@ -351,8 +309,6 @@ def generate_frames():
                     cv2.putText(frame, formatted_desired_time, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2,
                                 (0, 0, 255), 2)
 
-
-
         ret, jpeg = cv2.imencode('.jpg', frame)
         if not ret:
             continue  # Continue to the next frame if encoding fails
@@ -362,16 +318,31 @@ def generate_frames():
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
 
-
     fresh.stop()
     cap.release()
 
-
+# Web application #
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+# Initialize Flask-Mail
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'klwad766@gmail.com'
+app.config['MAIL_PASSWORD'] = 'jumt bfwp uall vhtb'
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+mail = Mail(app)
+
+# Dictionaries #
+#j = datetime.datetime.now()
+# print(j)
+Time_Record_dict = {}
+Line_Chart_Data_dict = {}
+Email_dict = {}
 
 # User model
 class User(UserMixin):
@@ -437,7 +408,6 @@ def register():
 
     return render_template('register.html', form=form)
 
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
@@ -446,16 +416,27 @@ def login():
         password = form.password.data
 
         try:
-            # Attempt to open the shelve database file
             with shelve.open('users.db', 'c') as db:
                 if username in db:
                     stored_password_hash = db[username]['password']
                     if check_password_hash(stored_password_hash, password):
-                        # Passwords match, login successful
-                        user = User(username, db[username]['email'], stored_password_hash)
-                        login_user(user)
-                        flash('You are now logged in', 'success')
-                        return redirect(url_for('dashboard'))
+                        # Passwords match, proceed with MFA
+                        user_email = db[username]['email']
+
+                        # Generate a 6-digit MFA code
+                        mfa_code = str(random.randint(100000, 999999))
+                        session['mfa_code'] = mfa_code  # Store in session
+                        session['username'] = username  # Save username for next steps
+
+                        # Send the code via email
+                        msg = Message('MFA Code',
+                                      sender='klwad766@gmail.com',
+                                      recipients=[user_email])
+                        msg.body = f'Your 6-digit MFA code is {mfa_code}'
+                        mail.send(msg)
+
+                        flash('An authentication code has been sent to your email.', 'info')
+                        return redirect(url_for('mfa_verify'))  # Redirect to MFA verification page
                     else:
                         flash('Invalid login credentials', 'danger')
                 else:
@@ -464,6 +445,33 @@ def login():
             flash(f'Error: {str(e)}', 'danger')
 
     return render_template('login.html', form=form)
+
+
+@app.route('/mfa-verify', methods=['GET', 'POST'])
+def mfa_verify():
+    form = MFAForm()
+
+    if form.validate_on_submit():
+        entered_code = form.code.data
+
+        if entered_code == session.get('mfa_code'):
+            # MFA passed, log the user in
+            username = session.get('username')
+
+            # Use context manager to ensure the shelf is properly opened and closed
+            with shelve.open('users.db', 'r') as db:
+                user_email = db[username]['email']
+                hashed_password = db[username]['password']
+
+            user = User(username, user_email, hashed_password)
+            login_user(user)
+            flash('You are now logged in', 'success')
+            session.pop('mfa_code')  # Clear MFA code after success
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid authentication code', 'danger')
+
+    return render_template('mfa_verify.html', form=form)
 
 @app.route('/logout')
 def logout():
@@ -568,6 +576,65 @@ def get_threshold():
         return jsonify({'error': 'An error occurred while retrieving threshold.'}), 500
 
 
+@app.route('/pellet_data')
+def get_pellet_data():
+    # Define test data
+    pellet_data = {
+        '26 Sep 2024': {'8:05 AM': 35, '6:05 PM': 42},
+        '27 Sep 2024': {'8:05 AM': 30, '6:05 PM': 40},
+        '28 Sep 2024': {'8:05 AM': 28, '6:05 PM': 45},
+        '29 Sep 2024': {'8:05 AM': 33, '6:05 PM': 38},
+        '30 Sep 2024': {'8:05 AM': 27, '6:05 PM': 41},
+        '1 Oct 2024': {'8:05 AM': 29, '6:05 PM': 39},
+        '2 Oct 2024': {'8:05 AM': 32, '6:05 PM': 37},
+        '3 Oct 2024': {'8:05 AM': 31, '6:05 PM': 40},
+        '4 Oct 2024': {'8:05 AM': 30, '6:05 PM': 39},
+        '5 Oct 2024': {'8:05 AM': 28, '6:05 PM': 36},
+        '6 Oct 2024': {'8:05 AM': 33, '6:05 PM': 42},
+        '7 Oct 2024': {'8:05 AM': 29, '6:05 PM': 41},
+        '8 Oct 2024': {'8:05 AM': 30, '6:05 PM': 38},
+        '9 Oct 2024': {'8:05 AM': 32, '6:05 PM': 35}
+    }
+
+    # Store in shelve
+    with shelve.open('mock_chart_data.db', 'w') as db:
+        db.clear()
+        for date, feeds in pellet_data.items():
+            db[datetime.strptime(date, "%d %b %Y").strftime("%Y-%m-%d")] = feeds
+        db.sync()
+
+    # Print database contents to verify
+    with shelve.open('mock_chart_data.db') as db:
+        print("Database contents:")
+        for key, value in db.items():
+            print(f"{key}: {value}")
+
+    # Generate the last 7 days (including today)
+    current_day = datetime.today().date()
+    last_7_days = [(current_day - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(1, 8)]
+
+    # Initialize lists to hold pellet counts
+    first_feed_counts = []
+    second_feed_counts = []
+
+    # Open the shelve database and retrieve data
+    with shelve.open('mock_chart_data.db') as db:
+        for day in last_7_days:
+            if day in db:
+                first_feed_counts.append(db[day].get('8:05 AM', 0))
+                second_feed_counts.append(db[day].get('6:05 PM', 0))
+            else:
+                first_feed_counts.append(0)
+                second_feed_counts.append(0)
+
+    response_data = {
+        'labels': [datetime.strptime(day, "%Y-%m-%d").strftime("%d %b") for day in last_7_days],
+        'first_feed': first_feed_counts,
+        'second_feed': second_feed_counts,
+    }
+
+    return jsonify(response_data)
+
 @app.route('/dashboard', methods=['GET', 'POST'])
 @login_required
 def dashboard():
@@ -586,12 +653,6 @@ def dashboard():
 def camera_view():
     return render_template('camera_view.html')
 
-import time
-import requests
-from flask import Flask, jsonify, send_file
-import openpyxl
-from openpyxl.styles import Font
-
 @app.route('/export_data', methods=['POST'])
 def export_data():
     # Get data from the request
@@ -602,11 +663,11 @@ def export_data():
     # Create an Excel workbook and worksheet
     workbook = openpyxl.Workbook()
     sheet = workbook.active
-    sheet.title = 'Pellet Consumption'
+    sheet.title = ' Leftover Pellets Over The Past Seven Days'
 
     # Set up the header
-    sheet["A1"] = "Time"
-    sheet["B1"] = "Number of Pellets"
+    sheet["A1"] = "Date"
+    sheet["B1"] = "Number of pellets"
     sheet["A1"].font = Font(bold=True)
     sheet["B1"].font = Font(bold=True)
 
@@ -619,24 +680,26 @@ def export_data():
     file_path = 'consumption_data.xlsx'
     workbook.save(file_path)
 
-    return send_file(file_path, as_attachment=True, download_name='consumption_data.xlsx')
+    return send_file(file_path, as_attachment=True, download_name='leftover_feed_data.xlsx')
 
-import random
-@app.route('/pellet_counts')
-def pellet_counts():
-    counts = [random.randint(0, 50)]
-    timestamps = [time.strftime('%H:%M:%S')]
+#@app.route('/pellet_counts')
+#@login_required
+#def pellet_counts():
+    #global object_count
+
+    # Simulate timestamps (current time for each label)
+    #timestamps = [time.strftime('%H:%M:%S') for _ in object_count]
+
+    # Extract counts from object_count
+    #counts = list(object_count.values())
 
     # Prepare data for Chart.js
-    data = {
-        'labels': timestamps,
-        'data': counts
-    }
+    #data = {
+        #'labels': timestamps,
+        #'data': counts
+    #}
 
-    return jsonify(data)
-
-
-import re
+    #return jsonify(data)
 
 @app.route('/update', methods=['GET', 'POST'])
 @login_required
@@ -719,74 +782,37 @@ def update_email_settings():
         setting.days.data = j.get_days()
         return render_template('email_settings.html', form=setting)
 
-@app.route('/data_analysis/feeding_time')
-def line_chart():
-    db = shelve.open('line_chart_data.db', 'r')
-    Line_Chart_Data_dict = db.get('Line_Chart_Data',{})
-    days = []
-    timer = []
+#@app.route('/data_analysis/feeding_time')
+#def line_chart():
+    #db = shelve.open('line_chart_data.db', 'r')
+    #Line_Chart_Data_dict = db.get('Line_Chart_Data',{})
+    #days = []
+    #timer = []
 
     # Iterate over the last seven days
-    for i in range(6, -1, -1):
+    #for i in range(6, -1, -1):
         # Calculate the date for the current iteration
-        current_date = (datetime.today() - timedelta(days=i)).strftime("%Y-%m-%d")
+        #current_date = (datetime.today() - timedelta(days=i)).strftime("%Y-%m-%d")
 
         # Check if the current date exists in the Line_Chart_Data_dict
-        if current_date in Line_Chart_Data_dict:
+        #if current_date in Line_Chart_Data_dict:
             # Get the Line_Chart_Data object for the current date
-            object = Line_Chart_Data_dict[current_date]
+            #object = Line_Chart_Data_dict[current_date]
             # Append the date and corresponding time record to the lists
-            days.append(object.get_date())
-            timer.append(object.get_timeRecord())
+            #days.append(object.get_date())
+            #timer.append(object.get_timeRecord())
 
     # Print or process the data as needed
-    for day, time_record in zip(days, timer):
-        print(f"{day}: {time_record}")
+    #for day, time_record in zip(days, timer):
+        #print(f"{day}: {time_record}")
 
-    db.close()
-    return render_template('feeding_line_chart.html', days = days, timer = timer)
-#
-# @app.route('/data_analysis/pellets')
-# def line_chart_pellets():
-#     db = shelve.open('line_chart_data.db', 'r')
-#     Line_Chart_Data_dict = db.get('Line_Chart_Data',{})
-#     days = []
-#     pellets = []
-#
-#
-#     # Iterate over the last seven days
-#     for i in range(6, -1, -1):
-#         # Calculate the date for the current iteration
-#         current_date = (datetime.today() - timedelta(days=i)).strftime("%Y-%m-%d")
-#
-#         # Check if the current date exists in the Line_Chart_Data_dict
-#         if current_date in Line_Chart_Data_dict:
-#             # Get the Line_Chart_Data object for the current date
-#             object = Line_Chart_Data_dict[current_date]
-#             # Append the date and corresponding time record to the lists
-#             days.append(object.get_date())
-#             pellets.append(object.get_timeRecord())
-#
-#
-#     # Print or process the data as needed
-#     for day, time_record in zip(days, pellets):
-#         print(f"{day}: {time_record}")
-#     print(days)
-#     print(pellets)
-#
-#     db.close()
-#     return render_template('pellets_line_chart.html', days = days, pellets = pellets)
-#
-#
-#
-from flask import Flask, Response
+    #db.close()
+    #return render_template('feeding_line_chart.html', days = days, timer = timer)
 
 @app.route('/video_feed')
 def video_feed():
     try:
-        # Path to your GIF file
-        gif_path = './static/example-ezgif.com-video-to-gif-converter.gif'
-        return send_file(gif_path, mimetype='image/gif')
+        return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
     except Exception as e:
         print(f"Error: {e}")
         return "Error generating video feed"
@@ -869,7 +895,6 @@ def sending_email():
             smtp.login(email_sender, email_password)
             smtp.sendmail(email_sender, email_receiver, em.as_string())
 
-from OOP import *
 
 if __name__ == '__main__':
     try:
@@ -914,22 +939,9 @@ if __name__ == '__main__':
             oject3 = Line_Chart_Data_dict.get(current_date.strftime("%Y-%m-%d"))
             oject3.set_timeRecord(500)
 
-            ##### test code ########
-            # Line_Chart_Data_dict.pop("2024-03-28", None)
-            # print(Line_Chart_Data_dict)
-            # sending_email()
-
         db['Line_Chart_Data'] = Line_Chart_Data_dict
         db.close()
 
-        # db = shelve.open('line_chart_data_pellets.db', 'r')
-        # Line_Chart_Data_pellets_dict = db.get('Line_Chart_Data_Pellets',{})  # Attempt to get 'Time_Record' from db, if not found, initialize with empty dictionary
-        # if current_date not in Line_Chart_Data_dict:
-        #     Line_Chart_Data_pellets_dict[current_date] = 0
-        #     db['Line_Chart_Data_Pellets'] = Line_Chart_Data_pellets_dict
-        #
-        # db.close()
-        # the date you have
         print('the Date you have:\n-------------------------------------------------------')
         for i in Line_Chart_Data_dict:
             print(i,': ', (Line_Chart_Data_dict.get(i).get_timeRecord()))
@@ -948,7 +960,6 @@ if __name__ == '__main__':
         # create the basic email setup for user
         email_sender = 'lucaslaujiayuan@gmail.com'
         email_password = 'eeko murx wrcu zepp'
-        # email_receiver = 'jerryhoyuchen@gmail.com'
         email_receiver = 'jiayuanlau2222@gmail.com'
         email_setup = Email(email_sender, email_receiver, email_password, 3)
         Email_dict['Email_Info'] = email_setup
