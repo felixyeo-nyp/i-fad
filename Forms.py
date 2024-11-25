@@ -43,3 +43,8 @@ class emailForm(FlaskForm):
 
 class MFAForm(FlaskForm):
     code = StringField('MFA Code', validators=[DataRequired(), Length(min=6, max=6)])
+
+class FeedbackForm(FlaskForm):
+    name = StringField("Name", validators=[DataRequired(), Length(max=50)])
+    message = TextAreaField("Message", validators=[DataRequired(), Length(max=500)])
+

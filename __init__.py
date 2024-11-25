@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
 import shelve, re
 from flask_wtf import FlaskForm
-from Forms import configurationForm, emailForm, LoginForm, RegisterForm, MFAForm
+from Forms import configurationForm, emailForm, LoginForm, RegisterForm, MFAForm, FeedbackForm
 from flask_mail import Mail, Message
 import random
 
@@ -21,7 +21,9 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 import datetime, time
 import threading
 from datetime import datetime, timedelta
+from flask_apscheduler import APScheduler
 import numpy as np
+import pytz
 
 # File-reader-related imports #
 import openpyxl
@@ -97,6 +99,7 @@ class_labels = {
 
 # pth file where you have defined on roboflow
 model_path = './best_model.pth'
+
 
 def create_model(num_classes, pretrained=False, coco_model=False):
     if pretrained:
@@ -264,7 +267,7 @@ def generate_frames():
 
                     if (current_time.hour >= first_feeding_time) and (current_time.hour >=second_feeding_time and current_time.minute >second_feeding_time_min):
                         print('sending email feature')
-                        sending_email()
+
 
                     for today_date in Line_Chart_Data_dict:
                         Line_chart_objects = Line_Chart_Data_dict.get(today_date)
@@ -327,6 +330,9 @@ app.config['SECRET_KEY'] = 'your_secret_key'
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
 
 # Initialize Flask-Mail
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -336,6 +342,7 @@ app.config['MAIL_PASSWORD'] = 'jumt bfwp uall vhtb'
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 mail = Mail(app)
+
 
 # Dictionaries #
 #j = datetime.datetime.now()
@@ -377,6 +384,7 @@ def open_shelve(filename, mode='c'):
     except Exception as e:
         print(f"Error opening shelve: {e}")
         return None
+
 # Routes for Registration and Login
 # Routes for Registration and Login using shelve
 @app.route('/register', methods=['GET', 'POST'])
@@ -425,6 +433,7 @@ def login():
 
                         # Generate a 6-digit MFA code
                         mfa_code = str(random.randint(100000, 999999))
+                        session['email'] = user_email  # Save email in session
                         session['mfa_code'] = mfa_code  # Store in session
                         session['username'] = username  # Save username for next steps
 
@@ -682,25 +691,6 @@ def export_data():
 
     return send_file(file_path, as_attachment=True, download_name='leftover_feed_data.xlsx')
 
-#@app.route('/pellet_counts')
-#@login_required
-#def pellet_counts():
-    #global object_count
-
-    # Simulate timestamps (current time for each label)
-    #timestamps = [time.strftime('%H:%M:%S') for _ in object_count]
-
-    # Extract counts from object_count
-    #counts = list(object_count.values())
-
-    # Prepare data for Chart.js
-    #data = {
-        #'labels': timestamps,
-        #'data': counts
-    #}
-
-    #return jsonify(data)
-
 @app.route('/update', methods=['GET', 'POST'])
 @login_required
 def update_setting():
@@ -725,7 +715,15 @@ def update_setting():
 
                 db['Time_Record'] = Time_Record_dict
                 db.close()
+
+                user_email = session.get("user_email")
+                first_timer = setting.first_timer.data
+                second_timer = setting.second_timer.data
+                feeding_duration = setting.seconds.data
+
+                schedule_feeding_alerts(first_timer, second_timer, feeding_duration, user_email)
                 return redirect(url_for('dashboard'))
+
             elif not(6 <= first_hour <= 12):
                 setting.first_timer.errors.append('First timer should be between 06:00 and 12:00 (morning to afternoon).')
                 return render_template('settings.html', form=setting)
@@ -751,6 +749,65 @@ def update_setting():
         setting.seconds.data = j.get_seconds()
         setting.confidence.data = j.get_confidence()
         return render_template('settings.html', form=setting)
+
+def send_feeding_complete_email(user_email, feed_time):
+    with app.app_context():
+        try:
+            msg = Message("Feeding Complete",
+                          recipients=["heyitskale2@gmail.com"],
+                          body= f"The {feed_time} has been completed",
+                          sender=("Admin", "klwad766@gmail.com")
+                          )
+            msg.body = f"The {feed_time} has been completed."
+            mail.send(msg)
+            print(f"Email sent to {user_email} for {feed_time}.")
+        except Exception as e:
+            print(f"Error sending email: {e}")
+
+def schedule_feeding_alerts(first_timer, second_timer, feeding_duration, user_email):
+    try:
+        now = datetime.now()  # Use current date for scheduling
+        first_timer_dt = now.replace(hour=int(first_timer[:2]), minute=int(first_timer[3:]), second=0, microsecond=0)
+        second_timer_dt = now.replace(hour=int(second_timer[:2]), minute=int(second_timer[3:]), second=0, microsecond=0)
+
+        feeding_duration = int(feeding_duration)
+
+        # Localize the datetime objects
+        timezone = pytz.timezone("Asia/Singapore")
+        first_end_time = timezone.localize(first_timer_dt + timedelta(seconds=feeding_duration))
+        second_end_time = timezone.localize(second_timer_dt + timedelta(seconds=feeding_duration))
+
+        # Ensure feeding times are in the future
+        if first_end_time < timezone.localize(now):
+            print("First feeding time is in the past. Skipping scheduling.")
+        else:
+            print("Scheduling first feeding alert at:", first_end_time)
+            scheduler.add_job(
+                func=send_feeding_complete_email,
+                trigger='date',
+                run_date=first_end_time,
+                args=[user_email, "first feeding complete"],
+                id='first_feeding_alert',
+                misfire_grace_time=3600  # Allow a 1-hour grace period for missed jobs
+            )
+
+        if second_end_time < timezone.localize(now):
+            print("Second feeding time is in the past. Skipping scheduling.")
+        else:
+            print("Scheduling second feeding alert at:", second_end_time)
+            scheduler.add_job(
+                func=send_feeding_complete_email,
+                trigger='date',
+                run_date=second_end_time,
+                args=[user_email, "second feeding complete"],
+                id='second_feeding_alert',
+                misfire_grace_time=3600  # Allow a 1-hour grace period for missed jobs
+            )
+
+    except ValueError as e:
+        print(f"Error parsing time: {e}")
+    except Exception as e:
+        print(f"Scheduling error: {e}")
 
 @app.route('/update/email', methods=['GET', 'POST'])
 def update_email_settings():
@@ -782,33 +839,6 @@ def update_email_settings():
         setting.days.data = j.get_days()
         return render_template('email_settings.html', form=setting)
 
-#@app.route('/data_analysis/feeding_time')
-#def line_chart():
-    #db = shelve.open('line_chart_data.db', 'r')
-    #Line_Chart_Data_dict = db.get('Line_Chart_Data',{})
-    #days = []
-    #timer = []
-
-    # Iterate over the last seven days
-    #for i in range(6, -1, -1):
-        # Calculate the date for the current iteration
-        #current_date = (datetime.today() - timedelta(days=i)).strftime("%Y-%m-%d")
-
-        # Check if the current date exists in the Line_Chart_Data_dict
-        #if current_date in Line_Chart_Data_dict:
-            # Get the Line_Chart_Data object for the current date
-            #object = Line_Chart_Data_dict[current_date]
-            # Append the date and corresponding time record to the lists
-            #days.append(object.get_date())
-            #timer.append(object.get_timeRecord())
-
-    # Print or process the data as needed
-    #for day, time_record in zip(days, timer):
-        #print(f"{day}: {time_record}")
-
-    #db.close()
-    #return render_template('feeding_line_chart.html', days = days, timer = timer)
-
 @app.route('/video_feed')
 def video_feed():
     try:
@@ -817,83 +847,37 @@ def video_feed():
         print(f"Error: {e}")
         return "Error generating video feed"
 
-def sending_email():
-    import os
-    from email.message import EmailMessage
-    import ssl
-    import smtplib
+@app.route('/feedback', methods=['GET', 'POST'])
+def feedback():
+    form = FeedbackForm()
+    user_email = session.get('email')  # Retrieve the email from the session
 
-    db = shelve.open('line_chart_data.db', 'r')
-    Line_Chart_Data_dict = db.get('Line_Chart_Data', {})
-    db.close()
+    if not user_email:
+        flash('Please log in to access the feedback form.', 'danger')
+        return redirect(url_for('login'))
 
-    date_list = []
-    timer = []
+    if form.validate_on_submit():
+        try:
+            # Attempt to compose and send the email
+            msg = Message(
+                subject="New Feedback",
+                sender=user_email,
+                recipients=['klwad766@gmail.com'],
+                body=f"Name: {form.name.data}\nEmail: {user_email}\nMessage:\n{form.message.data}"
+            )
+            mail.send(msg)
 
-    db = shelve.open('settings.db', 'r')
-    # Attempt to get 'Time_Record' from db, if not found, initialize with empty dictionary
-    Email_dict = db.get('Email_Data', {})
-    db.close()
-    object = Email_dict.get('Email_Info')
-    email_sender = object.get_sender_email()
-    email_receiver = object.get_recipient_email()
-    email_password = object.get_APPPassword()
-    lengthOfDays = object.get_days()
+            # Flash success message and redirect to dashboard
+            flash('Your feedback has been sent successfully!', 'success')
+            return redirect(url_for('dashboard'))
 
-    # Iterate over the last seven days
-    for i in range(lengthOfDays):
-        print('entering range()')
-        # Calculate the date for the current iteration
-        current_date = (datetime.today() - timedelta(days=i)).strftime("%Y-%m-%d")
-        comparison_date = (datetime.today() - timedelta(days=i+1)).strftime("%Y-%m-%d")
+        except Exception as e:
+            # Flash error message in case of failure
+            flash('An error occurred while sending your feedback. Please try again.', 'danger')
+            # Log the error for debugging purposes (optional)
+            app.logger.error(f'Feedback form error: {e}')
 
-        # Check if the current date exists in the Line_Chart_Data_dict
-        if current_date in Line_Chart_Data_dict:
-            # Get the Line_Chart_Data object for the current date
-            object = Line_Chart_Data_dict[current_date]
-            comparison_object = Line_Chart_Data_dict[comparison_date]
-            print(comparison_date, '>', current_date)
-
-            print(comparison_object.get_timeRecord(), '>', object.get_timeRecord())
-
-            if int(comparison_object.get_timeRecord()) > int((object.get_timeRecord())+10):
-                print('true')
-
-                if object.get_date() not in date_list:
-                    date_list.append(object.get_date())
-                    timer.append(object.get_timeRecord())
-                if comparison_date not in date_list:
-                    date_list.append(comparison_object.get_date())
-                    timer.append((comparison_object.get_timeRecord()))
-
-    print(len(date_list))
-    if len(date_list) > (lengthOfDays):
-        print('sending email to recipient')
-
-        msg = ""
-        for day, time_record in zip(date_list, timer):
-            msg += f'<p>{day}: <strong>{int(time_record)} seconds</strong></p>'
-
-        # eeko murx wrcu zepp
-        subject = 'Alert!!!'
-        body = (
-            f'<p>Regarding the past three days time record, the graph has shown a decreasing trend. </p>\n{msg}'
-
-        )
-
-        em = EmailMessage()
-        em['From'] = email_sender
-        em['To'] = email_receiver
-        em['Subject'] = subject
-        em.set_content(body)
-        em.set_content(body, subtype='html')
-
-        smtplib.debuglevel = 1
-
-        context = ssl.create_default_context()
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
-            smtp.login(email_sender, email_password)
-            smtp.sendmail(email_sender, email_receiver, em.as_string())
+    return render_template('feedback.html', form=form)
 
 
 if __name__ == '__main__':

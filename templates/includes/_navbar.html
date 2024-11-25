@@ -88,6 +88,8 @@
         <a class="{% if request.path == '/' %}active{% endif %}" href="/dashboard">Dashboard</a>
         <a class="{% if request.path == '/update' %}active{% endif %}" href="/update">Feeding Settings</a>
         <a class="{% if request.path == '/camera_view' %}active{% endif %}" href="/camera_view">Camera View</a>
+        <a class="{% if request.path == '/feedback' %}active{% endif %}" href="{{ url_for('feedback') }}">Feedback</a>
+
         <a href="/logout">Logout</a>
     {% else %}
         <a href="{{ url_for('login') }}">Login</a>
