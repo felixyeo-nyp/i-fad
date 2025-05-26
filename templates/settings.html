@@ -6,140 +6,280 @@
 
     <style>
         body {
-            font-family: 'Arial', sans-serif;
-            background-color: #2f3136;
-            background-position: center;
-            background-repeat: no-repeat;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+    font-family: 'Arial', sans-serif;
+    background-color: #2f3136;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.container{
+margin-top: 10px;
 
-        .form-container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 40px;
-            background-color: #393d45;
-            border-radius: 5px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+}
+.form-container {
+    max-width: 800px;
+    margin: auto;
+    padding: 40px;
+    background-color: #393d45;
+    border-radius: 5px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
 
-        .form-container h2 {
-            font-size: 30px;
-            font-weight: bold;
-            text-align: center;
-            color: white;
-            margin-bottom: 20px;
-        }
+.form-container h2 {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: white;
+    margin-bottom: 20px;
+    margin-top: 10px;
+}
 
-        .form-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
+.form-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
 
-        .form-group label {
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-            text-align: right;
-        }
+.form-group label {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    text-align: right;
+}
 
-        .form-group .form-field-wrapper {
-            margin-bottom: 15px;
-        }
 
-        .form-group .form-field-wrapper input {
-            width: 100%;
-            height: 45px;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 25px;
-            border: solid;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            font-size: 16px;
-        }
+.unit-label {
+    margin-left: 5px; /* Space between input and unit */
+    color: white; /* Adjust for your theme */
+    font-size: 16px;
+    white-space: nowrap; /* Prevent wrapping of the text */
+    display: inline-block;
 
-        .save-btn {
-            background-color: #E8E8E8;
-            color: #000;
-            border: none;
-            padding: 10px 0;
-            font-size: 18px;
-            font-weight: bold;
-            color: white;
-            cursor: pointer;
-            border-radius: 25px;
-            display: block;
-            margin-top: 25px;
-            display: block;
-            width: 100%;
-            text-align: center;
-        }
+}
 
-        .save-btn:hover {
-            background-color: #C8C8C8;
-        }
+.form-group .form-field-wrapper {
+    margin-bottom: 15px;
+}
 
-        @media (max-width: 767px) {
-            .form-group label {
-                text-align: left;
-                width: 100%;
-                margin-bottom: 5px;
-            }
-        }
+.form-group .form-field-wrapper input {
+    width: 100%;
+    height: 45px;
+    padding: 10px;
+    border-radius: 25px;
+    border: solid;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 16px;
+}
+
+.input-group label {
+    font-size: 14px;
+    color: white;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.form-group row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    display: inline-block;
+
+
+}
+
+
+.save-btn, button[name="manual_feed_action"] {
+    background-color: #E8E8E8;
+    color: #393d45;
+    border: none;
+    padding: 10px 0;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 25px;
+    display: block;
+    margin-top: 25px;
+    width: 100%;
+    text-align: center;
+}
+
+.save-btn:hover, button[name="manual_feed_action"] {
+    background-color: #C8C8C8;
+}
+
+p{
+text-align: center;
+}
+
+@media (max-width: 767px) {
+    .form-group label {
+        text-align: left;
+        width: 100%;
+        margin-bottom: 5px;
+    }
+
+    .col-md-4 {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+}
+
     </style>
 
     <div class="container">
-        <div class="row">
-            <div class="col-12">
-                <div class="form-container">
-                    <h2>Feeding Settings</h2>
+    <div class="row">
+        <div class="col-12">
+            <div class="form-container">
+<h1 style="text-align: center; margin-top: 20px; font-size: 32px; font-weight: bold;">Feeding Settings</h1>
+        <hr style="border: none; border-top: 2px solid #ddd; margin-bottom: 20px;">
 
-                    <form method="POST" action="">
-                        {{ form.csrf_token }}
-                        <div class="form-group row">
-                            <label for="first_timer" class="col-md-4 col-form-label">First Timer:</label>
-                            <div class="col-md-8 form-field-wrapper">
-                                {{ render_field(form.first_timer, class="form-control") }}
+                <form method="POST" action="">
+                    {{ form.csrf_token }}
+                    <!-- Morning Feeding Time -->
+                    <div class="form-group row">
+                        <label for="first_timer" class="col-md-4 col-form-label">Morning Feeding Time:</label>
+                        <div class="col-md-4 form-field-wrapper">
+                            {{ render_field(form.first_timer, class="form-control") }}
+                        </div>
+                    </div>
+
+                    <!-- Evening Feeding Time -->
+                    <div class="form-group row">
+                        <label for="second_timer" class="col-md-4 col-form-label">Evening Feeding Time:</label>
+                        <div class="col-md-4 form-field-wrapper">
+                            {{ render_field(form.second_timer, class="form-control") }}
+                        </div>
+                    </div>
+
+                    <!-- Interval Check -->
+                    <div class="form-group row">
+                        <label for="interval" class="col-md-4 col-form-label">Interval Check:</label>
+                        <div class="col-md-8 form-field-wrapper">
+                            <div class="row align-items-center">
+                                <div class="col-md-6 col-lg-8 d-flex align-items-center">
+                                    {{ render_field(form.interval_minutes, class="form-control", placeholder="Minutes") }}
+                                    <span class="unit-label ms-2">minutes </span>
+                                    <br>
+                                    {{ render_field(form.interval_seconds, class="form-control", placeholder="Seconds") }}
+                                    <span class="unit-label ms-2">seconds</span>
+                                </div>
+<!--
+                                <div class="col-md-6 col-lg-4 d-flex align-items-center">
+                                    {{ render_field(form.interval_seconds, class="form-control", placeholder="Seconds") }}
+                                    <span class="unit-label ms-2">seconds</span>
+                                </div>
+                                -->
+                            </div>
+                            {% for error in form.interval_minutes.errors %}
+                                <p class="text-danger mt-2">{{ error }}</p>
+                            {% endfor %}
+                            <!--
+                            {% for error in form.interval_seconds.errors %}
+                                <p class="text-danger mt-2">{{ error }}</p>
+                            {% endfor %}
+                            -->
+                        </div>
+                        <!-- <p id="total-duration" class="mt-3 text-light">Total Interval Duration: <span>0</span> seconds</p> -->
+                    </div>
+                    <p id="interval-warning" class="text-danger mt-3" style="display: none;">Interval check duration cannot exceed total feeding duration.</p>
+                    <!-- Pellet Amount -->
+                    <div class="form-group row">
+                        <label for="pellets" class="col-md-4 col-form-label">Feed Amount (grams):</label>
+                        <div class="col-md-4 form-field-wrapper">
+                            {{ render_field(form.pellets, class="form-control", id="pelletsInput") }}
+                        </div>
+                        <p>*For Estimation: 100 pieces of pellet per gram (100 pellets/gram)</p>
+                        <p id="pelletCalculation" style="color: white;">0 gram: 0 x 100 = 0 pellets</p>
+                    </div>
+
+                    <!-- Feeding Duration -->
+                    <div class="form-group row">
+                        <label for="duration" class="col-md-4 col-form-label">Feeding Duration:</label>
+                        <div class="col-md-8 form-field-wrapper">
+                            <div class="row align-items-center">
+                                <div class="col-md-6 col-lg-8 d-flex align-items-center">
+                                    {{ render_field(form.minutes, class="form-control", placeholder="Minutes") }}
+                                    <span class="unit-label ms-2"> minutes</span>
+                                </div>
+
                             </div>
                         </div>
+                    </div>
 
-                        <div class="form-group row">
-                            <label for="second_timer" class="col-md-4 col-form-label">Second Timer:</label>
-                            <div class="col-md-8 form-field-wrapper">
-                                {{ render_field(form.second_timer, class="form-control") }}
-                            </div>
-                        </div>
+                    <!-- Warning Message -->
 
-                        <div class="form-group row">
-                            <label for="pellets" class="col-md-4 col-form-label">Feed Amount (grams):</label>
-                            <div class="col-md-8 form-field-wrapper">
-                                {{ render_field(form.pellets, class="form-control") }}
-                            </div>
-                        </div>
 
-                        <div class="form-group row">
-                            <label for="seconds" class="col-md-4 col-form-label">Feeding Duration(sec):</label>
-                            <div class="col-md-8 form-field-wrapper">
-                                {{ render_field(form.seconds, class="form-control") }}
-                            </div>
-                        </div>
+                    <!-- Submit Button -->
+                    <button type="submit" class="save-btn">Save</button>
 
-                        <div class="form-group row">
-                            <label for="confidence" class="col-md-4 col-form-label">Confidence Rate:</label>
-                            <div class="col-md-8 form-field-wrapper">
-                                {{ render_field(form.confidence, class="form-control") }}
-                            </div>
-                        </div>
+                    <div style="height: 1px; background-color: #aaa; margin: 30px 0;"></div>
 
-                        <button type="submit" class="save-btn">Save</button>
-                    </form>
-                </div>
+                    <button type="submit" name="manual_feed_action" value="start">Start Manual Feed</button>
+                    <button type="submit" name="manual_feed_action" value="stop">Stop Manual Feed</button>
+
+                </form>
             </div>
         </div>
     </div>
+</div>
+
+<script>
+    // Save Button
+    saveBtn = document.querySelector('.save-btn');
+
+        // Interval Check
+    const intervalMinutesInput = document.querySelector('[name="interval_minutes"]');
+    //const intervalSecondsInput = document.querySelector('[name="interval_seconds"]');
+    //const totalIntervalDurationElement = document.querySelector('#total-duration span');
+
+    // Feeding Duration
+    const feedingMinutesInput = document.querySelector('[name="minutes"]');
+    //const totalFeedingDurationElement = document.querySelector('#total-duration2 span');
+
+    // Warning Element
+    const intervalWarning = document.getElementById('interval-warning');
+
+    function calculateDurations() {
+        const intervalMinutes = parseInt(intervalMinutesInput.value) || 0;
+        //const intervalSeconds = parseInt(intervalSecondsInput.value) || 0;
+        const totalInterval = (intervalMinutes * 60);
+
+        const feedingMinutes = parseInt(feedingMinutesInput.value) || 0;
+        const totalFeeding = (feedingMinutes * 60);
+
+        //totalIntervalDurationElement.textContent = totalInterval;
+        //totalFeedingDurationElement.textContent = totalFeeding;
+
+        // Show warning if interval exceeds feeding duration
+        if (totalInterval > totalFeeding) {
+            intervalWarning.style.display = 'block';
+            saveBtn.disabled = true;
+        } else {
+            intervalWarning.style.display = 'none';
+            saveBtn.disabled = false;
+        }
+    }
+
+    // Event Listeners
+    intervalMinutesInput.addEventListener('input', calculateDurations);
+    //intervalSecondsInput.addEventListener('input', calculateDurations);
+    feedingMinutesInput.addEventListener('input', calculateDurations);
+
+
+    // Pellet Calculation
+    const pelletsInput = document.getElementById('pelletsInput');
+    const pelletCalculationElement = document.getElementById('pelletCalculation');
+
+    pelletsInput.addEventListener('input', function () {
+        const grams = parseInt(this.value) || 0;
+        const totalPellets = grams * 100;
+        pelletCalculationElement.textContent = `${grams} gram: ${grams} x 100 = ${totalPellets} pellets`;
+    });
+
+</script>
 {% endblock %}

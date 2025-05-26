@@ -7,6 +7,7 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
+            color: black;
             background-image: url("{{ url_for('static', filename='wall4.jpg') }}");
             background-size: cover;
             background-position: center;
@@ -15,16 +16,19 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            font-size: 18px;
+            margin: 0;
+            padding: 0;
         }
 
         .form-container {
             max-width: 500px;
+            height: 100%;
             margin: 0 auto;
             padding: 40px;
-            background-color: rgba(255, 255, 255, 0.15);
+            background-color: rgba(255, 255, 255);
             border-radius: 15px;
             box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
@@ -62,7 +66,7 @@
         }
 
         .input-group .input-group-text {
-            background-color: rgba(255, 255, 255, 0.15);
+            background-color: transparent;
             border: none;
             color: black;
             height: 45px;
@@ -73,24 +77,23 @@
 
         .input-group .form-control {
             border-radius: 25px;
-            border: solid;
+            border: solid 2px;
             background-color: rgba(255, 255, 255, 0.2);
-            color: white;
+            color: black;
             font-size: 16px;
         }
 
         .input-group input::placeholder{
-            color: black;
+            color: #215F8B;
         }
 
         .save-btn {
             background-color: #E8E8E8;
-            color: #000;
+            color: #0153FF;
             border: none;
             padding: 10px 0;
             font-size: 18px;
             font-weight: bold;
-            color: white;
             cursor: pointer;
             border-radius: 25px;
             display: block;
@@ -107,11 +110,11 @@
         .extra-options {
             text-align: center;
             margin-top: 15px;
-            color: white;
+            color: black;
         }
 
         .extra-options a {
-            color: white;
+            color: #0153FF ;
             font-weight: bold;
             text-decoration: underline;
         }
@@ -155,11 +158,10 @@
 
                 <button type="submit" class="save-btn">Login</button>
             </form>
-
             <div class="extra-options">
-                <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+                <p>Forgot Password? <a href="{{ url_for('forget_password') }}">Click here</a></p>
             </div>
+
         </div>
     </div>
 {% endblock %}
-

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Edit User</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #2f3136;
+            color: #e2e8f0;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 40px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            backdrop-filter: blur(10px);
+            border: 1px solid black;
+        }
+
+        h1 {
+            font-size: 30px;
+            font-weight: bold;
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .form-control {
+            width: 100%;
+            height: 35px;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 25px;
+            border: solid;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+        }
+
+        .radio-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .save-btn {
+            background-color: #E8E8E8;
+            color: #393d45;
+            border: none;
+            padding: 10px 0;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 25px;
+            display: block;
+            margin-top: 25px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .save-btn:hover {
+            background-color: #C8C8C8;
+        }
+
+        @media (max-width: 767px) {
+            .container {
+                width: 90%;
+                padding: 20px;
+            }
+
+            label {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Edit User: {{ username }}</h1>
+        <form method="post" action="{{ url_for('update_user', username=username) }}">
+            {{ form.hidden_tag() }} <!-- Prevent CSRF attacks -->
+
+            <!-- Email Field -->
+            <div class="form-group">
+                <label>Email:</label>
+                {{ form.email(class="form-control", id="email") }}
+            </div>
+
+            <!-- Role Field -->
+            <div class="form-group">
+                <label>Role:</label>
+                <div class="radio-group">
+                    <input type="radio" id="roleGuest" name="role" value="Guest">
+
+                    <label for="roleGuest">Guest</label>
+                    {% if user_data.role == "Guest" %}(Currently){% endif %}
+                    <input type="radio" id="roleAdmin" name="role" value="Admin">
+
+                    <label for="roleAdmin">Admin</label>
+                    {% if user_data.role == "Admin" %}(Currently){% endif %}
+                </div>
+            </div>
+
+            <!-- Status Field -->
+            <div class="form-group">
+                <label>Status:</label>
+                <div class="radio-group">
+                    <input type="radio" id="actives" name="status" value="Active">
+
+                    <label for="actives">Active</label>
+                    {% if user_data['status'] == "Active" %}(Currently){% endif %}
+                    <input type="radio" id="suspend" name="status" value="Suspended">
+
+                    <label for="suspend">Suspended</label>
+                    {% if user_data['status'] == "Suspended" %}(Currently){% endif %}
+                </div>
+            </div>
+
+
+            <!-- Submit Button -->
+            <button type="submit" class="save-btn">Save Changes</button>
+        </form>
+    </div>
+</body>
+</html>

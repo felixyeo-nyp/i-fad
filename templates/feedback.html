@@ -1,47 +1,29 @@
 {% extends "base.html" %}
+{% block title %}Feedback{% endblock %}
 {% block content %}
-<div class="feedback-container">
-    <h1>Get In Touch</h1>
-    <br>
-    <p>We would like to know your feedback on our website.</p>
-    <form method="POST">
-        {{ form.hidden_tag() }}
-
-        <div class="form-group-name">
-            {{ form.name.label(class="form-text") }} {{ form.name(class="form-control") }}
-        </div>
-
-        <div class="form-group-textarea">
-            {{ form.message.label(class="form-text") }} {{ form.message(class="form-control") }}
-        </div>
-        <div class="submit-form">
-        <button type="submit" class="btn-primary">Send Feedback</button>
-        </div>
-
-    </form>
-</div>
-
+    {% from "includes/_formHelper.html" import render_field %}
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    background-color: #2f3136;
-    margin: 0;
-  }
+ body {
+            font-family: 'Arial', sans-serif;
+            background-color: #2f3136;
+            background-position: center;
+            background-repeat: no-repeat;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
 
-  .feedback-container {
-    background-color: #393d45;
-    border-radius: 8px;
-    padding: 40px;
-    max-width: 500px;
-    width: 100%;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    text-align: center;
-  }
-
+        .feedback-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 40px;
+            background-color: #393d45;
+            border-radius: 5px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            align-items: center;
+        }
   .feedback-container h1 {
     font-size: 28px;
     color: white;
@@ -85,26 +67,50 @@
     height: 100px;
   }
 
-  .submit-form .btn-primary {
-    width: 100%;
-    padding: 10px;
-    border-radius: 20px;
-    background: linear-gradient(to right, #fc6076, #ff9a44);
-    border: none;
-    color: #fff;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background 0.3s ease;
-  }
-
-  .btn-primary:hover {
-    background: linear-gradient(to right, #ff9a44, #fc6076);
-    font-weight: bold;
-  }
+  .submit-btn {
+            background-color: #E8E8E8;
+            color: #393d45;
+            border: none;
+            padding: 10px 0;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 25px;
+            display: block;
+            margin-top: 25px;
+            display: block;
+            width: 100%;
+            text-align: center;
+        }
 
 
 
 </style>
+
+<div class="feedback-container">
+    <h1>Get In Touch</h1>
+    <br>
+    <p>Hello {{current_user.username}}, <br> How can we provide assistance to you.</p>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <div class="form-group-textarea">
+            {{ form.message.label(class="form-text") }} {{ form.message(class="form-control") }}
+        </div>
+        <div class="submit-form">
+        <button type="submit" class="submit-btn">Send Feedback</button>
+        </div>
+
+    </form>
+</div>
+<script>
+    const username = "{{ current_user.username }}"; // Django/Flask template variable
+            const welcomeText = document.querySelector(".navbar-text");
+            if (welcomeText) {
+                welcomeText.textContent = `Welcome, ${username}`;
+            }
+</script>
+
 
 {% endblock %}
 

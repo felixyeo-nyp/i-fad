@@ -1,8 +1,6 @@
 import os
 from roboflow import Roboflow
 import subprocess
-import distutils
-
 
 # Clone the repository and change directory
 subprocess.run(["C:\\Program Files\\Git\\bin\\git.exe", "clone", "https://github.com/sovit-123/fastercnn-pytorch-training-pipeline.git"])
@@ -69,5 +67,4 @@ else:
     print("CUDA is not available. Using CPU.")
 # Train the model
 os.system("python train.py --data data_configs/custom_data.yaml --epochs 40 --model fasterrcnn_resnet50_fpn --name custom_training --batch 16")
-!python train.py --data data_configs/custom_data.yaml --epochs 40 --model fasterrcnn_resnet50_fpn --name custom_training --batch 16
 

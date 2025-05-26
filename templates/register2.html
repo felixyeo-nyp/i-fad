@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+    {% from "includes/_formHelper.html" import render_field %}
+
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #2f3136;
+            color: #e2e8f0;
+            background-position: center;
+            background-repeat: no-repeat;
+            height: 140vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+        }
+
+        .form-container {
+            max-width: 500px;
+            height: auto;
+            margin: auto;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.1);
+            max-height: 900px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .form-container h2 {
+            font-size: 30px;
+            font-weight: bold;
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .form-container input {
+            width: 100%;
+            height: 45px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 25px;
+            border: none;
+            background: rgba(255, 255, 255);
+            color: white;
+            font-size: 16px;
+        }
+
+       .input-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            text-align: right;
+        }
+
+        .input-group .input-group-text {
+            background-color: transparent;
+            border: none;
+            color: white;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .input-group .form-control {
+            border-radius: 25px;
+            border: solid 2px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+        }
+
+        .input-group input::placeholder{
+            color: #215F8B;
+        }
+
+                .save-btn {
+            background-color: #E8E8E8;
+            color: #393d45;
+            border: none;
+            padding: 10px 0;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 25px;
+            display: block;
+            margin-top: 25px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .save-btn:hover {
+            background-color: #C8C8C8;
+        }
+        label {
+            color: white;
+        }
+
+
+        .req {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    display:inline-block;
+    width: 90%;
+}
+
+.req label {
+    display: flex; /* Align checkbox and text in a single row */
+    align-items: center; /* Vertically center the checkbox */
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: white;
+}
+
+.req input[type="checkbox"] {
+    appearance: none; /* Remove the default checkbox style */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #f9f9f9;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 10px;
+    cursor: pointer;
+    position: relative;
+    outline: none;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.req input[type="checkbox"]:checked {
+    background-color: #89CFF0; /* Light blue background when checked */
+    border-color: #89CFF0; /* Match the border color to the background */
+}
+
+.req input[type="checkbox"]:checked::after {
+    content: "✓"; /* Add a tick mark */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    color: white; /* White tick color */
+    font-weight: bold;
+}
+#radio {
+    display: flex;
+    gap: 10px;
+    flex-direction: row; /* Align items horizontally */
+
+
+}
+
+#radio label {
+    display: flex;
+    align-items: center; /* Center-align the label and radio button */
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+}
+
+#radio input[type="radio"] {
+    width: 15px; /* Adjust size to match default */
+    margin-right: 5px; /* Add space between the button and label */
+}
+
+
+
+
+    @media (max-width: 767px) {
+    .form-group label {
+                text-align: left;
+                width: 100%;
+                margin-bottom: 5px;
+            }
+    .form-container {
+        width: 90%; /* Adjust the container width */
+        padding: 10px;
+    }
+
+    .req label {
+        font-size: 12px; /* Reduce font size for smaller screens */
+    }
+}
+
+    </style>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <div class="form-container">
+                    <h2>Register</h2>
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                      {% if messages %}
+                        {% for category, message in messages %}
+                          <div class="alert alert-{{ category }}">
+                            {{ message }}
+                          </div>
+                        {% endfor %}
+                      {% endif %}
+                    {% endwith %}
+                    <form method="POST" action="{{ url_for('register2') }}">
+                        {{ form.hidden_tag() }}
+
+                        <!-- Username Field -->
+                        <div class="input-group">
+                            {{ form.username.label }}
+                            {{ form.username(class="form-control") }}
+                            {% if form.username.errors %}
+                                <div class="text-danger">{{ form.username.errors[0] }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Email Field -->
+                        <div class="input-group">
+                            {{ form.email.label }}
+                            {{ form.email(class="form-control") }}
+                            {% if form.email.errors %}
+                                <div class="text-danger">{{ form.email.errors[0] }}</div>
+                            {% endif %}
+                        </div>
+
+                         <!-- Roles Field -->
+                        <div class="input-group"  id="radio">
+                            {{ form.role.label }}
+                                <label>
+                                    <input type="radio" name="role" value="Admin"> Admin
+                                </label>
+                                <label>
+                                    <input type="radio" name="role" value="Guest"> Guest
+                                </label>
+                        </div>
+
+                        <!-- Password Field -->
+                        <div class="input-group">
+                            {{ form.password.label }}
+                            {{ form.password(class="form-control", id="password") }}
+                            {% if form.password.errors %}
+                                <div class="text-danger">{{ form.password.errors[0] }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Confirm Password Field -->
+                        <div class="input-group">
+                            {{ form.confirm_password.label }}
+                            {{ form.confirm_password(class="form-control", id="confirm_password") }}
+                            {% if form.confirm_password.errors %}
+                                <div class="text-danger">{{ form.confirm_password.errors[0] }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Password Complexity Checkboxes -->
+                        <div id="password-requirements" class="req">
+                            <label><input type="checkbox" id="min-length" disabled> Minimum 8 Characters</label>
+                            <label><input type="checkbox" id="upper-case" disabled> Uppercase Letter</label>
+                            <label><input type="checkbox" id="lower-case" disabled> Lowercase Letter</label>
+                            <label><input type="checkbox" id="number" disabled> Number</label>
+                            <label><input type="checkbox" id="special-char" disabled> Special Character</label>
+                        </div>
+
+
+
+                        <button type="submit" class="save-btn" id="register-btn">Register</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script for Password Complexity -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var passwordField = document.getElementById('password');
+        var confirmPasswordField = document.getElementById('confirm_password');
+        var minLengthCheck = document.getElementById('min-length');
+        var upperCaseCheck = document.getElementById('upper-case');
+        var lowerCaseCheck = document.getElementById('lower-case');
+        var numberCheck = document.getElementById('number');
+        var specialCharCheck = document.getElementById('special-char');
+        confirmPasswordField.disabled = true;
+
+        function validatePassword() {
+            var password = passwordField.value;
+
+            // Debug statement to log the current password
+            console.log('Current password:', password);
+
+            // Password validation & Update checkboxes
+            minLengthCheck.checked = password.length >= 8;
+            upperCaseCheck.checked = /[A-Z]/.test(password);
+            lowerCaseCheck.checked = /[a-z]/.test(password);
+            numberCheck.checked = /\d/.test(password);
+            specialCharCheck.checked = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+            // Debug statement to log validation checks
+            console.log('Password validation checks:', {
+                minLength: minLengthCheck.checked,
+                upperCase: upperCaseCheck.checked,
+                lowerCase: lowerCaseCheck.checked,
+                number: numberCheck.checked,
+                specialChar: specialCharCheck.checked
+            });
+
+            var allValid = minLengthCheck.checked && upperCaseCheck.checked && lowerCaseCheck.checked && numberCheck.checked && specialCharCheck.checked;
+            confirmPasswordField.disabled = !allValid;
+
+            // Debug statement to log whether confirm password is enabled
+            console.log('Confirm password enabled:', !confirmPasswordField.disabled);
+        }
+
+
+        // Debug statement to confirm event listener setup
+        console.log('Event listener for password input added.');
+
+        passwordField.addEventListener('input', validatePassword);
+    });
+</script>
+
+{% endblock %}
