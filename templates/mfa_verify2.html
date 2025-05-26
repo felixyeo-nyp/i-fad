@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}MFA Verification{% endblock %}
+
+{% block content %}
+{% from "includes/_formHelper.html" import render_field %}
+
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            color: black;
+            background-image: url("{{ url_for('static', filename='wall4.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size 18px;
+        }
+
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px;
+            background-color: rgba(255, 255, 255);
+            border-radius: 15px;
+            box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.1);
+
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .form-container h2 {
+            font-size: 30px;
+            font-weight: bold;
+            text-align: center;
+            color: black;
+            margin-bottom: 20px;
+        }
+
+        .form-container input {
+            width: 100%;
+            height: 45px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 25px;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            font-size: 16px;
+            font-weight: bold;
+            color: black;
+            text-align: right;
+        }
+
+        .input-group .input-group-text {
+            background-color: transparent;
+            border: none;
+            color: black;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #code{
+            border-radius: 25px;
+            border: solid 2px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: black;
+            font-size: 16px;
+        }
+
+        .save-btn {
+            background-color: #E8E8E8;
+            color: #0153FF;
+            border: none;
+            padding: 10px 0;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 25px;
+            display: block;
+            margin-top: 30px;
+            width: 100px;
+            text-align: center;
+
+        }
+
+        .save-btn:hover {
+            background-color: #89CFF0;
+        }
+
+        @media (max-width: 767px) {
+            .form-group label {
+                text-align: left;
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+
+    <div class="form-container">
+        <h2>MFA Verification</h2>
+        <p>Please enter the 6-digit authentication code sent to your email.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div>
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('mfa_verify2') }}">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                {{ form.code.label(class="form-label") }}
+                {{ form.code(class="form-control", placeholder="Enter 6-digit code") }}
+                {% if form.code.errors %}
+                    <div class="text-danger">{{ form.code.errors[0] }}</div>
+                {% endif %}
+            </div>
+            <button type="submit" class="save-btn">Verify</button>
+        </form>
+    </div>
+{% endblock %}

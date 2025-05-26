@@ -9,7 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-IdHw+FLOnRBRdN5zPjCYCz2kYEb1fHZgXUcStc9VK/TNifwCBWEYUNykQsckXyUUQXFh1m3b5qgGXH61ENQVhQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- CSS Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
+
+<style>
         * {
             text-decoration: none; /* Remove underline */
             font-family: "Arial";
@@ -35,13 +36,46 @@
                 text-align: center;
             }
         }
+
+        /* Flexbox container for two navbars */
+        .navbar-container {
+            display: flex;
+            justify-content: space-between; /* Ensures items are spaced apart, one to the left and one to the right */
+            width: 0;
+            z-index: 999; /* Ensures it is above other content */
+
+        }
+
+        /* Right-aligned navbar */
+        .second-navbar {
+    margin-left: auto; /* Align this navbar to the right */
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1000; /* Ensures it is above other content */
+}
+    .second-navbar .navbar-nav {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
     </style>
 </head>
 <body>
-{% block navbar %}
-    {% include 'includes/_navbar.html' %}
-{% endblock %}
+
+    {% block navbar %}
+    <div class="navbar-container">
+        <!-- First Navbar (on the left) -->
+        {% include 'includes/_navbar.html' %}
+
+        <!-- Second Navbar (on the right) -->
+        <div class="second-navbar">
+            {% include 'includes/_navbar2.html' %}
+        </div>
+    </div>
+    {% endblock %}
 <div class="container-fluid">
+
     {% block content %}
     {% endblock %}
 </div>

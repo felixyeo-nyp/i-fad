@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unauthorized Access</title>
+    <script src="https://kit.fontawesome.com/48c37b3e43.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            text-align: center;
+            background-color: grey;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        i {
+            font-size: 100px;
+            color: #ff0000;
+            margin-top: 20px;
+        }
+        h3, h4 {
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <h1>403</h1>
+    <h3>You have attempted to access a restricted area.</h3>
+    <h4>Your account has been suspended.</h4>
+    <h4>If this was a mistake, please log in with the correct credentials to continue.</h4>
+    <h4>You will be redirected to the login page shortly.</h4>
+    <div id="countdown"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Prevent back button navigation using history API
+            (function (global) {
+                // Push a new state to the history stack
+                global.history.pushState(null, "", global.location.href);
+
+                // Handle back button
+                global.onpopstate = function () {
+                    global.history.pushState(null, "", global.location.href);
+                };
+            })(window);
+
+            // Countdown timer and redirect
+            const redirectUrl = "/login"; // Change to your login page
+            let countdown = 10; // Seconds before redirection
+
+            const countdownElement = document.getElementById("countdown");
+            const interval = setInterval(() => {
+                countdownElement.innerHTML = `Redirecting in ${countdown} seconds...`;
+                countdown--;
+                if (countdown < 0) {
+                    clearInterval(interval);
+                    window.location.href = redirectUrl;
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

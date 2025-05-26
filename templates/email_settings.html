@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Library Loan System - Home{% endblock %}
+{% block title %}Admin Settings{% endblock %}
 
 {% block content %}
 {% from "includes/_formHelper.html" import render_field %}
@@ -8,12 +8,13 @@
 
 <style>
     * {
-        font-family: Times New Roman;
-        color:black;
+    background-color: #2f3136;
+    color: #ffffff;
+    font-family: 'Arial', sans-serif;
     }
 
     .label p b {
-        color: #224847;
+        color: white;
     }
 
     .label {
@@ -45,7 +46,7 @@ justify-content: center;
 
  .custom-tooltip {
         border-bottom: 1px dotted black;
-        color: black;
+        color: white;
         padding: 3px 5px; /* Add padding for better appearance */
         display: inline-block; /* Ensure the element takes up space even without content */
         position: relative; /* Add position relative for absolute positioning */
@@ -73,17 +74,32 @@ justify-content: center;
         visibility: visible;
         opacity: 1;
     }
+
+    .save-btn {
+    background-color: #E8E8E8;
+    color: #393d45;
+    border: none;
+    padding: 10px 0;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+    display: block;
+    margin: 25px auto 0 auto; /* Center horizontally */
+    width: 20%; /* Fixed width */
+    text-align: center;
+}
 </style>
 
 <body>
     <div style="width: 100%; text-align: center; margin-top:30px;">
         <div style="border-bottom: 2px solid #224847; width: 35%; margin: 0 auto;">
-            <p style="font-size: 30px; font-weight: bold; text-align: center; color:#224847;">Email Settings</p>
+            <h1 style="text-align: center; margin-top: 20px; font-size: 32px; font-weight: bold;">Admin Settings</h1>
         </div>
     </div>
 
     <form method="POST" action="">
-
+     {{ form.csrf_token }}
 
    <div class="label" style="margin-left:45px;">
     <p class="info"><b>Device's Email:</b></p>
@@ -95,13 +111,6 @@ justify-content: center;
         <span class="tooltiptext">The email must be the same as the email address associated with your current laptop,<br> granting permission for the website to send emails automatically.</span>
     </div>
 </div>
-
-
-
-
-
-
-
         <div class="label">
             <p class="info"><b>Recipient Email: </b></p>
             <div class="form-field-wrapper">
@@ -115,6 +124,10 @@ justify-content: center;
             <div class="form-field-wrapper">
                 {{ render_field(form.App_password, class="form-control") }}
             </div>
+            <div class="custom-tooltip" style="display: inline-block; margin-left:18px;"> <!-- Set display to inline-block -->
+        <i class="fas fa-question-circle"></i> <!-- Help icon -->
+        <span class="tooltiptext"> This app password is associated with the device's email</span>
+    </div>
         </div>
 
         <div class="label" style="margin-left:5px;">
@@ -127,7 +140,14 @@ justify-content: center;
         <span class="tooltiptext">How many consecutive days of decreasing fish feeding duration should occur<br> before sending a notification email to the recipient? </span>
     </div>
         </div>
+        <div class="label" style="margin-left: -4px;">
+            <p class="info"><b>Confidence Rate (%): </b></p>
+            <div class="form-field-wrapper">
+                {{ render_field(form.confidence, class="form-control") }}
 
+            </div>
+
+        </div>
         <button class="save-btn" onclick="handleClick()" >Save</button>
     </form>
 

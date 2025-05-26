@@ -4,9 +4,10 @@ from datetime import datetime
 
 
 class Settings:
-    def __init__(self, first_timer, second_timer, pellets, seconds, confidence):
+    def __init__(self, first_timer='', second_timer='', interval_seconds=0, pellets=0, seconds=0, confidence=0.0):
         self.__first_timer = first_timer
         self.__second_timer = second_timer
+        self.__interval_seconds = interval_seconds
         self.__pellets = pellets
         self.__seconds = seconds
         self.__confidence = confidence
@@ -17,6 +18,9 @@ class Settings:
 
     def get_second_timer(self):
         return self.__second_timer
+
+    def get_interval_seconds(self):
+        return self.__interval_seconds
 
     def get_pellets(self):
         return self.__pellets
@@ -33,6 +37,9 @@ class Settings:
 
     def set_second_timer(self, second_timer):
         self.__second_timer = second_timer
+
+    def set_interval_seconds(self, interval_seconds):
+        self.__interval_seconds = interval_seconds
 
     def set_pellets(self, pellets):
         self.__pellets = pellets

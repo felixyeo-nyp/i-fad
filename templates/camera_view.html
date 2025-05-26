@@ -2,20 +2,27 @@
 {% block title %}Camera View{% endblock %}
 
 {% block content %}
-<br>
+<h1 style="text-align: center; margin-top: 20px; font-size: 32px; font-weight: bold;">VIDEO FEED</h1>
+<hr style="border: none; border-top: 2px solid #ddd; margin-bottom: 20px;">
+
 <div class="video-feed-container">
-    <img src="{{ url_for('video_feed') }}" class="full-screen-video" alt="Video Feed">
+<img src="{{ url_for('video_feed') }}" class="full-screen-video" alt="Video Feed">
+    <!-- <img class="full-screen-video" src="{{ camera_url }}" alt="Live Feed"> -->
 </div>
 <br>
 <style>
 /* Reset default margins and paddings */
 body, html {
-    height: 100%;
+    height: auto;
+    width:auto;
     margin: 0;
     padding: 0;
-    overflow: hidden; /* Prevent scrolling */
     display: flex;
     flex-direction: column;
+    background-color: #2f3136;
+    color: #ffffff;
+    font-family: 'Arial', sans-serif;
+    overflow: hidden;
 }
 
 /* Header and Footer styles */
@@ -34,18 +41,21 @@ body, html {
     align-items: center;
     justify-content: center;
     background-color: black; /* Clean background color */
-    padding-bottom: 20px; /* Add padding to the bottom for spacing */
 }
 
 /* Video Feed styles */
 .full-screen-video {
-    max-width: 100%; /* Ensure the video does not exceed its original size */
-    max-height: 100%; /* Ensure the video does not exceed its original size */
-    width: auto;
-    height: auto;
+    max-width: 90%; /* Ensure the video does not exceed its original size */
+    max-height: 90%; /* Ensure the video does not exceed its original size */
+    width: 80%;
+    height: 80%;
     object-fit: contain; /* Ensures the video fits inside its container without distortion */
-    margin-bottom: 20px; /* Add margin to the bottom for spacing */
+
 }
 </style>
-
+<script>
+        window.addEventListener('beforeunload', () => {
+        navigator.sendBeacon('/clear_video_feed_access');
+    });
+</script>
 {% endblock %}

@@ -7,41 +7,42 @@
 
 <div class="centered">
     <div class="row">
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-xl-2 col-md-4 mb-4">
             <div class="card card-blue shadow h-100 py-2">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
-                        First Feeding Time
+                        Morning Feeding Time
                     </div>
                     <div class="h5 mb-0 font-weight-bold text-light">
                         {% for id in id_array %}
                         {{ id.get_first_timer() }}
                         {% endfor %}
+                        <span>hours</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
+         <div class="col-xl-2 col-md-4 mb-4">
             <div class="card card-orange shadow h-100 py-2">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
-                        Second Feeding Time
+                        Feeding Session Duration
                     </div>
                     <div class="h5 mb-0 font-weight-bold text-light">
                         {% for id in id_array %}
-                        {{ id.get_second_timer() }}
+                        Monitoring and feeding will run for {{ id.get_seconds() }} minutes
                         {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="col-xl-2 col-md-4 mb-4">
             <div class="card card-green shadow h-100 py-2">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
-                        First Feed Amount (grams)
+                        Total Feed Amount (grams)
                     </div>
                     <div class="h5 mb-0 font-weight-bold text-light">
                         {% for id in id_array %}
@@ -52,16 +53,48 @@
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
+       <div class="col-xl-2 col-md-4 mb-4">
             <div class="card card-red shadow h-100 py-2">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
-                        Feeding Duration
+                        Evening Feeding Time
                     </div>
                     <div class="h5 mb-0 font-weight-bold text-light">
                         {% for id in id_array %}
-                        Stop feeding after {{ id.get_seconds() }} seconds
+                        {{ id.get_second_timer() }}
                         {% endfor %}
+                        <span>hours</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card card-purple shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
+                        Feeding Interval
+                    </div>
+                    <div class="h5 mb-0 font-weight-bold text-light">
+                        {% for id in id_array %}
+                        {{ id.get_interval_seconds()//60}} minutes
+                        {{ id.get_interval_seconds() % 60}} seconds
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-2 col-md-4 mb-4">
+            <div class="card card-yellow shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
+                        Current pellet count
+                    </div>
+                    <div class="h5 mb-0 font-weight-bold text-light">
+
+                        {{ latest_count }} pellets left
+
                     </div>
                 </div>
             </div>
@@ -69,20 +102,15 @@
     </div>
 </div>
 
+
+
+
 <!-- Chart Area -->
 <div class="centered mt-5">
-    <!-- Chart Canvas -->
-    <div class="mt-4 chart-container">
-        <h2>LEFTOVER PELLETS FOR THE PAST WEEK (by feeding time)</h2>
-        <canvas id="pelletChart" width="600" height="400"></canvas>
-        <br>
-        <button id="firstFeedBtn" class="styled-button me-2" onclick="updateChart('first_feed')">First Feed</button>
-        <button id="secondFeedBtn" class="styled-button" onclick="updateChart('second_feed')">Second Feed</button>
-    </div>
 
-    <div class="mt-4 chart-container">
+    <div class="mt-4 chart-container" style="width:80vw">
         <h2>TOTAL LEFTOVER PELLETS FOR THE PAST WEEK </h2>
-        <canvas id="totalPelletChart" width="600" height="400"></canvas>
+        <canvas id="totalPelletChart" width="1000vw" height="400vh"></canvas>
         <br>
         <button class="styled-button" onclick="exportTotalFeedData()">Export Data</button>
     </div>
@@ -90,106 +118,122 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    let chart, totalChart;
+     const checkingInterval = {{ checking_interval|tojson }};
+let mergedChart;
 
-    // Static data for last 7 days
-    const labels = ['13 Nov', '14 Nov', '15 Nov', '16 Nov', '17 Nov', '18 Nov', '19 Nov'];
+// Function to fetch updated data without reloading the page
+async function fetchUpdatedData() {
+    try {
+        const response = await fetch('/pellet_data'); // Adjust API endpoint as needed
+        const pelletData = await response.json();
 
-    // Static data for first and second feed
-    const firstFeedData = [12, 3, 0, 16, 7, 14, 9];
-    const secondFeedData = [20, 19, 25, 14, 11, 5, 18];
+        console.log('Updated Data:', pelletData);
 
-    // Static data for total leftover pellet count
-    const totalFeedData = [32, 22, 25, 40, 18, 19, 27];
+        // Update chart data
+        mergedChart.data.labels = pelletData.labels;
+        mergedChart.data.datasets[0].data = pelletData.first_feed_left;
+        mergedChart.data.datasets[1].data = pelletData.second_feed_left;
+        mergedChart.data.datasets[2].data = pelletData.total_feed_count;
 
-    // Function to update chart with the feed data
-    function updateChart(feedType) {
-        if (feedType === 'first_feed') {
-            chart.data.datasets[0].data = firstFeedData;
-        } else if (feedType === 'second_feed') {
-            chart.data.datasets[0].data = secondFeedData;
-        }
-        chart.update();
+        mergedChart.update();
+    } catch (error) {
+        console.error('Error fetching updated pellet data:', error);
     }
+}
 
-    // Initialize chart on page load
-    window.onload = function () {
-        const ctx = document.getElementById('pelletChart').getContext('2d');
-        chart = new Chart(ctx, {
-            type: 'line',
+// Function to initialize the chart
+async function fetchAndInitializeCharts() {
+    try {
+        const labels = {{ pellet_labels|tojson }};
+        const firstFeedData = {{ first_feed_left|tojson }};
+        const secondFeedData = {{ second_feed_left|tojson }};
+        const totalFeedData = {{ total_feed_count|tojson }};
+
+        console.log('Initial Data:', { labels, firstFeedData, secondFeedData, totalFeedData });
+
+        const ctx = document.getElementById('totalPelletChart').getContext('2d');
+        mergedChart = new Chart(ctx, {
+            type: 'bar',
             data: {
                 labels: labels,
-                datasets: [{
-                    label: 'Pellet Count',
-                    data: firstFeedData,  // Default data is first feed
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 2
-                }]
+                datasets: [
+                    {
+                        label: 'Morning Feed',
+                        data: firstFeedData,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Evening Feed',
+                        data: secondFeedData,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Total Amount Of Feed',
+                        data: totalFeedData,
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2
+                    }
+                ]
             },
             options: {
+                responsive: true,
                 scales: {
-                    y: {
-                        beginAtZero: true
-                    }
+                    x: { stacked: false },
+                    y: { beginAtZero: true }
                 }
             }
         });
 
-        const ctx2 = document.getElementById('totalPelletChart').getContext('2d');
-        totalChart = new Chart(ctx2, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Pellet Count',
-                    data: totalFeedData,
-                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-
-        // Load the first feed (8:05 AM) data by default
-        updateChart('first_feed');
-    };
-
-        // Function to handle data export for total feed chart
-        function exportTotalFeedData() {
-            fetch('/export_data', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    labels: labels,
-                    data: totalFeedData
-                })
-            })
-            .then(response => {
-                return response.blob(); // Get the file as a blob
-            })
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'leftover_feed_data.xlsx'; // Naming the file for total feed data
-                document.body.appendChild(a); // Append the link to the body
-                a.click(); // Trigger the download
-                a.remove(); // Remove the link after download
-            })
-            .catch(error => {
-                console.error('Error exporting data:', error);
-            });
+        console.log('Chart Initialized');
+    } catch (error) {
+        console.error('Error initializing chart:', error);
     }
+}
+
+// Load the charts when the page is ready
+window.onload = function () {
+    fetchAndInitializeCharts();
+
+    // Auto-update data without reloading page
+    if (checkingInterval > 5) { // Prevent too frequent updates
+        setInterval(fetchUpdatedData, checkingInterval * 1000);
+    }
+};
+
+// Function to export data
+function exportTotalFeedData() {
+    fetch('/export_data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            labels: mergedChart.data.labels,
+            first: mergedChart.data.datasets[0].data,
+            second: mergedChart.data.datasets[1].data,
+            total: mergedChart.data.datasets[2].data
+        })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'leftover_feed_data.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    })
+    .catch(error => {
+        console.error('Error exporting data:', error);
+    });
+}
+
 </script>
 
 <style>
@@ -225,6 +269,7 @@ hr {
     justify-content: space-around;
     align-items: center;
     flex-wrap: wrap;
+
 }
 
 .card {
@@ -253,6 +298,14 @@ hr {
 
 .card-red {
     border-left: 5px solid #e74c3c;
+}
+
+.card-purple {
+    border-left: 5px solid #5d2cec;
+}
+
+.card-yellow {
+    border-left: 5px solid #e1e129;
 }
 
 .card .card-body {

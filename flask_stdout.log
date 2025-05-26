@@ -1,0 +1,135 @@
+no gpu is found in this python environment. using cpu to process
+cpu
+no gpu is found in this python environment. using cpu to process
+cpu
+Attempting to open the database file for reading.
+Database file opened for reading.
+Attempting to open the database file for updating...
+{'username': 'AdminTest1', 'email': 'testingweb3778@gmail.com', 'password': 'pbkdf2:sha256:600000$YH7nDVkorKjOxonx$9533f70439a8d8bfee9a5255bc4be32695f88ad192242fcdb7da48946a38fa8c', 'role': 'Admin', 'status': 'Active'}
+{'username': 'AdminTest', 'email': 't17544379@gmail.com', 'password': 'pbkdf2:sha256:600000$8Rb9PnkYy5NZSocJ$a4767aa7f7f622a580591d4118008fb45854d05b7dd19f337ed17b467ac627c5', 'role': 'Guest', 'status': 'Breached'}
+{'username': 'AdminTest3', 'email': 'muhammadizwan814@gmail.com', 'password': 'pbkdf2:sha256:600000$xPv0ztWfIEzIoax9$f6272475f718d8ca4e516d19968eadab4a3d69db5d1f33c752f1a01f26ed4961', 'role': 'Admin', 'status': 'Active'}
+{'username': '666666sww', 'email': 'yeapjunzhe123@gmail.com', 'password': 'pbkdf2:sha256:1000000$wWXRqUb6yHXGnsnN$89c3a6f75de9d491b29360e8f3790db05717c8f4af0cb4409155bbb3094edfe7', 'role': 'Admin', 'status': 'Active'}
+{'username': 'Yeap Jun Zhe', 'email': '2931801324qq@gmail.com', 'password': 'pbkdf2:sha256:1000000$pEhaHxe6wnB24NYj$0f0466c8736cfe85799fcc7fba5dd604e62d1d182bccabfd4c82295ebb20004a', 'role': 'Admin', 'status': 'Active'}
+{'username': 'Xavier ', 'email': '234651F@mymail.nyp.edu.sg', 'password': 'pbkdf2:sha256:1000000$E5PKn0pRhvfYeZH4$33003e854ddf42bb9a398aee4a0ae0b65ac150e079e2b1cec8859dd2f638b431', 'role': 'Admin', 'status': 'Active'}
+Database file updated successfully.
+2025-04-28 12:52:34.334329 current
+the Date you have:
+-------------------------------------------------------
+2025-04-21 :  0
+2025-04-20 :  0
+2025-04-19 :  0
+2025-04-18 :  0
+2025-04-17 :  0
+2025-04-16 :  0
+2025-04-15 :  0
+2025-04-22 :  0
+2025-04-29 :  0
+-------------------------------------------------------
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<Set thread >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Updating schedule
+ * Serving Flask app '__init__'
+ * Debug mode: off
+reschedulejewinin690@evluence.com
+processing at background
+No job found with this ID!
+No job found with this ID2!
+no gpu is found in this python environment. using cpu to process
+cpu
+Attempting to open the database file for reading.
+Database file opened for reading.
+Attempting to open the database file for updating...
+{'username': 'AdminTest1', 'email': 'testingweb3778@gmail.com', 'password': 'pbkdf2:sha256:600000$YH7nDVkorKjOxonx$9533f70439a8d8bfee9a5255bc4be32695f88ad192242fcdb7da48946a38fa8c', 'role': 'Admin', 'status': 'Active'}
+{'username': 'AdminTest', 'email': 't17544379@gmail.com', 'password': 'pbkdf2:sha256:600000$8Rb9PnkYy5NZSocJ$a4767aa7f7f622a580591d4118008fb45854d05b7dd19f337ed17b467ac627c5', 'role': 'Guest', 'status': 'Breached'}
+{'username': 'AdminTest3', 'email': 'muhammadizwan814@gmail.com', 'password': 'pbkdf2:sha256:600000$xPv0ztWfIEzIoax9$f6272475f718d8ca4e516d19968eadab4a3d69db5d1f33c752f1a01f26ed4961', 'role': 'Admin', 'status': 'Active'}
+{'username': '666666sww', 'email': 'yeapjunzhe123@gmail.com', 'password': 'pbkdf2:sha256:1000000$wWXRqUb6yHXGnsnN$89c3a6f75de9d491b29360e8f3790db05717c8f4af0cb4409155bbb3094edfe7', 'role': 'Admin', 'status': 'Active'}
+{'username': 'Yeap Jun Zhe', 'email': '2931801324qq@gmail.com', 'password': 'pbkdf2:sha256:1000000$pEhaHxe6wnB24NYj$0f0466c8736cfe85799fcc7fba5dd604e62d1d182bccabfd4c82295ebb20004a', 'role': 'Admin', 'status': 'Active'}
+{'username': 'Xavier ', 'email': '234651F@mymail.nyp.edu.sg', 'password': 'pbkdf2:sha256:1000000$E5PKn0pRhvfYeZH4$33003e854ddf42bb9a398aee4a0ae0b65ac150e079e2b1cec8859dd2f638b431', 'role': 'Admin', 'status': 'Active'}
+Database file updated successfully.
+2025-04-28 12:55:54.785494 current
+the Date you have:
+-------------------------------------------------------
+2025-04-21 :  0
+2025-04-20 :  0
+2025-04-19 :  0
+2025-04-18 :  0
+2025-04-17 :  0
+2025-04-16 :  0
+2025-04-15 :  0
+2025-04-22 :  0
+2025-04-29 :  0
+-------------------------------------------------------
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<Set thread >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Updating schedule
+ * Serving Flask app '__init__'
+ * Debug mode: off
+reschedulejewinin690@evluence.com
+processing at background
+No job found with this ID!
+No job found with this ID2!
+you are using gpu to process the video camera
+cuda
+Downloading: "https://download.pytorch.org/models/resnet50-0676ba61.pth" to C:\Windows\system32\config\systemprofile/.cache\torch\hub\checkpoints\resnet50-0676ba61.pth
+Attempting to open the database file for reading.
+Database file opened for reading.
+Attempting to open the database file for updating...
+{'username': 'AdminTest1', 'email': 'testingweb3778@gmail.com', 'password': 'pbkdf2:sha256:600000$YH7nDVkorKjOxonx$9533f70439a8d8bfee9a5255bc4be32695f88ad192242fcdb7da48946a38fa8c', 'role': 'Admin', 'status': 'Active'}
+{'username': 'AdminTest', 'email': 't17544379@gmail.com', 'password': 'pbkdf2:sha256:600000$8Rb9PnkYy5NZSocJ$a4767aa7f7f622a580591d4118008fb45854d05b7dd19f337ed17b467ac627c5', 'role': 'Guest', 'status': 'Breached'}
+{'username': 'AdminTest3', 'email': 'muhammadizwan814@gmail.com', 'password': 'pbkdf2:sha256:600000$xPv0ztWfIEzIoax9$f6272475f718d8ca4e516d19968eadab4a3d69db5d1f33c752f1a01f26ed4961', 'role': 'Admin', 'status': 'Active'}
+{'username': '666666sww', 'email': 'yeapjunzhe123@gmail.com', 'password': 'pbkdf2:sha256:1000000$wWXRqUb6yHXGnsnN$89c3a6f75de9d491b29360e8f3790db05717c8f4af0cb4409155bbb3094edfe7', 'role': 'Admin', 'status': 'Active'}
+{'username': 'Yeap Jun Zhe', 'email': '2931801324qq@gmail.com', 'password': 'pbkdf2:sha256:1000000$pEhaHxe6wnB24NYj$0f0466c8736cfe85799fcc7fba5dd604e62d1d182bccabfd4c82295ebb20004a', 'role': 'Admin', 'status': 'Active'}
+{'username': 'Xavier ', 'email': '234651F@mymail.nyp.edu.sg', 'password': 'pbkdf2:sha256:1000000$E5PKn0pRhvfYeZH4$33003e854ddf42bb9a398aee4a0ae0b65ac150e079e2b1cec8859dd2f638b431', 'role': 'Admin', 'status': 'Active'}
+Database file updated successfully.
+2025-04-28 13:07:08.819710 current
+the Date you have:
+-------------------------------------------------------
+2025-04-21 :  0
+2025-04-20 :  0
+2025-04-19 :  0
+2025-04-18 :  0
+2025-04-17 :  0
+2025-04-16 :  0
+2025-04-15 :  0
+2025-04-22 :  0
+2025-04-29 :  0
+-------------------------------------------------------
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<Set thread >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Updating schedule
+processing at background
+reschedulejewinin690@evluence.com
+ * Serving Flask app '__init__'
+ * Debug mode: off
+No job found with this ID!
+No job found with this ID2!
+you are using gpu to process the video camera
+cuda
+Attempting to open the database file for reading.
+Database file opened for reading.
+Attempting to open the database file for updating...
+{'username': 'AdminTest1', 'email': 'testingweb3778@gmail.com', 'password': 'pbkdf2:sha256:600000$YH7nDVkorKjOxonx$9533f70439a8d8bfee9a5255bc4be32695f88ad192242fcdb7da48946a38fa8c', 'role': 'Admin', 'status': 'Active'}
+{'username': 'AdminTest', 'email': 't17544379@gmail.com', 'password': 'pbkdf2:sha256:600000$8Rb9PnkYy5NZSocJ$a4767aa7f7f622a580591d4118008fb45854d05b7dd19f337ed17b467ac627c5', 'role': 'Guest', 'status': 'Breached'}
+{'username': 'AdminTest3', 'email': 'muhammadizwan814@gmail.com', 'password': 'pbkdf2:sha256:600000$xPv0ztWfIEzIoax9$f6272475f718d8ca4e516d19968eadab4a3d69db5d1f33c752f1a01f26ed4961', 'role': 'Admin', 'status': 'Active'}
+{'username': '666666sww', 'email': 'yeapjunzhe123@gmail.com', 'password': 'pbkdf2:sha256:1000000$wWXRqUb6yHXGnsnN$89c3a6f75de9d491b29360e8f3790db05717c8f4af0cb4409155bbb3094edfe7', 'role': 'Admin', 'status': 'Active'}
+{'username': 'Yeap Jun Zhe', 'email': '2931801324qq@gmail.com', 'password': 'pbkdf2:sha256:1000000$pEhaHxe6wnB24NYj$0f0466c8736cfe85799fcc7fba5dd604e62d1d182bccabfd4c82295ebb20004a', 'role': 'Admin', 'status': 'Active'}
+{'username': 'Xavier ', 'email': '234651F@mymail.nyp.edu.sg', 'password': 'pbkdf2:sha256:1000000$E5PKn0pRhvfYeZH4$33003e854ddf42bb9a398aee4a0ae0b65ac150e079e2b1cec8859dd2f638b431', 'role': 'Admin', 'status': 'Active'}
+Database file updated successfully.
+2025-04-28 13:08:29.591389 current
+the Date you have:
+-------------------------------------------------------
+2025-04-21 :  0
+2025-04-20 :  0
+2025-04-19 :  0
+2025-04-18 :  0
+2025-04-17 :  0
+2025-04-16 :  0
+2025-04-15 :  0
+2025-04-22 :  0
+2025-04-29 :  0
+-------------------------------------------------------
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<Set thread >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Updating schedule
+ * Serving Flask app '__init__'
+ * Debug mode: off
+processing at background
+reschedulejewinin690@evluence.com
+No job found with this ID!
+No job found with this ID2!
