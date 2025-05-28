@@ -1,0 +1,3 @@
+service_logs.log
+flask_stderr.log
+flask_stdout.log
