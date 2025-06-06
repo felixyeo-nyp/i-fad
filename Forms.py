@@ -7,7 +7,6 @@ from wtforms import StringField, validators, RadioField
 from flask_wtf import FlaskForm
 import re
 
-
 class configurationForm(FlaskForm):
     first_timer = StringField("", validators=[
         DataRequired(),
@@ -51,15 +50,15 @@ class configurationForm(FlaskForm):
         is_valid = super().validate()
 
         # Custom validation logic: Ensure at least one of minutes or seconds is entered
-        if not self.interval_minutes.data and not self.interval_seconds.data:
-            self.interval_minutes.errors.append("At least one of 'minutes' or 'seconds' must be entered.")
-            self.interval_seconds.errors.append("At least one of 'minutes' or 'seconds' must be entered.")
+        if not self.interval_minutes.data:
+            self.interval_minutes.errors.append("Please enter the data.")
+
             return False
 
 
     def totalintervalvalidcheck(self):
         is_valid = super().validate()
-        interval_total = (self.interval_minutes.data or 0) * 60 + (self.interval_seconds.data or 0)
+        interval_total = (self.interval_minutes.data or 0) * 60
         feeding_total = (self.minutes.data or 0) * 60
 
         if interval_total > feeding_total:

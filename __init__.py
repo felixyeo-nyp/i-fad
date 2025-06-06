@@ -50,7 +50,6 @@ import os
 from functools import wraps
 from flask import abort
 
-
 # Back-end codes for object detection & processing #
 if torch.cuda.is_available():
     print('you are using gpu to process the video camera')
@@ -141,8 +140,6 @@ object_count_lock = threading.Lock()
 freshest_frame_lock = threading.Lock()
 total_time_lock = threading.Lock()
 
-
-
 def create_model(num_classes, pretrained=False, coco_model=False):
     if pretrained:
         weights = torchvision.models.detection.FasterRCNN_ResNet50_FPN_Weights.DEFAULT
@@ -181,8 +178,6 @@ def check_feeding_time():
 
     setting = Time_Record_dict.get('Time_Record_Info')
 
-
-
     hours = setting.get_first_timer()[:2]
     minutes = setting.get_first_timer()[2:]
     hours1 = setting.get_second_timer()[:2]
@@ -220,7 +215,6 @@ def capture_frames():
             with latest_processed_frame_lock:
                 latest_processed_frame = frame
         time.sleep(0.03)  # Adjust to control frame rate (~30 FPS)
-
 
 def process_frames():
     # define the dictionary to store the number of pellets
@@ -280,7 +274,6 @@ def process_frames():
             print("processing at background")
             time.sleep(20)
 
-
         else:
             print("Processing a frame...")
             db.close()
@@ -316,13 +309,12 @@ def process_frames():
                 label = predictions[0]['labels'][i].item()
 
                 if label in class_labels:
-                    box = predictions[0]['boxes'][i].cpu().numpy().astype(int)  # used to define the size of the object
-                    score = predictions[0]['scores'][i].item()  # the probability of the object
+                    box = predictions[0]['boxes'][i].cpu().numpy().astype(int) # used to define the size of the object
+                    score = predictions[0]['scores'][i].item() #the probability of the object
 
                     if (label == 1 and score > confidence):
                         # Draw bounding box and label on the frame
-                        cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 255, 0),
-                                      2)  # (0,255,0) is the color (blue, green, yellow)
+                        cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2) #(0,255,0) is the color (blue, green, yellow)
                         cv2.putText(frame, f'{class_labels[label]}: {score:.2f}', (box[0], box[1] - 10),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
@@ -484,11 +476,9 @@ def process_frames():
                     cv2.putText(frame, "Stop Feeding", text_position_feed,
                                 cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 2)
             else:
-                if (
-                        current_time.hour <= first_feeding_time and current_time.minute <= first_feeding_time_min) or current_time.hour < first_feeding_time:
+                if (current_time.hour <= first_feeding_time and current_time.minute <= first_feeding_time_min) or current_time.hour < first_feeding_time:
                     desired_time = current_datetime.replace(hour=first_feeding_time, minute=first_feeding_time_min,
-                                                            second=0,
-                                                            microsecond=0)
+                                                            second=0, microsecond=0)
                     formatted_desired_time = 'Next Round: ' + desired_time.strftime("%I:%M %p")
 
                     text_size = cv2.getTextSize(formatted_desired_time, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)[0]
@@ -496,11 +486,8 @@ def process_frames():
                     cv2.putText(frame, formatted_desired_time, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2,
                                 (0, 255, 0), 2)
 
-
-
                 elif (
-                (current_time.hour <= second_feeding_time and current_time.minute <= second_feeding_time_min)) or (
-                        current_time.hour < second_feeding_time):
+                (current_time.hour <= second_feeding_time and current_time.minute <= second_feeding_time_min)) or (current_time.hour < second_feeding_time):
                     desired_time = current_datetime.replace(hour=second_feeding_time, minute=second_feeding_time_min,
                                                             second=0,
                                                             microsecond=0)
@@ -508,15 +495,13 @@ def process_frames():
 
                     text_size = cv2.getTextSize(formatted_desired_time, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)[0]
                     text_position = (frame.shape[1] - text_size[0] - 10, 30 * 4)
-                    cv2.putText(frame, formatted_desired_time, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2,
-                                (0, 255, 0), 2)
+                    cv2.putText(frame, formatted_desired_time, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
 
                 else:
                     # Add one day to the current date and time
                     next_day = current_datetime + timedelta(days=1)
                     # Set desired_time to 8 AM of the next day
-                    desired_time = next_day.replace(hour=first_feeding_time, minute=first_feeding_time_min, second=0,
-                                                    microsecond=0)
+                    desired_time = next_day.replace(hour=first_feeding_time, minute=first_feeding_time_min, second=0, microsecond=0)
 
                     formatted_desired_time = 'Tomorrow at: ' + desired_time.strftime("%I:%M %p")
 
@@ -576,18 +561,15 @@ scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
 
-
-
 # Initialize Flask-Mail
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
-app.config['MAIL_USERNAME'] = 'xavierfoo2004@gmail.com'
-app.config['MAIL_DEFAULT_SENDER'] = ('Admin', 'xavierfoo2004@gmail.com')
-app.config['MAIL_PASSWORD'] = 'hcos knus zitb ggao'
+app.config['MAIL_USERNAME'] = 'iatfadteam@gmail.com'
+app.config['MAIL_DEFAULT_SENDER'] = ('Admin', 'iatfadteam@gmail.com')
+app.config['MAIL_PASSWORD'] = 'pmtu cilz uewx xqqi'
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 mail = Mail(app)
-
 
 # Dictionaries #
 #j = datetime.datetime.now()
@@ -605,7 +587,6 @@ class User(UserMixin):
         self.password = password
         self.role = role
         self.status = status
-
 
 def role_required(role):
     def decorator(f):
@@ -629,8 +610,6 @@ def breached():
     session.clear()
     return render_template("Breached.html")
 
-
-
 # User loader callback for Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
@@ -645,8 +624,6 @@ def load_user(user_id):
     except Exception as e:
         app.logger.error(f"Error loading user {user_id}: {e}")
     return None
-
-
 
 # Default route to redirect to login page
 @app.route('/')
@@ -663,7 +640,6 @@ def open_shelve(filename, mode='c'):
         print(f"Error opening shelve: {e}")
         return None
 
-# Routes for Registration and Login
 # Routes for Registration and Login using shelve
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -726,7 +702,6 @@ def register2():
 
     return render_template('register2.html', form=form)
 
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
@@ -767,11 +742,9 @@ def login():
                             flash('An authentication code has been sent to your email.', 'info')
                             print(session)
                             return redirect(url_for('mfa_verify'))  # Redirect to MFA verification page
-                        except:
-                            flash('Error sending MFA', 'danger')
-
-
-
+                        except Exception as e:
+                            print(f"Email send error: {e}")
+                            flash("Error sending MFA", 'danger')
                     else:
                         flash('Invalid login credentials', 'danger')
                 else:
@@ -780,7 +753,6 @@ def login():
             flash(f'Error: {str(e)}', 'danger')
 
     return render_template('login.html', form=form)
-
 
 @app.route('/forgetpassword', methods=['GET', 'POST'])
 def forget_password():
@@ -801,7 +773,7 @@ def forget_password():
                         session['username'] = username
 
                         msg = flask_mail.Message(subject='MFA Code',
-                                      sender='xavierfoo2004@gmail.com',
+                                      sender='iatfadteam@gmail.com',
                                       recipients=[user_email])
                         msg.body = f'Your 6-digit MFA code is {mfa_code}'
                         mail.send(msg)
@@ -871,9 +843,6 @@ def reset_password():
                 flash(f'An error occurred: {str(e)}', 'danger')
 
     return render_template('reset_password.html', form=form)
-
-
-
 
 @app.route('/mfa-verify', methods=['GET', 'POST'])
 def mfa_verify():
@@ -950,11 +919,7 @@ def encode_time(timer_id, start_hour, start_minute, end_hour, end_minute):
     # Return the packet as a hexadecimal string
     return packet.hex()
 
-
 from scapy.all import *
-
-
-
 
 def get_next_ip_id():
     # Load the current ID from a file (or create it if it doesn't exist)
@@ -963,7 +928,6 @@ def get_next_ip_id():
         db['last_ip_id'] = last_id + 1    # Increment the ID for the next packet
         db.close()
     return last_id
-
 
 def send_tcp_packet(encoded_byte, source_port, server_isn, server_ack, source_ip, dest_ip):
     destination_ip = dest_ip
@@ -995,13 +959,15 @@ def send_tcp_packet(encoded_byte, source_port, server_isn, server_ack, source_ip
 
     while True:
         packet_counter += 1
+        print(f"Sniff attempt {packet_counter}")  # <-- Add this
         sniffpacket = sniff(iface="Ethernet 2",
                             filter=f"tcp and src host {destination_ip} and port {destination_port}",
-                            count=1, timeout=0.1)
+                            count=1, timeout=0.1) # Adjust the Ethernet port name to correspond with the connected interface.
 
         if not sniffpacket:
+            print(f"No packet received. Attempt: {packet_counter}")  # <-- Add this
             if packet_counter == 10:
-                print("not found")
+                print("Timeout reached, no packet captured.")
                 break
             continue
 
@@ -1033,10 +999,6 @@ def send_tcp_packet(encoded_byte, source_port, server_isn, server_ack, source_ip
             break
         else:
             continue
-
-
-
-
 
 # Function to perform the 3-way TCP handshake
 def send_syn_packet(client_ip, server_ip, source_port, destination_port):
@@ -1087,7 +1049,7 @@ def send_syn_packet(client_ip, server_ip, source_port, destination_port):
 
         while True:
 
-            psh_ack = sniff(iface="Ethernet 2",filter=f"tcp and src host {server_ip} and port {destination_port}", count=1, timeout=1)
+            psh_ack = sniff(iface="Ethernet 2",filter=f"tcp and src host {server_ip} and port {destination_port}", count=1, timeout=1) # Adjust the Ethernet port name to correspond with the connected interface.
 
             if not psh_ack:
                 # print("no packet")
@@ -1096,8 +1058,6 @@ def send_syn_packet(client_ip, server_ip, source_port, destination_port):
             psh_ack = psh_ack[0][TCP]
 
             if  psh_ack.flags == "PA" : # PSH-ACK received
-
-
 
                 payload_data = bytes(psh_ack.payload).rstrip(b'\x00')
 
@@ -1135,20 +1095,11 @@ def send_syn_packet(client_ip, server_ip, source_port, destination_port):
 
                 print("Keep-Alive ACK sent")
                 time.sleep(1)
-
-
-
             else:
-
                 print("Unexpected packet received")
-
             # Save the SYN-ACK sequence number for further use
 
-
-
-
     except Exception as e:
-
         print(f"Error: {e}")
 
 def send_RST_packet(source_port, server_isn, server_ack, source_ip, destination_ip):
@@ -1187,7 +1138,7 @@ def start_send_manual_feed(source_port, server_isn, server_ack, source_ip, desti
         packet_counter += 1
         sniffpacket = sniff(iface="Ethernet 2",
                             filter=f"tcp and src host {destination_ip} and port {destination_port}",
-                            count=1, timeout=0.1)
+                            count=1, timeout=0.1) # Adjust the Ethernet port name to correspond with the connected interface.
 
         if not sniffpacket:
             if packet_counter == 10:
@@ -1223,7 +1174,6 @@ def start_send_manual_feed(source_port, server_isn, server_ack, source_ip, desti
             break
         else:
             continue
-
 
 def stop_send_manual_feed(source_port, server_isn, server_ack, source_ip, destination_ip):
     destination_port = 50000
@@ -1241,7 +1191,7 @@ def stop_send_manual_feed(source_port, server_isn, server_ack, source_ip, destin
         packet_counter += 1
         sniffpacket = sniff(iface="Ethernet 2",
                             filter=f"tcp and src host {destination_ip} and port {destination_port}",
-                            count=1, timeout=0.1)
+                            count=1, timeout=0.1) # Adjust the Ethernet port name to correspond with the connected interface.
 
         if not sniffpacket:
             if packet_counter == 10:
@@ -1277,7 +1227,6 @@ def stop_send_manual_feed(source_port, server_isn, server_ack, source_ip, destin
             break
         else:
             continue
-
 
 # Route to update the interval setting
 @app.route('/update_interval', methods=['POST'])
@@ -1311,7 +1260,6 @@ def update_interval():
         app.logger.error(f"An error occurred while updating interval: {str(e)}")
         flash('An unexpected error occurred.', 'danger')
         return redirect(url_for('settings'))
-
 
 # Route to retrieve the current interval setting
 @app.route('/get_interval', methods=['GET'])
@@ -1362,7 +1310,6 @@ def get_threshold():
     except Exception as e:
         app.logger.error(f"An error occurred while retrieving threshold: {str(e)}")
         return jsonify({'error': 'An error occurred while retrieving threshold.'}), 500
-
 
 @app.route('/pellet_data')
 def get_pellet_data():
@@ -1450,7 +1397,6 @@ def dashboard():
     return render_template('dashboard.html', count=len(id_array), id_array=id_array, edit=0, form=edit_form, latest_count=latest_count,
                            pellet_labels=pellet_data['labels'], first_feed_left=pellet_data['first_feed_left'], second_feed_left=pellet_data['second_feed_left'],total_feed_count = pellet_data['total_feed_count'],checking_interval = checking_interval)
 
-
 @app.route('/camera_view',methods=['GET','POST'])
 @login_required
 def camera_view():
@@ -1504,13 +1450,16 @@ def update_setting():
     print("check2")
     if request.method == 'POST' and setting.validate():
         manual_feed_action = request.form.get('manual_feed_action')
-        pattern = r'^[01]\d[0-5]\d|2[0-3][0-5]\d$'  # Matches HHMM format
+        pattern = r'^(?:[01]\d[0-5]\d|2[0-3][0-5]\d)$'  # Matches HHMM format
         print("check3")
 
         if manual_feed_action in ["start", "stop"]:
             with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
                 port = db.get('Port')
                 server_isn = db.get('syn_ack_seq')
+                if server_isn is None:
+                    flash("⚠️ Missing 'syn_ack_seq' in settings. Please initialize it first.", "danger")
+                    return redirect(url_for('update_setting'))
                 server_ack = db.get('syn_ack_ack')
                 ip_data = ip_db.get("IP", {})
                 source_ip = ip_data.get("source")
@@ -1536,12 +1485,17 @@ def update_setting():
                 second_hour = int(setting.second_timer.data[:2])
                 second_minute = int(setting.second_timer.data[2:])
 
+                print(first_hour)
+                print(first_minute)
+                print(second_hour)
+                print(second_minute)
+
 
                 # Validate ranges
                 if (6 <= first_hour <= 12) and (12 <= second_hour <= 24):
                     print("check4")
                     time.sleep(0.5)
-                    db = shelve.open('settings.db', 'c')
+
                     db = shelve.open('settings.db', 'c')
                     Time_Record_dict = db.get('Time_Record', {})
 
@@ -1569,13 +1523,11 @@ def update_setting():
 
                     j.set_pellets(setting.pellets.data)
 
-
                     if setting.minutes.data is not None:
                         total_seconds = int(setting.minutes.data)
                         j.set_seconds(total_seconds)
                     else:
                         j.set_seconds(0)
-
 
                     port = db['Port']
                     server_isn = db['syn_ack_seq']
@@ -1684,12 +1636,11 @@ def update_setting():
 
         return render_template('settings.html', form=setting)
 
-
 def send_feeding_complete_email(user_email, feed_time):
     with app.app_context():
         try:
             msg = flask_mail.Message(subject="Feeding Complete",
-                          recipients=["jewinin690@evluence.com"],
+                          recipients=["testproject064@gmail.com"],
                           body= f"The {feed_time} has been completed",
                           )
             mail.send(msg)
@@ -1697,12 +1648,10 @@ def send_feeding_complete_email(user_email, feed_time):
         except Exception as e:
             print(f"Error sending email: {e}")
 
-
 def reschedule_feeding_alerts():
     db = shelve.open('settings.db', 'r')
     Time_Record_dict = db['Time_Record']
     j = Time_Record_dict.get('Time_Record_Info')
-
 
     # Get updated times and durations
     first_timer = j.get_first_timer()
@@ -1712,7 +1661,7 @@ def reschedule_feeding_alerts():
         user_email = session.get("email")
     except:
         db = shelve.open('settings.db', 'r')
-        email_db = db.get("Email_Data", {"Email_Info":Email("xavierfoo2004@gmail.com","jewinin690@evluence.com",'hcos knus zitb ggao',3)})
+        email_db = db.get("Email_Data", {"Email_Info":Email("iatfadteam@gmail.com","testproject064@gmail.com",'pmtu cilz uewx xqqi',3)})
         email_instance = email_db.get("Email_Info")
         user_email = email_instance.get_recipient_email()
         print("reschedule"+ user_email)
@@ -1758,16 +1707,11 @@ def reschedule_feeding_alerts():
         )
         print("No job found with this ID2!")
 
-
 def schedule_daily_task():
     while True:
         print("Updating schedule")
         reschedule_feeding_alerts()  # Execute the function
         time.sleep(86400)  # Wait for 24 hours (86400 seconds)
-
-
-
-
 
 def schedule_feeding_alerts(first_timer, second_timer, feeding_duration, user_email):
     try:
@@ -1883,7 +1827,6 @@ def clear_video_feed_access():
     db.close()
     return jsonify({'message': 'Video feed access cleared'}), 200  # Returning JSON response
 
-
 @app.route('/video_feed')
 
 def video_feed():
@@ -1908,7 +1851,7 @@ def feedback():
 
     if form.validate_on_submit():
         try:
-            administration = ["xavierfoo2004@gmail.com"] # change to admin email
+            administration = ["iatfadteam@gmail.com"] # change to admin email
             # Attempt to compose and send the email
             msg = flask_mail.Message(
                 subject="New Feedback",
@@ -1969,7 +1912,6 @@ def change_password():
 
     return render_template('changed_password.html', form=form)
 
-
 @app.route('/retrieve', methods=['GET'])
 @login_required
 @role_required('Admin')
@@ -2004,7 +1946,6 @@ def retrieve_users():
     # Pass data to the template
     return render_template(
         'retrieve.html',
-
         users=paginated_users,  # Pass only paginated users
         page=page,
         total_pages=total_pages,
@@ -2014,8 +1955,6 @@ def retrieve_users():
         per_page=per_page,
         search_query=search_query,
     )
-
-
 
 @app.route('/update/<username>', methods=['GET', 'POST'])
 @login_required
@@ -2056,7 +1995,6 @@ def update_user(username):
         return redirect(url_for('retrieve_users'))
 
     return render_template('update_user.html', form=form, username=username, user_data=user_data)
-
 
 # Delete (Remove User)
 @app.route('/delete/<username>', methods=['POST'])
@@ -2123,7 +2061,6 @@ def start_syn_packet_thread(client_ip, server_ip, port, destination_port):
     syn_thread.start()
 
 # Main code
-
 if __name__ == '__main__':
     try:
         # Attempt to open the shelve database file for reading
@@ -2143,16 +2080,21 @@ if __name__ == '__main__':
 
         print("Database file updated successfully.")
 
-
         db = shelve.open('settings.db', 'w')
         # Attempt to get 'Time_Record' from db, if not found, initialize with empty dictionary
         Time_Record_dict = db.get('Time_Record',{})
         Email_dict = db.get('Email_Data', {})
         Generate_Status = db.get('Generate_Status', False)
         email_setup = Email_dict['Email_Info']
-        app.config['MAIL_USERNAME'] = email_setup.get_sender_email()
-        app.config['MAIL_PASSWORD'] = email_setup.get_APPPassword()
-        app.config['MAIL_DEFAULT_SENDER'] = ('admin', email_setup.get_sender_email())
+
+        # app.config['MAIL_USERNAME'] = email_setup.get_sender_email()
+        # app.config['MAIL_PASSWORD'] = email_setup.get_APPPassword()
+        # app.config['MAIL_DEFAULT_SENDER'] = ('admin', email_setup.get_sender_email())
+
+        app.config['MAIL_USERNAME'] = 'iatfadteam@gmail.com'
+        app.config['MAIL_PASSWORD'] = 'pmtu cilz uewx xqqi'
+        app.config['MAIL_DEFAULT_SENDER'] = ('Admin', 'iatfadteam@gmail.com')
+
         mail = Mail(app)
         # newly added read config email from database
         port = random.randint(53100, 53199)
@@ -2225,9 +2167,9 @@ if __name__ == '__main__':
         db['Check_Interval'] = 10
 
         # create the basic email setup for user
-        email_sender = 'xavierfoo2004@gmail.com'
-        email_password = 'hcos knus zitb ggao'
-        email_receiver = 'jewinin690@evluence.com'
+        email_sender = 'iatfadteam@gmail.com'
+        email_password = 'pmtu cilz uewx xqqi'
+        email_receiver = 'testproject064@gmail.com'
         email_setup = Email(email_sender, email_receiver, email_password, 3)
         Email_dict['Email_Info'] = email_setup
         db['Email_Data'] = Email_dict

@@ -68,7 +68,7 @@ class_labels = {
     }
 
 # pth file where you have defined on roboflow
-model_path = './best_model2.pth'
+model_path = './best_model5.pth'
 
 
 # Define the create_model function here
