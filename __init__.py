@@ -631,6 +631,7 @@ def load_user(user_id):
 def index():
     return redirect(url_for('logout'))
 
+
 # Function to open shelve safely
 def open_shelve(filename, mode='c'):
     try:
