@@ -2206,7 +2206,7 @@ if __name__ == '__main__':
         update_schedule_thread.start()
     try:
         mail = Mail(app)
-        app.run(host='0.0.0.0', port=8080, debug=False)
+        app.run(host='0.0.0.0', port=5000, debug=True)
     finally:
         # Stop threads on exit
         stop_event.set()
