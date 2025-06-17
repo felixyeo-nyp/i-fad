@@ -319,9 +319,23 @@
     /* Stats grid */
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 25px;
         margin-bottom: 40px;
+    }
+
+    /* For medium screens, go to 2 columns */
+    @media (max-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* For small screens, go to 1 column */
+    @media (max-width: 600px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .stat-card {
@@ -351,27 +365,27 @@
     }
 
     .morning::before {
-        background: linear-gradient(90deg, #3498db, #36d1dc);
-    }
-
-    .duration::before {
-        background: linear-gradient(90deg, #ff9a9e, #fad0c4);
-    }
-
-    .amount::before {
-        background: linear-gradient(90deg, #a1c4fd, #c2e9fb);
+        background: linear-gradient(90deg, #f6d365, #fda085);
     }
 
     .evening::before {
         background: linear-gradient(90deg, #a18cd1, #fbc2eb);
     }
 
+    .duration::before {
+        background: linear-gradient(90deg, #84fab0, #8fd3f4);
+    }
+
+    .amount::before {
+        background: linear-gradient(90deg, #5b86e5, #36d1dc);
+    }
+
     .interval::before {
-        background: linear-gradient(90deg, #ffecd2, #fcb69f);
+        background: linear-gradient(90deg, #ff9a9e, #fad0c4);
     }
 
     .count::before {
-        background: linear-gradient(90deg, #84fab0, #8fd3f4);
+        background: linear-gradient(90deg, #a2836e, #d7ccc8);
     }
 
     .card-icon {
@@ -387,8 +401,8 @@
     }
 
     .morning .card-icon {
-        background: rgba(52, 152, 219, 0.15);
-        color: #3498db;
+        background: rgba(253, 216, 53, 0.15);
+        color: #fbc02d;
     }
 
     .evening .card-icon {
@@ -397,23 +411,23 @@
     }
 
     .duration .card-icon {
+        background: rgba(132, 250, 176, 0.15);
+        color: #84fab0;
+    }
+
+    .amount .card-icon {
+        background: rgba(91, 134, 229, 0.15);
+        color: #5b86e5;
+    }
+
+    .interval .card-icon {
         background: rgba(255, 154, 158, 0.15);
         color: #ff9a9e;
     }
 
-    .amount .card-icon {
-        background: rgba(161, 196, 253, 0.15);
-        color: #a1c4fd;
-    }
-
-    .interval .card-icon {
-        background: rgba(255, 236, 210, 0.15);
-        color: #ffecd2;
-    }
-
     .count .card-icon {
-        background: rgba(132, 250, 176, 0.15);
-        color: #84fab0;
+        background: rgba(162, 131, 110, 0.15);
+        color: #8d6e63;
     }
 
     .card-label {
