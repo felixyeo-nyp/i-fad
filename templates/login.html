@@ -1,167 +1,240 @@
 {% extends "base.html" %}
 {% block title %}Login{% endblock %}
 
+{% block head %}
+  {{ super() }}
+  <!-- Font Awesome for solid user/lock icons -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    integrity="sha512-pZM7QbaxfMZ+gihEPN0YC79YC69lO2QJFiO4VVsaG1hCdb4tTfRNsqTUp4CShz5qM+YH0ZzwEtJwOu9gQHo+PQ=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+{% endblock %}
+
 {% block content %}
-    {% from "includes/_formHelper.html" import render_field %}
+<style>
+  /* Reset & background */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("{{ url_for('static', filename='wall5.jpg') }}");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -1;
+    animation: bgZoomFade 1.5s ease-out forwards;
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  @keyframes bgZoomFade {
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #000;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
 
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            color: black;
-            background-image: url("{{ url_for('static', filename='wall4.jpg') }}");
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 18px;
-            margin: 0;
-            padding: 0;
-        }
+  /* Card container */
+  .container {
+    max-width: 500px;
+    width: 100%;
+    z-index: 1;
+  }
+  .form-container {
+    background: #fff;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    border: 1px solid #e0e0e0;
+    animation: fadeIn 0.8s ease-out;
+    overflow: hidden;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .form-container h2 {
+    font-size: 32px;
+    font-weight: 700;
+    text-align: center;
+    color: #333;
+    margin-bottom: 30px;
+    letter-spacing: 1px;
+  }
 
-        .form-container {
-            max-width: 500px;
-            height: 100%;
-            margin: 0 auto;
-            padding: 40px;
-            background-color: rgba(255, 255, 255);
-            border-radius: 15px;
-            box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+  /* Flash messages */
+  .alert {
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 500;
+  }
+  .alert-success { background: #e8f5e9; color: #2e7d32; }
+  .alert-error   { background: #ffebee; color: #c62828; }
 
-        .form-container h2 {
-            font-size: 30px;
-            font-weight: bold;
-            text-align: center;
-            color: black;
-            margin-bottom: 20px;
-        }
+  /* Icon inside input */
+  .input-with-icon {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  .input-with-icon .fa-icon {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #555;
+    pointer-events: none;
+    font-size: 18px;
+  }
+  .input-with-icon .form-control {
+    width: 100%;
+    padding: 10px 14px 10px 50px;
+    height: 50px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f9f9f9;
+    font-size: 16px;
+    color: #333;
+    text-align:left;
+  }
+  .input-with-icon .form-control::placeholder {
+    color: #999;
+    align-item:center;
+  }
+  .input-with-icon .form-control:focus {
+    outline: none;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    border-color: #3498db;
+  }
 
-        .form-container input {
-            width: 100%;
-            height: 45px;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 25px;
-            border: none;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            font-size: 16px;
-        }
+  /* Forgot-password link */
+  .extra-options {
+    text-align: right;
+    margin-bottom: 20px;
+  }
+  .extra-options a {
+    color: #3498db;
+    text-decoration: none;
+    font-size: 14px;
+  }
 
-        .input-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
+  /* Submit button */
+  .save-btn {
+    width: 100%;
+    padding: 12px 0;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(45deg, #3498db, #8e44ad);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+  .save-btn:hover {
+    opacity: 0.9;
+  }
 
-        .input-group label {
-            font-size: 16px;
-            font-weight: bold;
-            color: black;
-            text-align: right;
-        }
+  /* Sign-up prompt */
+  .signup-prompt {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: #555;
+  }
+  .signup-prompt a {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 500;
+  }
 
-        .input-group .input-group-text {
-            background-color: transparent;
-            border: none;
-            color: black;
-            height: 45px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+  @media (max-width: 576px) {
+    .form-container {
+      padding: 30px 20px;
+    }
+    .form-container h2 {
+      font-size: 26px;
+    }
+    .input-with-icon .form-control {
+      height: 45px;
+      padding: 8px 10px 8px 34px;
+    }
+    .input-with-icon .fa-icon {
+      left: 15px;
+      font-size: 14px;
+    }
+    .save-btn {
+      font-size: 15px;
+      padding: 10px 0;
+    }
+  }
+</style>
 
-        .input-group .form-control {
-            border-radius: 25px;
-            border: solid 2px;
-            background-color: rgba(255, 255, 255, 0.2);
-            color: black;
-            font-size: 16px;
-        }
+<div class="container">
+  <div class="form-container">
+    <h2>i@FAD</h2>
 
-        .input-group input::placeholder{
-            color: #215F8B;
-        }
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          {% if msg != "Please log in to access this page." %}
+            <div class="alert alert-{{ category }}">{{ msg }}</div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-        .save-btn {
-            background-color: #E8E8E8;
-            color: #0153FF;
-            border: none;
-            padding: 10px 0;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 25px;
-            display: block;
-            margin-top: 25px;
-            display: block;
-            width: 100%;
-            text-align: center;
-        }
+    <form method="POST" action="{{ url_for('login') }}">
+      {{ form.hidden_tag() }}
 
-        .save-btn:hover {
-            background-color: #89CFF0;
-        }
+      <!-- Username field -->
+      <div class="input-with-icon">
+        <i class="fas fa-user fa-icon"></i>
+        {{ form.username(class="form-control", placeholder="Username") }}
+      </div>
 
-        .extra-options {
-            text-align: center;
-            margin-top: 15px;
-            color: black;
-        }
+      <!-- Password field -->
+      <div class="input-with-icon">
+        <i class="fas fa-lock fa-icon"></i>
+        {{ form.password(class="form-control", placeholder="Password") }}
+      </div>
 
-        .extra-options a {
-            color: #0153FF ;
-            font-weight: bold;
-            text-decoration: underline;
-        }
+      <div class="extra-options">
+        <a href="{{ url_for('forget_password') }}">Forgot Password?</a>
+      </div>
 
-        @media (max-width: 767px) {
-            .form-group label {
-                text-align: left;
-                width: 100%;
-                margin-bottom: 5px;
-            }
-        }
-    </style>
+      <button type="submit" class="save-btn">Login</button>
+    </form>
 
-    <div class="container">
-        <div class="form-container">
-            <h2>Login</h2>
-            {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
-                {% for category, message in messages %}
-                  <div class="alert alert-{{ category }}">
-                    {{ message }}
-                  </div>
-                {% endfor %}
-              {% endif %}
-            {% endwith %}
-
-            <form method="POST" action="{{ url_for('login') }}">
-                {{ form.hidden_tag() }}
-
-                <!-- Username Field with Icon -->
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-                    {{ render_field(form.username, class="form-control", placeholder="Username") }}
-                </div>
-
-                <!-- Password Field with Icon -->
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-                    {{ render_field(form.password, class="form-control", placeholder="Password") }}
-                </div>
-
-                <button type="submit" class="save-btn">Login</button>
-            </form>
-            <div class="extra-options">
-                <p>Forgot Password? <a href="{{ url_for('forget_password') }}">Click here</a></p>
-            </div>
-
-        </div>
+    <div class="signup-prompt">
+      Don't have an account? <a href="{{ url_for('register') }}">Sign up</a>
     </div>
+  </div>
+</div>
 {% endblock %}
