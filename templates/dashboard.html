@@ -2,134 +2,131 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<h1 style="text-align: center; margin-top: 20px; font-size: 32px; font-weight: bold;">DASHBOARD</h1>
-<hr style="border: none; border-top: 2px solid #ddd; margin-bottom: 20px;">
+<div class="dashboard-container">
+    <!-- Header with animated gradient -->
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">FEEDING DASHBOARD</h1>
+        <div class="dashboard-subtitle">Monitor & manage your feed times.</div>
+    </div>
 
-<div class="centered">
-    <div class="row">
-        <div class="col-xl-2 col-md-4 mb-4">
-            <div class="card card-blue shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
-                        Morning Feeding Time
-                    </div>
-                    <div class="h5 mb-0 font-weight-bold text-light">
-                        {% for id in id_array %}
-                        {{ id.get_first_timer() }}
-                        {% endfor %}
-                        <span>hours</span>
-                    </div>
+    <!-- Stats Cards Grid -->
+    <div class="stats-grid">
+        <!-- Morning Feeding Card -->
+        <div class="stat-card morning">
+            <div class="card-icon">
+                <i class="fas fa-sun"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-label">Morning Feeding Time</div>
+                <div class="card-value">
+                    {% for id in id_array %}
+                    {{ id.get_first_timer() }} <span>hours</span>
+                    {% endfor %}
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-2 col-md-4 mb-4">
-            <div class="card card-orange shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
-                        Feeding Session Duration
-                    </div>
-                    <div class="h5 mb-0 font-weight-bold text-light">
-                        {% for id in id_array %}
-                        Monitoring and feeding will run for {{ id.get_seconds() }} minutes
-                        {% endfor %}
-                    </div>
+        <!-- Evening Feeding Card -->
+        <div class="stat-card evening">
+            <div class="card-icon">
+                <i class="fas fa-moon"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-label">Evening Feeding Time</div>
+                <div class="card-value">
+                    {% for id in id_array %}
+                    {{ id.get_second_timer() }} <span>hours</span>
+                    {% endfor %}
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-2 col-md-4 mb-4">
-            <div class="card card-green shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
-                        Total Feed Amount (grams)
-                    </div>
-                    <div class="h5 mb-0 font-weight-bold text-light">
-                        {% for id in id_array %}
-                        {{ id.get_pellets() }}
-                        {% endfor %}
-                    </div>
+        <!-- Duration Card -->
+        <div class="stat-card duration">
+            <div class="card-icon">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-label">Feeding Session Duration</div>
+                <div class="card-value">
+                    {% for id in id_array %}
+                    {{ id.get_seconds() }} <span>minutes</span>
+                    {% endfor %}
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-2 col-md-4 mb-4">
-            <div class="card card-red shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
-                        Evening Feeding Time
-                    </div>
-                    <div class="h5 mb-0 font-weight-bold text-light">
-                        {% for id in id_array %}
-                        {{ id.get_second_timer() }}
-                        {% endfor %}
-                        <span>hours</span>
-                    </div>
+        <!-- Feed Amount Card -->
+        <div class="stat-card amount">
+            <div class="card-icon">
+                <i class="fa-solid fa-weight-scale"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-label">Total Feed Amount</div>
+                <div class="card-value">
+                    {% for id in id_array %}
+                    {{ id.get_pellets() }} <span>grams</span>
+                    {% endfor %}
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-2 col-md-4 mb-4">
-            <div class="card card-purple shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
-                        Feeding Interval
-                    </div>
-                    <div class="h5 mb-0 font-weight-bold text-light">
-                        {% for id in id_array %}
-                        {{ id.get_interval_seconds()//60}} minutes
-                        {{ id.get_interval_seconds() % 60}} seconds
-                        {% endfor %}
-                    </div>
+        <!-- Interval Card -->
+        <div class="stat-card interval">
+            <div class="card-icon">
+                <i class="fas fa-history"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-label">Feeding Interval</div>
+                <div class="card-value">
+                    {% for id in id_array %}
+                    {{ id.get_interval_seconds()//60}}m {{ id.get_interval_seconds() % 60}}s
+                    {% endfor %}
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-2 col-md-4 mb-4">
-            <div class="card card-yellow shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #fff;">
-                        Current pellet count
-                    </div>
-                    <div class="h5 mb-0 font-weight-bold text-light">
-
-                        {{ latest_count }} pellets left
-
-                    </div>
+        <!-- Pellet Count Card -->
+        <div class="stat-card count">
+            <div class="card-icon">
+                <i class="fa-solid fa-circle"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-label">Current Pellet Count</div>
+                <div class="card-value">
+                    {{ latest_count }} <span>pellets left</span>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-
-
-
-<!-- Chart Area -->
-<div class="centered mt-5">
-
-    <div class="mt-4 chart-container" style="width:80vw">
-        <h2>TOTAL LEFTOVER PELLETS FOR THE PAST WEEK </h2>
-        <canvas id="totalPelletChart" width="1000vw" height="400vh"></canvas>
-        <br>
-        <button class="styled-button" onclick="exportTotalFeedData()">Export Data</button>
+    <!-- Chart Section -->
+    <div class="chart-section">
+        <div class="section-header">
+            <h2>TOTAL LEFTOVER PELLETS FOR THE PAST WEEK</h2>
+            <button class="export-btn" onclick="exportTotalFeedData()">
+                <i class="fas fa-file-export"></i> Export Data
+            </button>
+        </div>
+        <div class="chart-container">
+            <canvas id="totalPelletChart"></canvas>
+        </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <script>
+    // Chart initialization and data functions remain the same as in your original code
+    // Only the styling has changed
     const checkingInterval = {{ checking_interval }};
     let mergedChart;
 
-    // Function to fetch updated data without reloading the page
     async function fetchUpdatedData() {
         try {
-            const response = await fetch('/pellet_data'); // Adjust API endpoint as needed
+            const response = await fetch('/pellet_data');
             const pelletData = await response.json();
 
-            console.log('Updated Data:', pelletData);
-
-            // Update chart data
             mergedChart.data.labels = pelletData.labels;
             mergedChart.data.datasets[0].data = pelletData.first_feed_left;
             mergedChart.data.datasets[1].data = pelletData.second_feed_left;
@@ -141,13 +138,10 @@
         }
     }
 
-    // Function to initialize the chart
     async function fetchAndInitializeCharts() {
         try {
-            const response = await fetch('/pellet_data'); // Adjust API endpoint as needed
+            const response = await fetch('/pellet_data');
             const pelletData = await response.json();
-
-            console.log('Updated Data:', pelletData);
 
             const ctx = document.getElementById('totalPelletChart').getContext('2d');
             mergedChart = new Chart(ctx, {
@@ -158,51 +152,65 @@
                         {
                             label: 'Morning Feed',
                             data: pelletData.first_feed_left,
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
                             borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 2
+                            borderWidth: 1
                         },
                         {
                             label: 'Evening Feed',
                             data: pelletData.second_feed_left,
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 2
+                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 1
                         },
                         {
                             label: 'Total Amount Of Feed',
                             data: pelletData.total_feed_count,
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.7)',
                             borderColor: 'rgba(255, 99, 132, 1)',
-                            borderWidth: 2
+                            borderWidth: 1
                         }
                     ]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
                     scales: {
-                        x: { stacked: false },
-                        y: { beginAtZero: true }
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#b0b0b0'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#b0b0b0'
+                            }
+                        }
                     }
                 }
             });
-            console.log('Chart Initialized');
         } catch (error) {
             console.error('Error initializing chart:', error);
         }
     }
 
-    // Load the charts when the page is ready
-    window.onload = function () {
-        fetchAndInitializeCharts();
-
-        // Auto-update data without reloading page
-        if (checkingInterval > 5) { // Prevent too frequent updates
-            setInterval(fetchUpdatedData, checkingInterval * 1000);
-        }
-    };
-
-    // Function to export data
     function exportTotalFeedData() {
         fetch('/export_data', {
             method: 'POST',
@@ -231,145 +239,276 @@
             });
     }
 
+    window.onload = function () {
+        fetchAndInitializeCharts();
+        if (checkingInterval > 5) {
+            setInterval(fetchUpdatedData, checkingInterval * 1000);
+        }
+    };
 </script>
 
 <style>
+    /* Base styles */
+    :root {
+        --primary-gradient: linear-gradient(45deg, #3498db, #8e44ad);
+        --dark-bg: #0f172a;
+        --card-bg: #1e293b;
+        --highlight: #818cf8;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+    }
+
     body {
-        background-color: #2f3136;
-        color: #ffffff;
-        font-family: 'Arial', sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: var(--dark-bg);
+        color: var(--text-primary);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
     }
 
-    h1 {
-        font-size: 32px;
-        font-weight: bold;
-        color: white;
-        text-align: center;
-        margin-top: 20px;
+    @keyframes slideInUp {
+        from {
+            transform: translateY(-10px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
     }
 
-    h2 {
-        font-size: 18px;
-        color: white;
-        text-align: center;
-        margin-top: 20px;
-    }
-
-    hr {
-        border: none;
-        border-top: 2px solid #555;
-        margin-bottom: 20px;
-    }
-
-    .centered {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        flex-wrap: wrap;
-
-    }
-
-    .card {
-        background-color: #393d45;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    .dashboard-container {
+        max-width: 1800px;
+        margin: 0 auto;
         padding: 20px;
-        transition: transform 0.3s ease;
     }
 
-    .card:hover {
-        transform: scale(1.05);
+    /* Header styles */
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding: 30px 20px;
+        background-color: #1e293b;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        position: relative;
+        overflow: hidden;
+        animation: slideInUp 1s ease-out both;
     }
 
-    .card-blue {
-        border-left: 5px solid #0096FF;
-    }
-
-    .card-orange {
-        border-left: 5px solid #f39c12;
-    }
-
-    .card-green {
-        border-left: 5px solid #2ecc71;
-    }
-
-    .card-red {
-        border-left: 5px solid #e74c3c;
-    }
-
-    .card-purple {
-        border-left: 5px solid #5d2cec;
-    }
-
-    .card-yellow {
-        border-left: 5px solid #e1e129;
-    }
-
-    .card .card-body {
-        color: #ffffff;
-    }
-
-    .card .card-body .text-xs {
-        font-size: 12px;
+    .dashboard-title {
+        font-size: 3.8rem;
+        font-weight: 800;
+        margin: 10px 0;
+        line-height: 1;
+        color: #f8fafc;
         text-transform: uppercase;
-        color: #ddd;
+        letter-spacing: 1px;
     }
 
-    .card .card-body .h5 {
-        font-size: 18px;
-        font-weight: bold;
-        color: #ffffff;
+    .dashboard-subtitle {
+        font-size: 1.4rem;
+        margin: 10px 0;
+        color: var(--text-secondary);
+        letter-spacing: 1px;
     }
 
-    .styled-button {
-        background-color: #3498db;
-        color: #ffffff;
-        padding: 10px 20px;
+    /* Stats grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 25px;
+        margin-bottom: 40px;
+    }
+
+    .stat-card {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 25px;
+        display: flex;
+        align-items: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+    }
+
+    .morning::before {
+        background: linear-gradient(90deg, #3498db, #36d1dc);
+    }
+
+    .duration::before {
+        background: linear-gradient(90deg, #ff9a9e, #fad0c4);
+    }
+
+    .amount::before {
+        background: linear-gradient(90deg, #a1c4fd, #c2e9fb);
+    }
+
+    .evening::before {
+        background: linear-gradient(90deg, #a18cd1, #fbc2eb);
+    }
+
+    .interval::before {
+        background: linear-gradient(90deg, #ffecd2, #fcb69f);
+    }
+
+    .count::before {
+        background: linear-gradient(90deg, #84fab0, #8fd3f4);
+    }
+
+    .card-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 20px;
+        font-size: 30px;
+        padding: 20px;
+    }
+
+    .morning .card-icon {
+        background: rgba(52, 152, 219, 0.15);
+        color: #3498db;
+    }
+
+    .evening .card-icon {
+        background: rgba(161, 140, 209, 0.15);
+        color: #a18cd1;
+    }
+
+    .duration .card-icon {
+        background: rgba(255, 154, 158, 0.15);
+        color: #ff9a9e;
+    }
+
+    .amount .card-icon {
+        background: rgba(161, 196, 253, 0.15);
+        color: #a1c4fd;
+    }
+
+    .interval .card-icon {
+        background: rgba(255, 236, 210, 0.15);
+        color: #ffecd2;
+    }
+
+    .count .card-icon {
+        background: rgba(132, 250, 176, 0.15);
+        color: #84fab0;
+    }
+
+    .card-label {
+        font-size: 14px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+
+    .card-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .card-value span {
         font-size: 16px;
+        color: var(--text-secondary);
+        font-weight: normal;
+    }
+
+    /* Chart section */
+    .chart-section {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        margin-bottom: 40px;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+    .section-header h2 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .export-btn {
+        background: var(--primary-gradient);
+        color: white;
         border: none;
-        border-radius: 5px;
+        padding: 12px 25px;
+        border-radius: 12px;
+        font-weight: 600;
         cursor: pointer;
-        transition: background-color 0.3s ease;
-        margin-right: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
     }
 
-    .styled-button:hover {
-        background-color: #2980b9;
-        transform: scale(1.05);
+    .export-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
     }
 
-    .styled-button:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .styled-button:focus {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
+    .export-btn:active {
+        transform: translateY(1px);
     }
 
     .chart-container {
-        background-color: #393d45;
+        height: 500px;
+        width: 100%;
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 12px;
         padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        margin-top: 20px;
     }
 
-    canvas {
-        background-color: white;
-        border-radius: 8px;
-        padding: 10px;
-    }
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
 
-    @media (max-width: 767px) {
+        .dashboard-title {
+            font-size: 2rem;
+        }
 
-        .col-xl-3,
-        .col-md-6 {
-            width: 100%;
-            margin-bottom: 20px;
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .export-btn {
+            align-self: flex-start;
         }
     }
 </style>
-
 {% endblock %}
