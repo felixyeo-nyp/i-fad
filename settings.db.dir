@@ -4,5 +4,5 @@
 'Time_Record', (61952, 230)
 'Generate_Status', (62464, 4)
 'Check_Interval', (62976, 5)
-'Email_Data', (63488, 214)
+'Email_Data', (63488, 212)
 'Port', (64000, 15)
