@@ -103,13 +103,15 @@
     <!-- Chart Section -->
     <div class="chart-section">
         <div class="section-header">
-            <h2>TOTAL LEFTOVER PELLETS FOR THE PAST WEEK</h2>
-            <button class="export-btn" onclick="exportTotalFeedData()">
-                <i class="fas fa-file-export"></i> Export Data
-            </button>
+            <h2>LAST WEEK's FEEDING SUMMARY</h2>
         </div>
         <div class="chart-container">
             <canvas id="totalPelletChart"></canvas>
+        </div>
+        <div class="export-btn-wrapper">
+            <button class="export-btn" onclick="exportTotalFeedData()">
+                <i class="fas fa-file-export"></i> Export Data
+            </button>
         </div>
     </div>
 </div>
@@ -150,25 +152,32 @@
                     labels: pelletData.labels,
                     datasets: [
                         {
-                            label: 'Morning Feed',
+                            label: 'Morning Feed Count',
                             data: pelletData.first_feed_left,
-                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: '#fbc02d',
+                            borderColor: '#b8860b',
                             borderWidth: 1
                         },
                         {
-                            label: 'Evening Feed',
+                            label: 'Evening Feed Count',
                             data: pelletData.second_feed_left,
-                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
-                            borderColor: 'rgba(153, 102, 255, 1)',
+                            backgroundColor: '#7f69c3',
+                            borderColor: '#4b3f87',
                             borderWidth: 1
                         },
                         {
-                            label: 'Total Amount Of Feed',
+                            label: 'Total Feed Count',
                             data: pelletData.total_feed_count,
-                            backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            borderWidth: 1
+                            type: 'line',
+                            fill: false,
+                            borderWidth: 1,
+                            tension: 0.3,
+                            borderColor: '#00d1ff',
+                            backgroundColor: '#ff6600',
+                            pointBackgroundColor: '#ff6600',
+                            pointBorderColor: '#ffffff', 
+                            pointRadius: 7,
+                            pointHoverRadius: 10
                         }
                     ]
                 },
@@ -178,10 +187,11 @@
                     plugins: {
                         legend: {
                             labels: {
-                                color: '#e0e0e0',
+                                color: '#ffffff',
                                 font: {
-                                    size: 12
-                                }
+                                    size: 16
+                                },
+                                margin: 20
                             }
                         }
                     },
@@ -191,16 +201,24 @@
                                 color: 'rgba(255, 255, 255, 0.1)'
                             },
                             ticks: {
-                                color: '#b0b0b0'
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
                             }
                         },
                         y: {
                             beginAtZero: true,
                             grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
+                                color: 'rgba(255, 255, 255, 0.1)',
                             },
                             ticks: {
-                                color: '#b0b0b0'
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
                             }
                         }
                     }
@@ -461,14 +479,15 @@
 
     .section-header {
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
         align-items: center;
         margin-bottom: 25px;
     }
 
     .section-header h2 {
-        font-size: 1.8rem;
-        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 2.4rem;
+        font-weight: 800;
         color: var(--text-primary);
     }
 
@@ -485,6 +504,12 @@
         gap: 10px;
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .export-btn-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
     }
 
     .export-btn:hover {

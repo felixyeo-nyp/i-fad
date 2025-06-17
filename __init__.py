@@ -1345,9 +1345,33 @@ def get_pellet_data():
     with shelve.open(db_path, 'r') as db:
         for day in last_7_days:
             if day in db:
-                first_feed_counts.append(db[day].get('8:05 AM', 0))
-                second_feed_counts.append(db[day].get('6:05 PM', 0))
-                total_feed_counts.append(db[day].get('Total', 0))
+                day_data = db[day]
+                feed_times = [k for k in day_data.keys() if k != 'Total']
+
+                morning_feed_count = 0
+                evening_feed_count = 0
+
+                for ft in feed_times:
+                    feed_time_obj = datetime.strptime(ft, "%I:%M %p").time()
+
+                    # Define time ranges
+                    morning_start = datetime.strptime("06:00 AM", "%I:%M %p").time()
+                    morning_end = datetime.strptime("12:00 PM", "%I:%M %p").time()
+                    evening_start = datetime.strptime("12:00 PM", "%I:%M %p").time()
+                    evening_end = datetime.strptime("11:59 PM", "%I:%M %p").time()
+
+                    # Check which range the feed_time_obj falls into
+                    if morning_start <= feed_time_obj < morning_end:
+                        morning_feed_count += day_data.get(ft, 0)
+                    elif evening_start <= feed_time_obj <= evening_end:
+                        evening_feed_count += day_data.get(ft, 0)
+                    else:
+                        # TBD: Handle unexpected feed times
+                        pass
+
+                first_feed_counts.append(morning_feed_count)
+                second_feed_counts.append(evening_feed_count)
+                total_feed_counts.append(day_data.get('Total', 0))
             else:
                 first_feed_counts.append(0)
                 second_feed_counts.append(0)
