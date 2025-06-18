@@ -6,7 +6,7 @@
     <!-- Header with animated gradient -->
     <div class="dashboard-header">
         <h1 class="dashboard-title">FEEDING DASHBOARD</h1>
-        <div class="dashboard-subtitle">Monitor & manage your feed times.</div>
+        <div class="dashboard-subtitle">Monitor your feed times.</div>
     </div>
 
     <!-- Stats Cards Grid -->
@@ -55,7 +55,7 @@
                     <div class="card-label">Feeding Session Duration</div>
                     <div class="card-value">
                         {% for id in id_array %}
-                        {{ id.get_seconds() }} <span>seconds</span>
+                        {{ id.get_seconds() // 60 }} <span>minutes</span> {{ id.get_seconds() % 60 }} <span>seconds</span>
                         {% endfor %}
                     </div>
                 </div>
@@ -64,23 +64,23 @@
 
         <!-- Feed Amount Card -->
         <div class="watch-scroll hidden-on-load">
-            <div class="stat-card amount">
+            <div class="stat-card amount" onclick="toggleInfo(this)">
                 <div class="card-icon">
                     <i class="fa-solid fa-weight-scale"></i>
                 </div>
                 <div class="card-content">
-                    <div class="card-label">Total Feed Amount</div>
-                    <div class="card-value" onclick="toggleInfo(this)">
+                    <div class="card-label">Feed Amount</div>
+                    <div class="card-value">
                         <div class="primary-info">
                             {% for id in id_array %}
-                            {{ id.get_pellets() }} grams
-                            <span> ({{ (id.get_pellets() * 100) | int }} pellets)</span>
+                            {{ id.get_pellets() }} gram(s)
+                            <span> {{ (id.get_pellets() * 100) | int }} pellets</span>
                             {% endfor %}
                         </div>
                         <div class="secondary-info" style="display:none;">
                             {% for id in id_array %}
                             {{ (id.get_pellets() * 100) | int }} pellets
-                            <span> ({{ id.get_pellets() }} grams)</span>
+                            <span> {{ id.get_pellets() }} gram(s)</span>
                             {% endfor %}
                         </div>
                     </div>
@@ -98,35 +98,34 @@
                     <div class="card-label">Feeding Interval</div>
                     <div class="card-value">
                         {% for id in id_array %}
-                        {{ id.get_interval_seconds()//60}} <span>minutes</span> {{ id.get_interval_seconds() % 60}}
-                        <span>seconds</span>
+                        {{ id.get_interval_seconds()//60}} <span>minutes</span> {{ id.get_interval_seconds() % 60}} <span>seconds</span>
                         {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Pellet Count Card -->
-        <div class="watch-scroll hidden-on-load">
-            <div class="stat-card count">
-                <div class="card-icon">
-                    <i class="fa-solid fa-circle"></i>
-                </div>
-                <div class="card-content">
-                    <div class="card-label">Current Feed Remaining</div>
-                    <div class="card-value" onclick="toggleInfo(this)">
-                        <div class="primary-info">
-                            {{ (latest_count / 100) | round(2) }} grams
-                            <span> ({{ latest_count }} pellets left)</span>
-                        </div>
-                        <div class="secondary-info" style="display:none;">
-                            {{ latest_count }} pellets left
-                            <span> ({{ (latest_count / 100) | round(2) }} grams)</span>
+            <!-- Pellet Count Card -->
+            <div class="watch-scroll hidden-on-load">
+                <div class="stat-card count" onclick="toggleInfo(this)">
+                    <div class="card-icon">
+                        <i class="fa-solid fa-circle"></i>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Current Feed Remaining</div>
+                        <div class="card-value">
+                            <div class="primary-info">
+                                {{ (latest_count / 100) | round(2) }} gram(s)
+                                <span> {{ latest_count }} pellets left</span>
+                            </div>
+                            <div class="secondary-info" style="display:none;">
+                                {{ latest_count }} pellets left
+                                <span> {{ (latest_count / 100) | round(2) }} gram(s)</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
     </div>
 
     <!-- Feeding Timeline & Feeding Stats Summary with Notice Text -->
@@ -134,6 +133,13 @@
         <div class="feeding-timeline-container">
             <div class="feeding-timeline">
                 <div class="timeline-line"></div>
+
+                <!-- Timeline Start and End Labels -->
+                <div class="timeline-label start">00:00</div>
+                <div class="timeline-label tick" style="left: 25%;">06:00</div>
+                <div class="timeline-label tick" style="left: 50%;">12:00</div>
+                <div class="timeline-label tick" style="left: 75%;">18:00</div>
+                <div class="timeline-label end">24:00</div>
 
                 {% set time_morning = id_array[0].get_first_timer()|int %}
                 {% set hours_morning = (time_morning // 100) %}
@@ -167,7 +173,7 @@
                             {% set total_duration = id_array[0].get_seconds() %}
                             {% set interval = id_array[0].get_interval_seconds() %}
                             {% set total_check_count = (total_duration / interval) if interval > 0 else 0 %}
-                            {{ "%.2f"|format(total_check_count) if total_check_count > 0 else "N/A" }}
+                            {{ total_check_count|int if total_check_count > 0 else "N/A" }}
                         </div>
                     </div>
                 </div>
@@ -177,27 +183,19 @@
                         <i class="fa-solid fa-scale-balanced"></i>
                     </div>
                     <div class="text-wrapper">
-                        <div class="stat-label">Feed Amount per Check:</div>
-                        <div class="stat-value">
-                            {% set total_feed_amount = id_array[0].get_pellets() %}
-                            {% if total_check_count > 0 %}
-                            {{ "%.2f"|format(total_feed_amount / total_check_count) }} grams
-                            {% else %}
-                            N/A
-                            {% endif %}
-                        </div>
+                        <div class="stat-label">Pellet-to-Gram Ratio:</div>
+                        <div class="stat-value">1 gram = 100 pellets</div>
                     </div>
                 </div>
 
                 <div class="notice-text">
-                    Based on <strong>100 pellets per gram</strong>. Pellets are dispensed only if count drops below
-                    <strong>10% of the target</strong>.
+                    Pellets are dispensed only if count drops below <strong>10% of the feed amount</strong>.
                 </div>
 
                 <div class="settings-btn-wrapper">
                     <a href="/update" class="settings-btn">
                         <i class="fas fa-cog"></i>
-                        Feel the settings are wrong? Change here!
+                        Adjust settings here!
                     </a>
                 </div>
             </div>
@@ -731,7 +729,7 @@
     .timeline-pin {
         position: absolute;
         top: 50%;
-        transform: translate(-50%, -72%);
+        transform: translate(-50%, -73%);
         cursor: default;
         display: flex;
         flex-direction: column;
@@ -746,7 +744,7 @@
     }
 
     .timeline-pin:hover i {
-        transform: scale(1.3) rotate(15deg);
+        transform: scale(1.2) rotate(15deg);
     }
 
     .timeline-pin.morning i {
@@ -777,6 +775,42 @@
         border-radius: 4px;
         box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
         user-select: none;
+    }
+
+    .timeline-label {
+        position: absolute;
+        top: 50%;
+        font-size: 12px;
+        color: #666;
+        white-space: nowrap;
+        user-select: none;
+        transform: translateY(8px);
+    }
+
+    .timeline-label.start {
+        left: 0;
+        transform: translateY(8px) translateX(0);
+    }
+
+    .timeline-label.end {
+        right: 0;
+        transform: translateY(8px) translateX(0);
+    }
+
+    .timeline-label.tick {
+        transform: translateY(2px) translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .timeline-label.tick::before {
+        content: '';
+        display: block;
+        width: 2px;
+        height: 16px;
+        background: #666;
+        margin-bottom: 4px;
     }
 
     .combined-feed-stats-card {
@@ -872,7 +906,7 @@
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
         text-decoration: none;
-        font-size: 14px;
+        font-size: 17px;
         margin-top: 10px;
     }
 
