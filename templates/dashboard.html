@@ -62,7 +62,6 @@
             </div>
         </div>
 
-
         <!-- Feed Amount Card -->
         <div class="watch-scroll hidden-on-load">
             <div class="stat-card amount">
@@ -71,11 +70,19 @@
                 </div>
                 <div class="card-content">
                     <div class="card-label">Total Feed Amount</div>
-                    <div class="card-value">
-                        {% for id in id_array %}
-                        {{ id.get_pellets() }} grams
-                        <span> ({{ (id.get_pellets() * 100) | int }} pellets)</span>
-                        {% endfor %}
+                    <div class="card-value" onclick="toggleInfo(this)">
+                        <div class="primary-info">
+                            {% for id in id_array %}
+                            {{ id.get_pellets() }} grams
+                            <span> ({{ (id.get_pellets() * 100) | int }} pellets)</span>
+                            {% endfor %}
+                        </div>
+                        <div class="secondary-info" style="display:none;">
+                            {% for id in id_array %}
+                            {{ (id.get_pellets() * 100) | int }} pellets
+                            <span> ({{ id.get_pellets() }} grams)</span>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -107,9 +114,15 @@
                 </div>
                 <div class="card-content">
                     <div class="card-label">Current Feed Remaining</div>
-                    <div class="card-value">
-                        {{ (latest_count / 100) | round(2) }} grams
-                        <span> ({{ latest_count }} pellets left)</span>
+                    <div class="card-value" onclick="toggleInfo(this)">
+                        <div class="primary-info">
+                            {{ (latest_count / 100) | round(2) }} grams
+                            <span> ({{ latest_count }} pellets left)</span>
+                        </div>
+                        <div class="secondary-info" style="display:none;">
+                            {{ latest_count }} pellets left
+                            <span> ({{ (latest_count / 100) | round(2) }} grams)</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -227,6 +240,38 @@
             observer.observe(el);
         });
     });
+</script>
+<script>
+    function toggleInfo(cardValueDiv) {
+        const primary = cardValueDiv.querySelector('.primary-info');
+        const secondary = cardValueDiv.querySelector('.secondary-info');
+
+        if (!primary || !secondary) return;
+
+        const isShowingPrimary = getComputedStyle(primary).display !== "none";
+
+        if (isShowingPrimary) {
+            primary.style.opacity = 0;
+            setTimeout(() => {
+                primary.style.display = "none";
+                secondary.style.display = "block";
+                secondary.style.opacity = 0;
+                requestAnimationFrame(() => {
+                    secondary.style.opacity = 1;
+                });
+            }, 200);
+        } else {
+            secondary.style.opacity = 0;
+            setTimeout(() => {
+                secondary.style.display = "none";
+                primary.style.display = "block";
+                primary.style.opacity = 0;
+                requestAnimationFrame(() => {
+                    primary.style.opacity = 1;
+                });
+            }, 200);
+        }
+    }
 </script>
 <script>
     // Chart initialization and data functions remain the same as in your original code
@@ -505,6 +550,11 @@
         overflow: hidden;
     }
 
+    .stat-card.count,
+    .stat-card.amount {
+        cursor: pointer;
+    }
+
     .stat-card:hover {
         transform: translateY(-8px);
         box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
@@ -517,6 +567,45 @@
         left: 0;
         right: 0;
         height: 4px;
+    }
+
+    .stat-card.tooltip::after {
+        content: "Click to toggle info";
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
+        font-size: 13px;
+        color: #333;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        user-select: none;
+        z-index: 10;
+    }
+
+    .stat-card.tooltip:hover::after {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .primary-info,
+    .secondary-info {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        transition: opacity 0.4s ease;
+        opacity: 1;
+    }
+
+    .secondary-info {
+        display: none;
     }
 
     .morning::before {
@@ -597,6 +686,16 @@
         font-size: 28px;
         font-weight: 700;
         color: var(--text-primary);
+        position: relative;
+        height: auto;
+    }
+
+    .card-value>div {
+        font-size: inherit;
+        font-weight: inherit;
+        color: inherit;
+        transition: opacity 0.4s ease;
+        position: relative;
     }
 
     .card-value span {
