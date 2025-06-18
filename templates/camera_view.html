@@ -2,12 +2,15 @@
 {% block title %}Camera View{% endblock %}
 
 {% block content %}
-<h1 style="text-align: center; margin-top: 20px; font-size: 32px; font-weight: bold;">VIDEO FEED</h1>
+<h1 style="text-align: center; margin-top: 20px; font-size: 32px; font-weight: bold;">FEEDING VIEW</h1>
 <hr style="border: none; border-top: 2px solid #ddd; margin-bottom: 20px;">
 
 <div class="video-feed-container">
-<img src="{{ url_for('video_feed') }}" class="full-screen-video" alt="Video Feed">
-    <!-- <img class="full-screen-video" src="{{ camera_url }}" alt="Live Feed"> -->
+    <!-- Actual Feeding View img tag -->
+    <!-- <img src="{{ url_for('video_feed') }}" class="full-screen-video" alt="Video Feed"> -->
+
+    <!-- Placeholder Feeding View img Tag-->
+    <img src="../static/testLiveFeedImage.png" class="full-screen-video" alt="Dummy Video Feed">
 </div>
 <br>
 <style>
