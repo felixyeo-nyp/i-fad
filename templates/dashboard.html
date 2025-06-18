@@ -162,13 +162,14 @@
             </div>
 
             <div class="notice-text">
-                Based on <strong>100 pellets per gram</strong>. Pellets are dispensed only if count drops below <strong>10% of the target</strong>.
+                Based on <strong>100 pellets per gram</strong>. Pellets are dispensed only if count drops below
+                <strong>10% of the target</strong>.
             </div>
         </div>
     </div>
 
     <!-- Chart Section -->
-    <div class="chart-section">
+    <div class="chart-section hidden-on-load watch-scroll">
         <div class="section-header">
             <h2>LAST WEEK's FEEDING SUMMARY</h2>
         </div>
@@ -185,6 +186,25 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const observer = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('animate-slide-in-bottom');
+                entry.target.classList.remove('hidden-on-load');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.1
+    });
+
+    document.querySelectorAll('.watch-scroll').forEach(el => {
+        observer.observe(el);
+    });
+});
+</script>
 <script>
     // Chart initialization and data functions remain the same as in your original code
     // Only the styling has changed
@@ -371,6 +391,27 @@
         }
     }
 
+    @keyframes slideInBottom {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .hidden-on-load {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    .animate-slide-in-bottom {
+        animation: slideInBottom 0.6s ease-out forwards;
+    }
+
     .dashboard-container {
         max-width: 1800px;
         margin: 0 auto;
@@ -439,6 +480,7 @@
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         position: relative;
         overflow: hidden;
+        animation: slideInBottom 1s ease-out both;
     }
 
     .stat-card:hover {
@@ -552,6 +594,7 @@
         position: relative;
         height: 60px;
         margin-bottom: 40px;
+        animation: slideInBottom 1s ease-out both;
     }
 
     .timeline-line {
@@ -626,6 +669,13 @@
         max-width: 800px;
         margin: 30px auto;
         user-select: none;
+        transition: all 0.3s ease;
+        animation: slideInBottom 1s ease-out both;
+    }
+
+    .combined-feed-stats-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
     }
 
     .stat-row {
@@ -687,7 +737,7 @@
         margin-top: 20px;
         border-radius: 8px;
         line-height: 1.6;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
 
     /* Chart section */
