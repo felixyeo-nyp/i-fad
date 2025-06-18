@@ -605,10 +605,10 @@ def role_required(role):
         return decorated_function
     return decorator
 
-@app.route("/Breached", methods=['GET'])
+@app.route("/breached", methods=['GET'])
 def breached():
     session.clear()
-    return render_template("Breached.html")
+    return render_template("breached.html")
 
 # User loader callback for Flask-Login
 @login_manager.user_loader
