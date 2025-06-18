@@ -2,45 +2,7 @@
 {% block title %}Set Feeder IP Address{% endblock %}
 
 {% block content %}
-
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Set IP Addresses</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #1e1e2f;
-            color: white;
-            text-align: center;
-            margin-top: 50px;
-        }
-        form {
-            background: #2b2b3d;
-            padding: 20px;
-            border-radius: 10px;
-            display: inline-block;
-        }
-        input, button {
-            display: block;
-            width: 100%;
-            margin: 10px 0;
-            padding: 10px;
-            font-size: 16px;
-        }
-        button {
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-    </style>
-</head>
-<body>
+<div class="set-ip-container">
     <h2>Enter Source and Destination IP Addresses</h2>
     <form method="POST" action="/set_ip">
         {{ form.hidden_tag() }}
@@ -53,6 +15,62 @@
 
         <button type="submit">Set IPs</button>
     </form>
-</body>
+</div>
+
+<style>
+    :root {
+        --primary-gradient: linear-gradient(45deg, #3498db, #8e44ad);
+        --dark-bg: #0f172a;
+        --card-bg: #1e293b;
+        --highlight: #818cf8;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+    }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: var(--dark-bg);
+        color: var(--text-primary);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        overflow: hidden;
+    }
+
+    .set-ip-container {
+        font-family: Arial, sans-serif;
+        background-color: none;
+        color: white;
+        text-align: center;
+        margin-top: 50px;
+    }
+
+    .set-ip-container form {
+        background: #2b2b3d;
+        padding: 20px;
+        border-radius: 10px;
+        display: inline-block;
+    }
+
+    .set-ip-container input,
+    .set-ip-container button {
+        display: block;
+        width: 100%;
+        margin: 10px 0;
+        padding: 10px;
+        font-size: 16px;
+    }
+
+    .set-ip-container button {
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+
+    .set-ip-container button:hover {
+        background-color: #0056b3;
+    }
+</style>
 
 {% endblock %}
