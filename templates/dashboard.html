@@ -12,158 +12,181 @@
     <!-- Stats Cards Grid -->
     <div class="stats-grid">
         <!-- Morning Feeding Card -->
-        <div class="stat-card morning">
-            <div class="card-icon">
-                <i class="fas fa-sun"></i>
-            </div>
-            <div class="card-content">
-                <div class="card-label">Morning Feeding Time</div>
-                <div class="card-value">
-                    {% for id in id_array %}
-                    {{ id.get_first_timer() }} <span>hours</span>
-                    {% endfor %}
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card morning">
+                <div class="card-icon">
+                    <i class="fas fa-sun"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Morning Feeding Time</div>
+                    <div class="card-value">
+                        {% for id in id_array %}
+                        {{ id.get_first_timer() }} <span>hours</span>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Evening Feeding Card -->
-        <div class="stat-card evening">
-            <div class="card-icon">
-                <i class="fas fa-moon"></i>
-            </div>
-            <div class="card-content">
-                <div class="card-label">Evening Feeding Time</div>
-                <div class="card-value">
-                    {% for id in id_array %}
-                    {{ id.get_second_timer() }} <span>hours</span>
-                    {% endfor %}
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card evening">
+                <div class="card-icon">
+                    <i class="fas fa-moon"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Evening Feeding Time</div>
+                    <div class="card-value">
+                        {% for id in id_array %}
+                        {{ id.get_second_timer() }} <span>hours</span>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Duration Card -->
-        <div class="stat-card duration">
-            <div class="card-icon">
-                <i class="fas fa-hourglass-half"></i>
-            </div>
-            <div class="card-content">
-                <div class="card-label">Feeding Session Duration</div>
-                <div class="card-value">
-                    {% for id in id_array %}
-                    {{ id.get_seconds() }} <span>seconds</span>
-                    {% endfor %}
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card duration">
+                <div class="card-icon">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Feeding Session Duration</div>
+                    <div class="card-value">
+                        {% for id in id_array %}
+                        {{ id.get_seconds() }} <span>seconds</span>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
 
+
         <!-- Feed Amount Card -->
-        <div class="stat-card amount">
-            <div class="card-icon">
-                <i class="fa-solid fa-weight-scale"></i>
-            </div>
-            <div class="card-content">
-                <div class="card-label">Total Feed Amount</div>
-                <div class="card-value">
-                    {% for id in id_array %}
-                    {{ id.get_pellets() }} grams
-                    <span> ({{ (id.get_pellets() * 100) | int }} pellets)</span>
-                    {% endfor %}
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card amount">
+                <div class="card-icon">
+                    <i class="fa-solid fa-weight-scale"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Total Feed Amount</div>
+                    <div class="card-value">
+                        {% for id in id_array %}
+                        {{ id.get_pellets() }} grams
+                        <span> ({{ (id.get_pellets() * 100) | int }} pellets)</span>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Interval Card -->
-        <div class="stat-card interval">
-            <div class="card-icon">
-                <i class="fas fa-history"></i>
-            </div>
-            <div class="card-content">
-                <div class="card-label">Feeding Interval</div>
-                <div class="card-value">
-                    {% for id in id_array %}
-                    {{ id.get_interval_seconds()//60}} <span>minutes</span> {{ id.get_interval_seconds() % 60}}
-                    <span>seconds</span>
-                    {% endfor %}
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card interval">
+                <div class="card-icon">
+                    <i class="fas fa-history"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Feeding Interval</div>
+                    <div class="card-value">
+                        {% for id in id_array %}
+                        {{ id.get_interval_seconds()//60}} <span>minutes</span> {{ id.get_interval_seconds() % 60}}
+                        <span>seconds</span>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Pellet Count Card -->
-        <div class="stat-card count">
-            <div class="card-icon">
-                <i class="fa-solid fa-circle"></i>
-            </div>
-            <div class="card-content">
-                <div class="card-label">Current Pellet Count</div>
-                <div class="card-value">
-                    {{ (latest_count / 100) | round(2) }} grams
-                    <span> ({{ latest_count }} pellets left)</span>
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card count">
+                <div class="card-icon">
+                    <i class="fa-solid fa-circle"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Current Feed Remaining</div>
+                    <div class="card-value">
+                        {{ (latest_count / 100) | round(2) }} grams
+                        <span> ({{ latest_count }} pellets left)</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="feeding-timeline-container">
-        <div class="feeding-timeline">
-            <div class="timeline-line"></div>
+    <!-- Feeding Timeline & Feeding Stats Summary with Notice Text -->
+    <div class="watch-scroll hidden-on-load">
+        <div class="feeding-timeline-container">
+            <div class="feeding-timeline">
+                <div class="timeline-line"></div>
 
-            {% set time_morning = id_array[0].get_first_timer()|int %}
-            {% set hours_morning = (time_morning // 100) %}
-            {% set minutes_morning = (time_morning % 100) %}
-            {% set decimal_hours_morning = hours_morning + (minutes_morning / 60) %}
+                {% set time_morning = id_array[0].get_first_timer()|int %}
+                {% set hours_morning = (time_morning // 100) %}
+                {% set minutes_morning = (time_morning % 100) %}
+                {% set decimal_hours_morning = hours_morning + (minutes_morning / 60) %}
 
-            <div class="timeline-pin morning" style="left: {{ ((decimal_hours_morning / 24) * 100) }}%;">
-                <div class="pin-label">Morning Feed ({{ id_array[0].get_first_timer() }}H)</div>
-                <i class="fas fa-sun"></i>
-            </div>
-
-            {% set time_evening = id_array[0].get_second_timer()|int %}
-            {% set hours_evening = (time_evening // 100) %}
-            {% set minutes_evening = (time_evening % 100) %}
-            {% set decimal_hours_evening = hours_evening + (minutes_evening / 60) %}
-
-            <div class="timeline-pin evening" style="left: {{ (decimal_hours_evening / 24) * 100 }}%;">
-                <div class="pin-label">Evening Feed ({{ id_array[0].get_second_timer() }}H)</div>
-                <i class="fas fa-moon"></i>
-            </div>
-        </div>
-
-        <div class="combined-feed-stats-card">
-            <div class="stat-row total-check-count">
-                <div class="icon-wrapper">
-                    <i class="fas fa-check-circle"></i>
+                <div class="timeline-pin morning" style="left: {{ ((decimal_hours_morning / 24) * 100) }}%;">
+                    <div class="pin-label">Morning Feed ({{ id_array[0].get_first_timer() }}H)</div>
+                    <i class="fas fa-sun"></i>
                 </div>
-                <div class="text-wrapper">
-                    <div class="stat-label">Total Check Count:</div>
-                    <div class="stat-value">
-                        {% set total_duration = id_array[0].get_seconds() %}
-                        {% set interval = id_array[0].get_interval_seconds() %}
-                        {% set total_check_count = (total_duration / interval) if interval > 0 else 0 %}
-                        {{ "%.2f"|format(total_check_count) if total_check_count > 0 else "N/A" }}
+
+                {% set time_evening = id_array[0].get_second_timer()|int %}
+                {% set hours_evening = (time_evening // 100) %}
+                {% set minutes_evening = (time_evening % 100) %}
+                {% set decimal_hours_evening = hours_evening + (minutes_evening / 60) %}
+
+                <div class="timeline-pin evening" style="left: {{ (decimal_hours_evening / 24) * 100 }}%;">
+                    <div class="pin-label">Evening Feed ({{ id_array[0].get_second_timer() }}H)</div>
+                    <i class="fas fa-moon"></i>
+                </div>
+            </div>
+
+            <div class="combined-feed-stats-card">
+                <div class="stat-row total-check-count">
+                    <div class="icon-wrapper">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="text-wrapper">
+                        <div class="stat-label">Total Check Count:</div>
+                        <div class="stat-value">
+                            {% set total_duration = id_array[0].get_seconds() %}
+                            {% set interval = id_array[0].get_interval_seconds() %}
+                            {% set total_check_count = (total_duration / interval) if interval > 0 else 0 %}
+                            {{ "%.2f"|format(total_check_count) if total_check_count > 0 else "N/A" }}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="stat-row feed-amount-per-check">
-                <div class="icon-wrapper">
-                    <i class="fa-solid fa-scale-balanced"></i>
-                </div>
-                <div class="text-wrapper">
-                    <div class="stat-label">Feed Amount per Check:</div>
-                    <div class="stat-value">
-                        {% set total_feed_amount = id_array[0].get_pellets() %}
-                        {% if total_check_count > 0 %}
-                        {{ "%.2f"|format(total_feed_amount / total_check_count) }} grams
-                        {% else %}
-                        N/A
-                        {% endif %}
+                <div class="stat-row feed-amount-per-check">
+                    <div class="icon-wrapper">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                    </div>
+                    <div class="text-wrapper">
+                        <div class="stat-label">Feed Amount per Check:</div>
+                        <div class="stat-value">
+                            {% set total_feed_amount = id_array[0].get_pellets() %}
+                            {% if total_check_count > 0 %}
+                            {{ "%.2f"|format(total_feed_amount / total_check_count) }} grams
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="notice-text">
-                Based on <strong>100 pellets per gram</strong>. Pellets are dispensed only if count drops below
-                <strong>10% of the target</strong>.
+                <div class="notice-text">
+                    Based on <strong>100 pellets per gram</strong>. Pellets are dispensed only if count drops below
+                    <strong>10% of the target</strong>.
+                </div>
+
+                <div class="settings-btn-wrapper">
+                    <a href="/update" class="settings-btn">
+                        <i class="fas fa-cog"></i>
+                        Feel the settings are wrong? Change here!
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -187,23 +210,23 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const observer = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('animate-slide-in-bottom');
-                entry.target.classList.remove('hidden-on-load');
-                observer.unobserve(entry.target);
-            }
+    document.addEventListener('DOMContentLoaded', function () {
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-slide-in-bottom');
+                    entry.target.classList.remove('hidden-on-load');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.1
         });
-    }, {
-        threshold: 0.1
-    });
 
-    document.querySelectorAll('.watch-scroll').forEach(el => {
-        observer.observe(el);
+        document.querySelectorAll('.watch-scroll').forEach(el => {
+            observer.observe(el);
+        });
     });
-});
 </script>
 <script>
     // Chart initialization and data functions remain the same as in your original code
@@ -480,7 +503,6 @@ document.addEventListener('DOMContentLoaded', function () {
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         position: relative;
         overflow: hidden;
-        animation: slideInBottom 1s ease-out both;
     }
 
     .stat-card:hover {
@@ -594,7 +616,6 @@ document.addEventListener('DOMContentLoaded', function () {
         position: relative;
         height: 60px;
         margin-bottom: 40px;
-        animation: slideInBottom 1s ease-out both;
     }
 
     .timeline-line {
@@ -670,7 +691,6 @@ document.addEventListener('DOMContentLoaded', function () {
         margin: 30px auto;
         user-select: none;
         transition: all 0.3s ease;
-        animation: slideInBottom 1s ease-out both;
     }
 
     .combined-feed-stats-card:hover {
@@ -690,7 +710,6 @@ document.addEventListener('DOMContentLoaded', function () {
         height: 48px;
         border-radius: 16px;
         background: rgba(91, 134, 229, 0.15);
-        /* bluish background, adjust per stat below */
         color: #5b86e5;
         font-size: 28px;
         display: flex;
@@ -738,6 +757,41 @@ document.addEventListener('DOMContentLoaded', function () {
         border-radius: 8px;
         line-height: 1.6;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .settings-btn {
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+        padding: 12px 25px;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        text-decoration: none;
+        font-size: 14px;
+        margin-top: 10px;
+    }
+
+    .settings-btn-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .settings-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        text-decoration: none;
+        color: white;
+    }
+
+    .settings-btn:active {
+        transform: translateY(1px);
     }
 
     /* Chart section */
