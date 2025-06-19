@@ -88,6 +88,28 @@
             </div>
         </div>
 
+        <!-- Pellet Count Card -->
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card count" onclick="toggleInfo(this)">
+                <div class="card-icon">
+                    <i class="fa-solid fa-circle"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Current Feed Remaining</div>
+                    <div class="card-value">
+                        <div class="primary-info">
+                            {{ (latest_count / 100) | round(2) }} gram(s)
+                            <span> {{ latest_count }} pellets left</span>
+                        </div>
+                        <div class="secondary-info" style="display:none;">
+                            {{ latest_count }} pellets left
+                            <span> {{ (latest_count / 100) | round(2) }} gram(s)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Interval Card -->
         <div class="watch-scroll hidden-on-load">
             <div class="stat-card interval">
@@ -104,28 +126,6 @@
                 </div>
             </div>
         </div>
-
-            <!-- Pellet Count Card -->
-            <div class="watch-scroll hidden-on-load">
-                <div class="stat-card count" onclick="toggleInfo(this)">
-                    <div class="card-icon">
-                        <i class="fa-solid fa-circle"></i>
-                    </div>
-                    <div class="card-content">
-                        <div class="card-label">Current Feed Remaining</div>
-                        <div class="card-value">
-                            <div class="primary-info">
-                                {{ (latest_count / 100) | round(2) }} gram(s)
-                                <span> {{ latest_count }} pellets left</span>
-                            </div>
-                            <div class="secondary-info" style="display:none;">
-                                {{ latest_count }} pellets left
-                                <span> {{ (latest_count / 100) | round(2) }} gram(s)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
     </div>
 
     <!-- Feeding Timeline & Feeding Stats Summary with Notice Text -->
