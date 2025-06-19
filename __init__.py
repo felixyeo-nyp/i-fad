@@ -1509,12 +1509,6 @@ def update_setting():
                 second_hour = int(setting.second_timer.data[:2])
                 second_minute = int(setting.second_timer.data[2:])
 
-                print(first_hour)
-                print(first_minute)
-                print(second_hour)
-                print(second_minute)
-
-
                 # Validate ranges
                 if (6 <= first_hour <= 12) and (12 <= second_hour <= 24):
                     print("check4")
@@ -1548,7 +1542,7 @@ def update_setting():
                     j.set_pellets(setting.pellets.data)
 
                     if setting.minutes.data is not None:
-                        total_seconds = int(setting.minutes.data)
+                        total_seconds = int(setting.minutes.data * 60)
                         j.set_seconds(total_seconds)
                     else:
                         j.set_seconds(0)
