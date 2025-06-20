@@ -243,6 +243,12 @@
         transition: background 0.3s ease, opacity 0.3s ease, cursor 0.3s ease;
     }
 
+    .settings-btn i {
+        font-size: 16px;
+        margin-right: 8px;
+        margin-bottom: 2px;
+    }
+
     .settings-btn:hover {
         opacity: 0.9;
     }
@@ -272,6 +278,29 @@
 
     .settings-btn-group .settings-btn {
         flex: 1;
+    }
+
+    .settings-btn.with-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .settings-btn.with-icon:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+    }
+
+    .settings-btn.with-icon:active {
+        transform: translateY(1px);
+    }
+
+    .settings-btn.with-icon i {
+        font-size: 16px;
+        margin-bottom: 3px;
     }
 
     .half-width {
@@ -403,7 +432,10 @@
                 </div>
             </div>
 
-            <button type="submit" class="settings-btn settings-btn-primary">Save Settings</button>
+            <button type="submit" class="settings-btn settings-btn-primary with-icon">
+                <i class="fas fa-save"></i>
+                Save Settings
+            </button>
 
             <div style="text-align: center; margin-top: 15px;">
                 <a href="#" id="toggleMode" style="color: var(--highlight); cursor: pointer; user-select: none;">
