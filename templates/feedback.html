@@ -36,9 +36,6 @@
     background-color: var(--dark-bg);
     color: var(--text-primary);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
   }
 
   body::before {
@@ -56,6 +53,7 @@
 
   .feedback-container {
     max-width: 600px;
+    min-height: 80vh;
     margin: 30px auto;
     padding: 40px;
     border-radius: 16px;
@@ -120,20 +118,29 @@
   }
 
   .form-control {
+    position: relative;
+    z-index: 1;
     width: 100%;
     padding: 15px 20px;
     font-size: 16px;
     border-radius: 12px;
-    border: 1px solid var(--input-border);
-    background-color: var(--input-bg);
-    color: var(--text-primary);
+    border: 1px solid #334155;
+    background-color: #0f172a;
+    color: #f1f5f9;
     outline: none;
     transition: all 0.3s ease;
+    box-sizing: border-box;
   }
 
   .form-control:focus {
-    border-color: var(--highlight);
-    box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.3);
+    background: #1e293b;
+    border-color: #3498db;
+    color: #f1f5f9;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+  }
+
+  .form-control::placeholder {
+    color: #64748b;
   }
 
   textarea.form-control {
