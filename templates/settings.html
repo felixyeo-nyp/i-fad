@@ -72,6 +72,21 @@
         margin-bottom: 25px;
     }
 
+    .input-and-info {
+        display: flex;
+        align-items: flex-end;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .input-and-info .info-badge {
+        width: 49%;
+    }
+
+    .input-and-info .info-badge i {
+        margin-right: 0px;
+    }
+
     .settings-input-group label {
         font-size: 16px;
         font-weight: 600;
@@ -173,12 +188,14 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        width: 49%;
+        width: 100%;
+        max-width: 100%;
         padding: 10px 15px;
         border-radius: 8px;
         font-size: 14px;
         font-weight: 500;
         margin-top: 10px;
+        align-self: center;
         background-color: #1e293b;
         color: #cbd5e1;
         border-left: 4px solid var(--highlight);
@@ -192,7 +209,7 @@
 
     .info-badge i {
         font-size: 16px;
-        margin-right: 14px;
+        margin-right: 8px;
     }
 
     .info-badge.success {
@@ -283,6 +300,14 @@
         .settings-btn-group {
             flex-direction: column;
         }
+        .input-and-info {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .info-badge {
+            width: 100%;
+        }
     }
 </style>
 
@@ -344,32 +369,37 @@
                         </div>
                     </div>
                 </div>
-                <div class="info-badge warning" id="interval-warning" style="display: none;">
-                    <i class="fas fa-exclamation-triangle"></i> Interval cannot exceed feeding duration.
+                <div class="full-width">
+                    <div class="info-badge warning" id="interval-warning" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i> Interval check time must not be longer than the feeding duration.
+                    </div>
                 </div>
-
-                <div class="info-badge warning" id="zero-values-warning" style="display: none;">
-                    <i class="fas fa-exclamation-triangle"></i> Feeding duration and interval cannot both be 0.
+                <div class="full-width">
+                    <div class="info-badge warning" id="zero-values-warning" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i> Feeding duration and interval check time cannot both be 0. 
+                    </div>
                 </div>
-
-                <div class="info-badge success" id="interval-info" style="display: none;">
-                    <i class="fas fa-info-circle"></i> Interval checks during feeding time: <span
-                        id="interval-count">0</span> times.
+                <div class="full-width">
+                    <div class="info-badge success" id="interval-info" style="display: none;">
+                        <i class="fas fa-info-circle"></i> Estimated interval checks during feeding time: <span id="interval-count">0</span> times.
+                    </div>
                 </div>
             </div>
 
             <div class="settings-input-group">
                 <label for="pellets">Feed Amount</label>
-                <div class="half-width">
-                    <div class="settings-input-with-icon">
-                        <i class="fas fa-weight fa-icon"></i>
-                        {{ render_field(form.pellets, class="form-control", id="pelletsInput", placeholder="Amount") }}
-                        <span class="unit-label">grams</span>
+                <div class="input-and-info">
+                    <div class="half-width">
+                        <div class="settings-input-with-icon">
+                            <i class="fas fa-weight fa-icon"></i>
+                            {{ render_field(form.pellets, class="form-control", id="pelletsInput", placeholder="Amount") }}
+                            <span class="unit-label">grams (g)</span>
+                        </div>
                     </div>
-                </div>
-                <div class="info-badge success" id="pellet-info">
-                    <i class="fas fa-info-circle"></i>
-                    <span id="pelletCalculation">0 g : 0 pellets (100 pellets/g)</span>
+                    <div class="info-badge success" id="pellet-info">
+                        <i class="fas fa-info-circle"></i>
+                        <span id="pelletCalculation">0 g : 0 pellets (100 pellets/g)</span>
+                    </div>
                 </div>
             </div>
 
@@ -380,15 +410,6 @@
                     Switch to Manual Feed Mode
                 </a>
             </div>
-
-            <!-- <div class="settings-divider"></div>
-
-            <div class="settings-btn-group">
-                <button type="submit" name="manual_feed_action" value="start"
-                    class="settings-btn settings-btn-start">Start Manual Feed</button>
-                <button type="submit" name="manual_feed_action" value="stop" class="settings-btn settings-btn-stop">Stop
-                    Manual Feed</button>
-            </div> -->
         </form>
     </div>
 
