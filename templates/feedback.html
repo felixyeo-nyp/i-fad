@@ -53,7 +53,6 @@
 
   .feedback-container {
     max-width: 600px;
-    min-height: 80vh;
     margin: 30px auto;
     padding: 40px;
     border-radius: 16px;
@@ -64,16 +63,6 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
     overflow: hidden;
-  }
-
-  .feedback-container::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--primary-gradient);
   }
 
   .feedback-header {
@@ -213,7 +202,7 @@
   </div>
   
   <div class="feedback-header">
-    <div class="user-greeting"><h1>Hello {{ current_user.username }},</h1></div>
+    <div class="user-greeting"><h1>Hello, {{ current_user.username }}!</h1></div>
   </div>
   
   <p class="assistance-text">
