@@ -11,12 +11,13 @@
         <!-- <img id="videoFeed" src="{{ url_for('video_feed') }}" class="full-screen-video" alt="Video Feed" onerror="handleFeedError()"> -->
 
         <!-- Placeholder Feeding View img Tag -->
-        <img id="videoFeed" src="../static/testLiveFeedImage.png" class="full-screen-video" alt="Dummy Video Feed" onerror="handleFeedError()">
+        <img id="videoFeed" src="../static/testLiveFeedImage.png" class="full-screen-video" alt="Dummy Video Feed"
+            onerror="handleFeedError()">
     </div>
 
     <!-- Fallback Error Card with Refresh Button inside -->
     <div id="fallback-card" class="fallback-card" style="display: none;">
-    <div class="fallback-message">
+        <div class="fallback-message">
             <i class="fas fa-exclamation-triangle warning-icon"></i>
             <p><strong>Camera signal not found.</strong></p>
             <p>Check your connection and try again.</p>
@@ -31,7 +32,9 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-dyZ88n1C6Up2uqS4h/K3UENRZ1tLZcBzM8Bx7pRz0XsBjoBJKy+qeC6VY8zZ/OD6FuhD1FJb2j4a2Dq2sG84Jg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    integrity="sha512-dyZ88n1C6Up2uqS4h/K3UENRZ1tLZcBzM8Bx7pRz0XsBjoBJKy+qeC6VY8zZ/OD6FuhD1FJb2j4a2Dq2sG84Jg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 <style>
     :root {
@@ -43,7 +46,8 @@
         --text-secondary: #94a3b8;
     }
 
-    html, body {
+    html,
+    body {
         margin: 0;
         padding: 0;
         height: 100%;
@@ -53,8 +57,15 @@
     }
 
     @keyframes slideInUp {
-        from { transform: translateY(10px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
+        from {
+            transform: translateY(10px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
     }
 
     .feeding-view-container {

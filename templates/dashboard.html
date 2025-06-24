@@ -55,7 +55,8 @@
                     <div class="card-label">Feeding Session Duration</div>
                     <div class="card-value">
                         {% for id in id_array %}
-                        {{ id.get_seconds() // 60 }} <span>minutes</span> {{ id.get_seconds() % 60 }} <span>seconds</span>
+                        {{ id.get_seconds() // 60 }} <span>minutes</span> {{ id.get_seconds() % 60 }}
+                        <span>seconds</span>
                         {% endfor %}
                     </div>
                 </div>
@@ -120,7 +121,8 @@
                     <div class="card-label">Feeding Interval</div>
                     <div class="card-value">
                         {% for id in id_array %}
-                        {{ id.get_interval_seconds()//60}} <span>minutes</span> {{ id.get_interval_seconds() % 60}} <span>seconds</span>
+                        {{ id.get_interval_seconds()//60}} <span>minutes</span> {{ id.get_interval_seconds() % 60}}
+                        <span>seconds</span>
                         {% endfor %}
                     </div>
                 </div>

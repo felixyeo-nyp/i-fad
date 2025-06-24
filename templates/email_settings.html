@@ -21,14 +21,16 @@
                         <label for="sender_email">System Email</label>
                         <div class="email-input-with-icon">
                             <i class="fas fa-envelope input-icon"></i>
-                            {{ render_field(form.sender_email, class="email-form-control", placeholder="device@example.com") }}
+                            {{ render_field(form.sender_email, class="email-form-control",
+                            placeholder="device@example.com") }}
                         </div>
                     </div>
                     <div class="full focus-expand">
                         <label for="App_password">App Password for Email Sending</label>
                         <div class="email-input-with-icon">
                             <i class="fas fa-lock input-icon"></i>
-                            {{ render_field(form.App_password, class="email-form-control", placeholder="Enter app password") }}
+                            {{ render_field(form.App_password, class="email-form-control", placeholder="Enter app
+                            password") }}
                         </div>
                     </div>
                 </div>
@@ -65,14 +67,16 @@
                         <label for="confidence">AI Detection Confidence Threshold</label>
                         <div class="email-input-with-icon">
                             <i class="fas fa-chart-line input-icon"></i>
-                            {{ render_field(form.confidence, class="email-form-control", placeholder="Enter confidence percentage") }}
+                            {{ render_field(form.confidence, class="email-form-control", placeholder="Enter confidence
+                            percentage") }}
                             <span class="unit-label">%</span>
                         </div>
                     </div>
                 </div>
                 <div class="info-badge hidden-badge">
                     <i class="fas fa-info-circle"></i>
-                    <span>Sends alert if feeding drops for set days. Counts pellets when AI confidence is sufficient.</span>
+                    <span>Sends alert if feeding drops for set days. Counts pellets when AI confidence is
+                        sufficient.</span>
                 </div>
             </div>
 
@@ -378,7 +382,7 @@
         document.querySelectorAll('.email-input-group').forEach(group => {
             const inputs = group.querySelectorAll('.email-form-control');
             const badge = group.querySelector('.info-badge');
-            
+
             if (inputs.length > 0 && badge) {
                 inputs.forEach(input => {
                     input.addEventListener('focus', () => {
