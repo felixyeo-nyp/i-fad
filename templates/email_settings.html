@@ -15,24 +15,31 @@
         <form method="POST" action="">
             {{ form.csrf_token }}
 
-            <div class="email-input-group focus-expand">
-                <label for="sender_email">
-                    System Email
-                </label>
-                <div class="email-input-with-icon">
-                    <i class="fas fa-envelope input-icon"></i>
-                    {{ render_field(form.sender_email, class="email-form-control", placeholder="device@example.com") }}
+            <div class="email-input-group">
+                <div class="email-row full-width">
+                    <div class="full focus-expand">
+                        <label for="sender_email">System Email</label>
+                        <div class="email-input-with-icon">
+                            <i class="fas fa-envelope input-icon"></i>
+                            {{ render_field(form.sender_email, class="email-form-control", placeholder="device@example.com") }}
+                        </div>
+                    </div>
+                    <div class="full focus-expand">
+                        <label for="App_password">App Password for Email Sending</label>
+                        <div class="email-input-with-icon">
+                            <i class="fas fa-lock input-icon"></i>
+                            {{ render_field(form.App_password, class="email-form-control", placeholder="Enter app password") }}
+                        </div>
+                    </div>
                 </div>
-                <div class="info-badge info hidden-badge">
+                <div class="info-badge hidden-badge">
                     <i class="fas fa-info-circle"></i>
-                    <span>This email sends auto-generated messages from the system.</span>
+                    <span>This email sends system messages. App password must be linked to it.</span>
                 </div>
             </div>
 
             <div class="email-input-group focus-expand">
-                <label for="recipient_email">
-                    Feedback Recipient Email
-                </label>
+                <label for="recipient_email">Feedback Recipient Email</label>
                 <div class="email-input-with-icon">
                     <i class="fas fa-user input-icon"></i>
                     {{ render_field(form.recipient_email, class="email-form-control",
@@ -44,48 +51,28 @@
                 </div>
             </div>
 
-            <div class="email-input-group focus-expand">
-                <label for="App_password">
-                    App Password for Email Sending
-                </label>
-                <div class="email-input-with-icon">
-                    <i class="fas fa-lock input-icon"></i>
-                    {{ render_field(form.App_password, class="email-form-control", placeholder="Enter app password") }}
+            <div class="email-input-group">
+                <div class="email-row full-width">
+                    <div class="full focus-expand">
+                        <label for="days">Alert Threshold (Feeding Drop Days)</label>
+                        <div class="email-input-with-icon">
+                            <i class="fas fa-calendar input-icon"></i>
+                            {{ render_field(form.days, class="email-form-control", placeholder="Number of days") }}
+                            <span class="unit-label">Days</span>
+                        </div>
+                    </div>
+                    <div class="full focus-expand">
+                        <label for="confidence">AI Detection Confidence Threshold</label>
+                        <div class="email-input-with-icon">
+                            <i class="fas fa-chart-line input-icon"></i>
+                            {{ render_field(form.confidence, class="email-form-control", placeholder="Enter confidence percentage") }}
+                            <span class="unit-label">%</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="info-badge info hidden-badge">
+                <div class="info-badge hidden-badge">
                     <i class="fas fa-info-circle"></i>
-                    <span>App password must be linked to the system email above.</span>
-                </div>
-            </div>
-
-            <div class="email-input-group focus-expand">
-                <label for="days">
-                    Alert Threshold (Feeding Drop Days)
-                </label>
-                <div class="email-input-with-icon">
-                    <i class="fas fa-calendar input-icon"></i>
-                    {{ render_field(form.days, class="email-form-control", placeholder="Number of days") }}
-                    <span class="unit-label">Days</span>
-                </div>
-                <div class="info-badge info hidden-badge">
-                    <i class="fas fa-info-circle"></i>
-                    <span>Sends an alert email if feeding time drops for this many consecutive days.</span>
-                </div>
-            </div>
-
-            <div class="email-input-group focus-expand">
-                <label for="confidence">
-                    AI Detection Confidence Threshold
-                </label>
-                <div class="email-input-with-icon">
-                    <i class="fas fa-chart-line input-icon"></i>
-                    {{ render_field(form.confidence, class="email-form-control", placeholder="Enter confidence
-                    percentage") }}
-                    <span class="unit-label">%</span>
-                </div>
-                <div class="info-badge info hidden-badge">
-                    <i class="fas fa-info-circle"></i>
-                    <span>Pellets are counted if detection confidence exceeds this rate.</span>
+                    <span>Sends alert if feeding drops for set days. Counts pellets when AI confidence is sufficient.</span>
                 </div>
             </div>
 
@@ -130,7 +117,7 @@
         justify-content: center;
         align-items: center;
         padding: 20px;
-        min-height: 100vh;
+        min-height: 90vh;
         position: relative;
     }
 
@@ -176,18 +163,32 @@
         color: var(--highlight);
     }
 
+    .full-width {
+        width: 100%;
+    }
+
     .email-input-group {
-        margin-bottom: 25px;
+        margin-bottom: 15px;
     }
 
     .email-input-group label {
         font-size: 16px;
         font-weight: 600;
         color: var(--text-primary);
-        margin-bottom: 8px;
         display: flex;
         align-items: center;
         gap: 10px;
+        margin-bottom: 8px;
+    }
+
+    /* Row layout for side-by-side inputs */
+    .email-row {
+        display: flex;
+        gap: 15px;
+    }
+
+    .email-row .full {
+        flex: 1;
     }
 
     .focus-expand {
@@ -261,13 +262,13 @@
     }
 
     .info-badge {
-        display: none;
+        display: flex;
+        overflow: hidden;
+        max-height: 0;
         opacity: 0;
-        align-items: center;
         gap: 8px;
         width: 100%;
-        max-width: 100%;
-        padding: 10px 15px;
+        padding: 0 15px;
         border-radius: 8px;
         font-size: 14px;
         font-weight: 500;
@@ -276,7 +277,8 @@
         color: #dbeafe;
         border-left: 4px solid #60a5fa;
         transform: translateY(-5px);
-        transition: all 0.3s ease;
+        transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease, transform 0.3s ease;
+        box-sizing: border-box;
     }
 
     .info-badge span {
@@ -291,8 +293,9 @@
     }
 
     .info-badge.active {
-        display: flex;
+        max-height: 200px;
         opacity: 1;
+        padding: 10px 15px;
         transform: translateY(0);
     }
 
@@ -312,6 +315,7 @@
         justify-content: center;
         gap: 10px;
         margin-top: 35px;
+        margin-bottom: 20px;
         box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
     }
 
@@ -341,6 +345,10 @@
         .title-icon {
             font-size: 28px;
         }
+
+        .email-row {
+            flex-direction: column;
+        }
     }
 </style>
 
@@ -367,17 +375,18 @@
             }, 1500);
         });
 
-        document.querySelectorAll('.focus-expand').forEach(group => {
-            const input = group.querySelector('.email-form-control');
+        document.querySelectorAll('.email-input-group').forEach(group => {
+            const inputs = group.querySelectorAll('.email-form-control');
             const badge = group.querySelector('.info-badge');
-
-            if (input && badge) {
-                input.addEventListener('focus', () => {
-                    badge.classList.add('active');
-                });
-
-                input.addEventListener('blur', () => {
-                    badge.classList.remove('active');
+            
+            if (inputs.length > 0 && badge) {
+                inputs.forEach(input => {
+                    input.addEventListener('focus', () => {
+                        badge.classList.add('active');
+                    });
+                    input.addEventListener('blur', () => {
+                        badge.classList.remove('active');
+                    });
                 });
             }
         });

@@ -2,15 +2,11 @@
 {% block title %}Feedback{% endblock %}
 
 {% block head %}
-  {{ super() }}
-  <!-- Font Awesome for icons -->
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    integrity="sha512-pZM7QbaxfMZ+gihEPN0YC79YC69lO2QJFiO4VVsaG1hCdb4tTfRNsqTUp4CShz5qM+YH0ZzwEtJwOu9gQHo+PQ=="
-    crossorigin="anonymous"
-    referrerpolicy="no-referrer"
-  />
+{{ super() }}
+<!-- Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  integrity="sha512-pZM7QbaxfMZ+gihEPN0YC79YC69lO2QJFiO4VVsaG1hCdb4tTfRNsqTUp4CShz5qM+YH0ZzwEtJwOu9gQHo+PQ=="
+  crossorigin="anonymous" referrerpolicy="no-referrer" />
 {% endblock %}
 
 {% block content %}
@@ -29,7 +25,8 @@
     --success: #10b981;
   }
 
-  html, body {
+  html,
+  body {
     margin: 0;
     padding: 0;
     height: 100%;
@@ -47,21 +44,38 @@
   }
 
   @keyframes slideInUp {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
 
   .feedback-container {
-    max-width: 600px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
     margin: 30px auto;
-    padding: 40px;
+    min-height: 80vh;
+    position: relative;
+  }
+
+  .feedback-form-container {
+    width: 100%;
+    max-width: 700px;
+    margin: 30px auto;
+    padding: 30px;
     border-radius: 16px;
     background-color: var(--card-bg);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     animation: slideInUp 0.5s ease-out both;
     backdrop-filter: blur(10px);
     position: relative;
-    overflow: hidden;
   }
 
   .feedback-header {
@@ -84,11 +98,20 @@
     color: var(--text-secondary);
   }
 
+  .username {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+
   .assistance-text {
     font-size: 14px;
     color: var(--text-primary);
     line-height: 1.6;
-    text-align: left;
+    text-align: center;
     max-width: 100%;
     margin-bottom: 20px;
   }
@@ -99,7 +122,7 @@
 
   .form-label {
     display: block;
-    margin-bottom: 18px;
+    margin-bottom: 10px;
     font-weight: 600;
     color: var(--text-primary);
     font-size: 18px;
@@ -148,6 +171,7 @@
     cursor: pointer;
     transition: all 0.3s ease;
     margin-top: 20px;
+    margin-bottom: 10px;
     box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
     position: relative;
     overflow: hidden;
@@ -180,15 +204,15 @@
   }
 
   @media (max-width: 768px) {
-    .feedback-container {
+    .feedback-form-container {
       padding: 30px 20px;
       margin: 20px;
     }
-    
+
     .feedback-header h1 {
       font-size: 32px
     }
-    
+
     .assistance-text {
       font-size: 16px
     }
@@ -196,39 +220,44 @@
 </style>
 
 <div class="feedback-container">
-  <div class="icon-container">
-    <i class="fas fa-comment-dots feedback-icon"></i>
-  </div>
-  
-  <div class="feedback-header">
-    <div class="user-greeting"><h1>Hello, {{ current_user.username }}!</h1></div>
-  </div>
-  
-  <p class="assistance-text">
-    We value your feedback and are here to assist you. Let us know how we can improve your experience or resolve any issues you're facing.
-  </p>
-  
-  <form method="POST">
-    {{ form.hidden_tag() }}
-
-    <div class="form-group">
-      <label for="message" class="form-label">Your Feedback</label>
-        {{ form.message(class="form-control", placeholder="Tell us what went well, what could be improved, or any challenges you faced using our service...") }}
+  <div class="feedback-form-container">
+    <div class="icon-container">
+      <i class="fas fa-comment-dots feedback-icon"></i>
     </div>
-    
-    <button type="submit" class="submit-btn">
-      <i class="fas fa-paper-plane"></i> Send Feedback
-    </button>
-  </form>
+
+    <div class="feedback-header">
+      <div class="user-greeting">
+        <h1>Hello, <h1 class="username">{{ current_user.username }} !</h1></h1>
+      </div>
+    </div>
+
+    <p class="assistance-text">
+      We value your feedback and are here to assist you. Let us know how we can improve your experience or resolve any
+      issues you're facing.
+    </p>
+
+    <form method="POST">
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        <label for="message" class="form-label">Your Feedback</label>
+        {{ form.message(class="form-control", placeholder="Tell us what went well, what could be improved, or any challenges you faced using our service...") }}
+      </div>
+
+      <button type="submit" class="submit-btn">
+        <i class="fas fa-paper-plane"></i> Send Feedback
+      </button>
+    </form>
+  </div>
 </div>
 
 <script>
   // Add animation to the form
-  document.querySelector('form').addEventListener('submit', function(e) {
+  document.querySelector('form').addEventListener('submit', function (e) {
     const btn = document.querySelector('.submit-btn');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
     btn.disabled = true;
-    
+
     // Simulate network delay for UX
     setTimeout(() => {
       btn.innerHTML = '<i class="fas fa-check"></i> Sent Successfully!';
