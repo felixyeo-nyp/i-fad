@@ -2,190 +2,16 @@
 {% block title %}User Management{% endblock %}
 
 {% block content %}
+<div class="dashboard-container">
+    <!-- Header with animated gradient -->
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">USER MANAGEMENT</h1>
+        <div class="dashboard-subtitle">Manage all user accounts</div>
+    </div>
 
-    <title>User Accounts Management</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #2f3136;
-            color: #e2e8f0;
-            margin: 0;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1 {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-        .search-add {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-        }
-        input[type="text"] {
-            padding: 0.5rem;
-            border-radius: 4px;
-            border: 1px solid #4a5568;
-            background-color: #2d3748;
-            color: #e2e8f0;
-            width: 200px;
-        }
-        button {
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            border: 1px solid #4a5568;
-            background-color: #2d3748;
-            color: #e2e8f0;
-            cursor: pointer;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 1rem;
-        }
-        th, td {
-            text-align: left;
-            padding: 0.75rem;
-            border-bottom: 1px solid #4a5568;
-        }
-        th {
-            background-color: #2d3748;
-            font-weight: bold;
-        }
-        .status {
-            padding: 0.25rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 18px;
-        }
-        .status-active {
-            color: #48bb78;
-            font-weight: bold;
-        }
-        .status-suspended {
-            color: #f56565;
-            font-weight: bold;
-        }
-        .pagination {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-    .dropdown {
-        position: relative;
-        display: inline-block;
-    }
-
-    .dropdown-menu {
-        display: none;
-        position: absolute;
-        background-color: #2d3748;
-        border: 1px solid #4a5568;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        border-radius: 4px;
-        z-index: 1000;
-        min-width: 150px;
-    }
-
-    .dropdown-menu .dropdown-item {
-        padding: 10px 15px;
-        color: #e2e8f0;
-        text-align: left;
-        border: none;
-        background: none;
-        cursor: pointer;
-        width: 100%;
-        font-size: 16px;
-    }
-
-    .dropdown-menu .dropdown-item:hover {
-        background-color: #4a5568;
-    }
-
-    .dropdown:hover .dropdown-menu {
-        display: block;
-    }
-
-    .action-btn {
-        background: none;
-        border: none;
-        color: #e2e8f0;
-        cursor: pointer;
-        font-size: 1.5rem;
-    }
-
-    .action-btn:hover {
-        color: #a0aec0;
-
-    }
-    .pagination {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 20px;
-}
-
-.pagination div {
-    display: flex;
-    gap: 10px;
-}
-
-.pagination button,
-.pagination a {
-    padding: 5px 10px;
-    border: none;
-    background-color: #2f3136;
-    color: #e2e8f0;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.pagination button:disabled,
-.pagination a:disabled {
-    cursor: not-allowed;
-    color: gray;
-}
-
-.pagination a:hover {
-    background-color: #444;
-    color: white;
-}
-
-    .btn {
-        padding: 10px 15px;
-        margin: 5px;
-        cursor: pointer;
-        border: none;
-        border-radius: 4px;
-    }
-    .btn-primary { background-color: #007bff; color: white; }
-    .btn-secondary { background-color: #6c757d; color: white; }
-    .btn-danger { background-color: #dc3545; color: white; }
-    .btn-success { background-color: #28a745; color: white; }
-    .btn:hover {
-        opacity: 0.9;
-    }
-        @media (max-width: 768px) {
-            .search-add {
-                flex-direction: column;
-            }
-            input[type="text"], button {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-        }
-    </style>
-    <h1 style="text-align: center; margin-top: 20px; font-size: 32px; font-weight: bold;">User Accounts Management</h1>
-        <hr style="border: none; border-top: 2px solid #ddd; margin-bottom: 20px;">
     <div class="container">
-
-
         <div class="search-add">
-            <form method="GET" action="{{ url_for('retrieve_users') }}">
+            <form method="GET" action="{{ url_for('retrieve_users') }}" class="search-form">
                 <input
                     type="text"
                     name="search"
@@ -193,78 +19,98 @@
                     value="{{ search_query|default('') }}"
                     aria-label="Search users"
                 >
-                <button type="submit">Search</button>
+                <button type="submit" class="search-btn">
+                    <i class="fas fa-search"></i> Search
+                </button>
             </form>
-            <button>
-                <a href="{{ url_for('register2') }}" style="color: white;">Add New User</a>
-            </button>
+            <a href="{{ url_for('register2') }}" class="add-user-btn">
+                <i class="fas fa-user-plus"></i> Add New User
+            </a>
         </div>
-        <span>
+        
+        {% if search_query %}
+        <div class="results-info">
             {{ total_users }} result{{ total_users != 1 and 's' or '' }} found for "{{ search_query }}"
-        </span>
+        </div>
+        {% endif %}
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for username, user_data in users %}
-                <tr>
-                    <td>{{ username }}</td>
-                    <td>{{ user_data.email }}</td>
-                    <td>{{ user_data.role }}</td>
-                    <td>
+        <div class="users-grid">
+            {% for username, user_data in users %}
+            <div class="user-card watch-scroll hidden-on-load">
+                <div class="user-card-header">
+                    <div class="user-info">
+                        <div class="user-name">
+                            <i class="fas fa-user-circle icon-username"></i>
+                            <h3>{{ username }}</h3>
+                        </div>
+                        <div class="user-email">
+                            <i class="fas fa-envelope icon-email"></i>
+                            <span>{{ user_data.email }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="user-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Role</span>
+                        <span class="detail-value role-{{ user_data.role|lower }}">{{ user_data.role }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Status</span>
                         <span class="status {{ 'status-active' if user_data.status == 'Active' else 'status-suspended' }}">
                             {{ user_data.status }}
                         </span>
-                    <td>
-                        <div class="dropdown">
-                            <button class="action-btn" aria-label="More actions for {{ username }}">
-                                <span class="action-icon">•••</span>
-                            </button>
-                            <div class="dropdown-menu">
-                                 <a href="{{ url_for('update_user', username=username) }}" class="dropdown-item" >Edit</a>
-                                <button class="dropdown-item" onclick="deleteUser('{{ username }}')" style="color:#cb4d4d;">Delete Account</button>
-                            </div>
-                        </div>
-                    </td>
-
-                </tr>
-                {% endfor %}
-
-            </tbody>
-        </table>
+                    </div>
+                </div>
+                
+                <div class="user-actions">
+                    <a href="{{ url_for('update_user', username=username) }}" class="action-btn edit-btn">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <button class="action-btn delete-btn" onclick="deleteUser('{{ username }}')">
+                        <i class="fas fa-trash-alt"></i> Delete
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
 
         <div class="pagination">
+            {% set start = (page - 1) * per_page + 1 %}
+            {% set end = page * per_page if page * per_page < total_users else total_users %}
+            {% set total_pages = (total_users // per_page) + (1 if total_users % per_page > 0 else 0) %}
+
             <span>
-                Showing {{ (page - 1) * per_page + 1 }} to
-                {{ page * per_page if page * per_page < total_users else total_users }}
-                of {{ total_users }} users
+                Page {{ page }} of {{ total_pages }} &nbsp;|&nbsp;
+                Showing {{ start }} – {{ end }} of {{ total_users }} user{{ total_users != 1 and 's' or '' }}
             </span>
+
             <div>
                 {% if prev_page %}
-                    <a href="{{ url_for('retrieve_users', page=prev_page, search=search_query) }}" aria-label="Previous page">←</a>
+                    <a href="{{ url_for('retrieve_users', page=prev_page, search=search_query) }}" aria-label="Previous page" class="pagination-btn">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
                 {% else %}
-                    <button aria-label="Previous page" disabled>←</button>
+                    <button aria-label="Previous page" disabled class="pagination-btn disabled">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
                 {% endif %}
 
                 {% if next_page %}
-                    <a href="{{ url_for('retrieve_users', page=next_page, search=search_query) }}" aria-label="Next page">→</a>
+                    <a href="{{ url_for('retrieve_users', page=next_page, search=search_query) }}" aria-label="Next page" class="pagination-btn">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
                 {% else %}
-                    <button aria-label="Next page" disabled>→</button>
+                    <button aria-label="Next page" disabled class="pagination-btn disabled">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
                 {% endif %}
             </div>
         </div>
     </div>
+</div>
 
 <script>
-
     function deleteUser(username) {
         const confirmation = confirm(`Are you sure you want to delete the account for ${username}? This action is irreversible.`);
         if (confirmation) {
@@ -277,7 +123,7 @@
             .then(response => {
                 if (response.ok) {
                     alert(`${username}'s account has been deleted.`);
-                    location.reload(); // Reload the page to reflect changes
+                    location.reload();
                 } else {
                     response.text().then(text => alert(`Error: ${text}`));
                 }
@@ -285,6 +131,445 @@
             .catch(error => alert(`Failed to delete the account: ${error}`));
         }
     }
+
+    // Animation for cards on scroll
+    document.addEventListener('DOMContentLoaded', function () {
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-slide-in-bottom');
+                    entry.target.classList.remove('hidden-on-load');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.1
+        });
+
+        document.querySelectorAll('.watch-scroll').forEach(el => {
+            observer.observe(el);
+        });
+    });
 </script>
 
+<style>
+    /* Base variables */
+    :root {
+        --dark-bg: #0f172a;
+        --card-bg: #1e293b;
+        --highlight: #818cf8;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --active: #48bb78;
+        --suspended: #f56565;
+        --admin: #a78bfa;
+        --user: #60a5fa;
+        --search-bg: #334155;
+    }
+
+    html,
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: var(--dark-bg);
+        color: var(--text-primary);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-color: rgba(15, 23, 42, 0.85);
+        z-index: -1;
+    }
+
+    .dashboard-container {
+        max-width: 1800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Header styles */
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding: 20px 20px;
+        background-color: #1e293b;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        position: relative;
+        overflow: hidden;
+        animation: slideInUp 1s ease-out both;
+    }
+
+    .dashboard-title {
+        font-size: 2.8rem;
+        font-weight: 800;
+        margin: 10px 0;
+        line-height: 1;
+        color: #f8fafc;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .dashboard-subtitle {
+        font-size: 1.4rem;
+        margin: 10px 0;
+        color: var(--text-secondary);
+        letter-spacing: 1px;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+
+    /* Search and Add User Section */
+    .search-add {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        gap: 20px;
+        flex-wrap: wrap;
+        animation: slideInUp 1s ease-out both;
+    }
+
+    .search-form {
+        display: flex;
+        flex-grow: 1;
+        max-width: 500px;
+    }
+
+    .search-form input[type="text"] {
+        padding: 12px 20px;
+        border-radius: 12px 0 0 12px;
+        border: none;
+        background-color: var(--search-bg);
+        color: var(--text-primary);
+        font-size: 16px;
+        flex-grow: 1;
+        outline: none;
+    }
+
+    .search-btn {
+        padding: 12px 25px;
+        border-radius: 0 12px 12px 0;
+        border: none;
+        background: linear-gradient(45deg, #3498db, #8e44ad);
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+
+    .search-btn:hover {
+        background: linear-gradient(45deg, #2980b9, #9b59b6);
+    }
+
+    .add-user-btn {
+        padding: 12px 25px;
+        border-radius: 12px;
+        background: linear-gradient(45deg, #10b981, #0ea5e9);
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        font-size: 16px;
+    }
+
+    .add-user-btn:hover {
+        background: linear-gradient(45deg, #0d9e6e, #0c8dc4);
+        transform: translateY(-2px);
+        color: white;
+        text-decoration: none;
+    }
+
+    .results-info {
+        color: var(--text-secondary);
+        margin-bottom: 25px;
+        font-size: 16px;
+        padding-left: 10px;
+        animation: slideInBottom 0.6s ease-out forwards;
+    }
+
+    /* Users Grid */
+    .users-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 25px;
+        margin-bottom: 40px;
+    }
+
+    .user-card {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 25px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .user-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .user-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3498db, #8e44ad);
+    }
+
+    /* Animation classes */
+    .hidden-on-load {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    .animate-slide-in-bottom {
+        animation: slideInBottom 0.6s ease-out forwards;
+    }
+
+    @keyframes slideInBottom {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideInUp {
+        from {
+            transform: translateY(-10px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    /* User card content */
+    .user-card-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .user-info h3 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .icon-username,
+    .icon-email {
+        margin-right: 8px;
+        color: var(--text-secondary);
+    }
+
+    .user-name,
+    .user-email {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin-top: 10px;
+        line-height: 1.2;
+    }
+
+    .user-email span {
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .user-details {
+        margin-bottom: 20px;
+    }
+
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+
+    .detail-label {
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .detail-value {
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .role-admin {
+        color: var(--admin);
+    }
+
+    .role-user {
+        color: var(--user);
+    }
+
+    .status {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: rgba(72, 187, 120, 0.15);
+        color: var(--active);
+    }
+
+    .status-suspended {
+        background: rgba(245, 101, 101, 0.15);
+        color: var(--suspended);
+    }
+
+    /* User actions */
+    .user-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 15px;
+    }
+
+    .action-btn {
+        flex: 1;
+        padding: 10px 15px;
+        border-radius: 10px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+
+    .edit-btn {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+    }
+
+    .edit-btn:hover {
+        background: rgba(59, 130, 246, 0.25);
+         color: #3b82f6;
+        transform: translateY(-2px);
+        text-decoration: none;
+    }
+
+    .delete-btn {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    .delete-btn:hover {
+        background: rgba(239, 68, 68, 0.25);
+        color: #ef4444;
+        transform: translateY(-2px);
+        text-decoration: none;
+    }
+
+    /* Pagination */
+    .pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 10px;
+        color: var(--text-secondary);
+        font-size: 16px;
+        animation: slideInBottom 0.6s ease-out forwards;
+    }
+
+    .pagination div {
+        display: flex;
+        gap: 10px;
+    }
+
+    .pagination-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        border: none;
+        background: var(--search-bg);
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .pagination-btn:hover:not(.disabled) {
+        background: #475569;
+        transform: translateY(-2px);
+        text-decoration: none;
+    }
+
+    .pagination-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .search-add {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .search-form {
+            max-width: 100%;
+        }
+        
+        .users-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .pagination {
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+        
+        .dashboard-title {
+            font-size: 2.2rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .user-actions {
+            flex-direction: column;
+        }
+        
+        .dashboard-title {
+            font-size: 1.8rem;
+        }
+    }
+</style>
 {% endblock %}
