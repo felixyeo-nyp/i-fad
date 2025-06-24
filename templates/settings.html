@@ -78,7 +78,6 @@
         display: flex;
         align-items: flex-end;
         gap: 15px;
-        flex-wrap: wrap;
     }
 
     .input-and-info .info-badge {
@@ -326,22 +325,75 @@
     }
 
 
+    /* Responsive additions */
     @media (max-width: 768px) {
-        .compound-fields {
-            flex-direction: column;
+        .settings-container {
+            padding: 10px;
+            min-height: auto;
         }
 
-        .settings-btn-group {
+        .settings-form-container {
+            padding: 20px;
+            max-width: 100%;
+        }
+
+        .feeding-time-row {
             flex-direction: column;
+            gap: 20px;
+        }
+
+        .feeding-time-row .full {
+            width: 100%;
+        }
+
+        .compound-fields {
+            flex-direction: column;
+            gap: 15px;
         }
 
         .input-and-info {
             flex-direction: column;
-            align-items: stretch;
+            gap: 15px;
         }
 
-        .info-badge {
+        .input-and-info .half-width {
             width: 100%;
+        }
+
+        #pellet-info {
+            width: 100% !important;
+            flex: 0 0 100%;
+        }
+
+        .settings-btn-group {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .manual-feed-buttons {
+            flex-direction: column;
+        }
+
+        .manual-feed-buttons form {
+            width: 100%;
+        }
+
+        .settings-btn {
+            padding: 14px 0;
+            font-size: 18px;
+        }
+
+        .settings-form-container h1 {
+            font-size: 26px;
+            margin-bottom: 20px;
+        }
+
+        .settings-divider {
+            margin: 20px 0;
+        }
+
+        .settings-input-group {
+            margin-bottom: 20px;
         }
     }
 </style>
