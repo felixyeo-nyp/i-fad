@@ -895,7 +895,7 @@ def mfa_verify():
             login_user(user)
             flash('You are now logged in', 'success')
             session.pop('mfa_code')  # Clear MFA code after success
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('set_ip'))
         else:
             flash('Invalid authentication code', 'danger')
 
