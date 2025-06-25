@@ -5,3 +5,4 @@ flask_stdout.log
 .venv
 __pycache__/
 *.pth
+.env
