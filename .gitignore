@@ -6,3 +6,8 @@ flask_stdout.log
 __pycache__/
 *.pth
 .env
+*.db
+*.db.*
+*.bak
+*.dat
+*.dir
