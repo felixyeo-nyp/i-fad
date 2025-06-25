@@ -50,6 +50,10 @@ import os
 from functools import wraps
 from flask import abort
 
+# System-related imports #
+import socket
+import psutil
+
 # Back-end codes for object detection & processing #
 if torch.cuda.is_available():
     print('you are using gpu to process the video camera')
@@ -203,11 +207,18 @@ def check_feeding_time():
 
 def capture_frames():
     cap = cv2.VideoCapture('rtsp://admin:fyp2024Fish34535@192.168.1.108:554/cam/realmonitor?channel=1&subtype=0')
+
+    if not cap.isOpened():
+        print("Warning: Cannot open video capture stream.")
+
     global  freshest_frame
     with freshest_frame_lock:
         freshest_frame = FreshestFrame(cap)
     global latest_processed_frame
     while not stop_event.is_set():
+        if not cap.isOpened():
+            time.sleep(1)
+            continue
         # Wait for the newest frame
         sequence_num, frame = freshest_frame.read(wait=True)
         if frame is not None:
@@ -292,10 +303,18 @@ def process_frames():
             line_chart_timer = time.time()
             total_time = None
         with freshest_frame_lock:
-            if freshest_frame is not None:
-                cnt, frame = freshest_frame.read(sequence_number=object_count[1] + 1)
-                if frame is None:
-                    break
+            if freshest_frame is None:
+                # freshest_frame not ready yet, wait and retry
+                time.sleep(0.1)
+                continue
+
+            # Read the frame, allow waiting for newest frame
+            cnt, frame = freshest_frame.read(sequence_number=object_count[1] + 1)
+
+            if frame is None:
+                # Frame not available - skip this loop iteration and wait
+                time.sleep(0.1)
+                continue
 
             # Preprocess the frame
             img_tensor = torchvision.transforms.ToTensor()(frame).to(device)
@@ -304,6 +323,9 @@ def process_frames():
             # Perform inference
             with torch.no_grad():
                 predictions = model(img_tensor)
+
+            temp_object_count = {1: 0}
+            bounding_boxes = []
 
             for i in range(len(predictions[0]['labels'])):
                 label = predictions[0]['labels'][i].item()
@@ -413,7 +435,7 @@ def process_frames():
                     print("Feeding session ended.")
         with object_count_lock:
             # Display the frame with detections and object count
-            for label, count in object_count.items():
+            for label, count in temp_object_count.items():
                 text = f'{class_labels[label]} Count: {count}'
                 text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 2)[0]
                 text_position = (frame.shape[1] - text_size[0] - 10, 30 * (label + 1))
@@ -520,36 +542,44 @@ def generate_frames():
     global latest_processed_frame, frame_data
     count = 1
     while not stop_event.is_set():
-        if count //60 == 0:
+        if count // 60 == 0:
             db = shelve.open('settings.db', 'c')
-            if not db.get('Generate_Status',True):
+            if not db.get('Generate_Status', True):
                 print("stopped generating")
                 break
             db.close()
+
         with latest_processed_frame_lock:
-            frame = latest_processed_frame.copy()  # Create a copy of the frame to avoid modification of original
-        if frame is not None:
-            # Display object count and bounding boxes from frame_data
+            if latest_processed_frame is None:
+                # Create a black frame fallback if no frame available
+                black_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                frame_to_use = black_frame
+            else:
+                frame_to_use = latest_processed_frame.copy()
+
+        # Overlay info only if it's not the black fallback frame
+        if latest_processed_frame is not None:
             with frame_data_lock:
                 for label, count in frame_data['object_count'].items():
                     text = f'{class_labels[label]} Count: {count}'
                     text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 2)[0]
-                    text_position = (frame.shape[1] - text_size[0] - 10, 30 * (label + 1))
-                    cv2.putText(frame, text, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2, (200, 255, 255), 2)
+                    text_position = (frame_to_use.shape[1] - text_size[0] - 10, 30 * (label + 1))
+                    cv2.putText(frame_to_use, text, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2, (200, 255, 255), 2)
 
-                # Draw bounding boxes from frame_data
                 for box, label, score in frame_data['bounding_boxes']:
-                    cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
-                    cv2.putText(frame, f'{class_labels[label]}: {score:.2f}', (box[0], box[1] - 10),
+                    cv2.rectangle(frame_to_use, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
+                    cv2.putText(frame_to_use, f'{class_labels[label]}: {score:.2f}', (box[0], box[1] - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-            # Convert frame to jpeg and yield it
-            ret, jpeg = cv2.imencode('.jpg', frame)
-            if ret:
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+        ret, jpeg = cv2.imencode('.jpg', frame_to_use)
+        if ret:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+        else:
+            time.sleep(0.1)
 
-        time.sleep(0.03)  # Adjust the frame rate if necessary
+        count += 1
+        time.sleep(0.03)  # Adjust frame rate if necessary
 
 # Web application #
 app = Flask(__name__)
@@ -1413,7 +1443,7 @@ def dashboard():
     response = get_pellet_data()
     pellet_data = response.json # Convert the Flask Response to JSON
 
-    with shelve.open('currentcount.db', 'r') as db2:
+    with shelve.open('currentcount.db', 'c') as db2:
         object_count = db2.get('object_count', 0)  # Get count dictionary, default to empty
         db2.close()
     latest_count = object_count  # Get latest count for label 1, default to 0 if not found
@@ -2027,7 +2057,6 @@ def delete_user(username):
             return "User not found.", 404
     return redirect(url_for('retrieve_users'))
 
-
 @app.route('/set_ip', methods=['GET','POST'])
 @login_required
 @role_required('Admin')
@@ -2052,16 +2081,74 @@ def set_ip():
 
     return render_template('setIP.html', form=setting)
 
+def get_valid_local_ip(preferred=None):
+    interfaces = psutil.net_if_addrs()
+
+    def is_valid(ip):
+        return ip and not ip.startswith("127.")
+
+    def is_apipa(ip):
+        return ip.startswith("169.254.")
+
+    # 1. Use preferred IP if it exists
+    if preferred:
+        for iface_addrs in interfaces.values():
+            for addr in iface_addrs:
+                if addr.family == socket.AF_INET and addr.address == preferred:
+                    print(f"Using preferred IP: {preferred}")
+                    return preferred
+
+    # 2. Try Wi-Fi or LAN IPs in local devices excluding APIPA
+    for iface_name, iface_addrs in interfaces.items():
+        for addr in iface_addrs:
+            if addr.family == socket.AF_INET and is_valid(addr.address) and not is_apipa(addr.address):
+                if "Wi-Fi" in iface_name or "Local Area Connection" in iface_name:
+                    print(f"Using fallback interface {iface_name} with IP: {addr.address}")
+                    return addr.address
+
+    # 3. Any other valid non-loopback assigned by OS, non-APIPA IP
+    for iface_addrs in interfaces.values():
+        for addr in iface_addrs:
+            if addr.family == socket.AF_INET and is_valid(addr.address) and not is_apipa(addr.address):
+                print(f"Using generic fallback IP: {addr.address}")
+                return addr.address
+
+    # 4. As last resort, return an APIPA IP if any
+    for iface_name, iface_addrs in interfaces.items():
+        for addr in iface_addrs:
+            if addr.family == socket.AF_INET and is_apipa(addr.address):
+                print(f"Using APIPA fallback interface {iface_name} with IP: {addr.address}")
+                return addr.address
+
+    raise RuntimeError("No IP address found on any interface")
+
+for iface_name, iface_addrs in psutil.net_if_addrs().items():
+    for addr in iface_addrs:
+        if addr.family == socket.AF_INET:
+            print(f"{iface_name}: {addr.address}")
+
 def send_udp_packet(source, destination, port, message):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    sock.bind((source, 0))
+    # Try to bind to the user-provided source IP if available
+    try:
+        sock.bind((source, 0))
+        print(f"Socket successfully bound to user-provided source IP: {source}")
+    except OSError as e:
+        # If binding fails, try to get a valid local IP address in local device
+        print(f"Failed to bind to user source IP {source}. Error: {e}")
+        try:
+            fallback_ip = get_valid_local_ip()
+            sock.bind((fallback_ip, 0))
+            print(f"Fallback: Socket bound to device IP: {fallback_ip}")
+        except Exception as e2:
+            # If fallback also fails, bind to any interface which will handle by the OS
+            print(f"Fallback failed. Binding to any interface. Error: {e2}")
+            sock.bind(("", 0))
 
     sock.sendto(message, (destination, port))
-
     print(f"Broadcast sent: {message.hex()} to {destination}:{port}")
-
     sock.close()
 
 # Define the syn packet function here
