@@ -1,8 +1,0 @@
-'last_ip_id', (60416, 15)
-'syn_ack_seq', (60928, 19)
-'syn_ack_ack', (61440, 17)
-'Time_Record', (61952, 230)
-'Generate_Status', (62464, 4)
-'Check_Interval', (62976, 5)
-'Email_Data', (63488, 214)
-'Port', (64000, 15)
