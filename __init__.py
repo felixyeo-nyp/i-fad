@@ -983,6 +983,14 @@ def get_next_ip_id():
         db.close()
     return last_id
 
+def get_interface_by_ip(target_ip):
+    for iface_name, iface_addrs in psutil.net_if_addrs().items():
+        for addr in iface_addrs:
+            if addr.family == socket.AF_INET and addr.address == target_ip:
+                print(f"Found interface {iface_name} with IP {target_ip}")
+                return iface_name
+    raise RuntimeError(f"No interface found with IP {target_ip}")
+
 def send_tcp_packet(encoded_byte, source_port, server_isn, server_ack, source_ip, dest_ip):
     destination_ip = dest_ip
     source_ip = source_ip
@@ -991,6 +999,14 @@ def send_tcp_packet(encoded_byte, source_port, server_isn, server_ack, source_ip
     payload = bytes.fromhex(encoded_byte)
     flags = "PA"  # PSH + ACK flags
     ip_id = get_next_ip_id()
+
+    # Detect the correct network interface
+    try:
+        interface_name = get_interface_by_ip(source_ip)
+        print(f"Using interface: {interface_name}")
+    except RuntimeError as e:
+        print(f"[Error] {e}")
+        return
 
     # Create IP and TCP headers without manually setting checksum
     ip_packet = IP(src=source_ip, dst=destination_ip, id=ip_id, flags="DF", ttl=128)
@@ -1014,7 +1030,7 @@ def send_tcp_packet(encoded_byte, source_port, server_isn, server_ack, source_ip
     while True:
         packet_counter += 1
         print(f"Sniff attempt {packet_counter}")  # <-- Add this
-        sniffpacket = sniff(iface="Ethernet 2",
+        sniffpacket = sniff(iface=interface_name,
                             filter=f"tcp and src host {destination_ip} and port {destination_port}",
                             count=1, timeout=0.1) # Adjust the Ethernet port name to correspond with the connected interface.
 
@@ -1057,6 +1073,12 @@ def send_tcp_packet(encoded_byte, source_port, server_isn, server_ack, source_ip
 # Function to perform the 3-way TCP handshake
 def send_syn_packet(client_ip, server_ip, source_port, destination_port):
     try:
+        try:
+            interface_name = get_interface_by_ip(client_ip)
+            print(f"Using interface: {interface_name}")
+        except RuntimeError as e:
+            print(f"[Error] {e}")
+            return
         # Step 1: Generate a random ISN
         isn = random.randint(0, 2**32 - 1)
         ip_id = get_next_ip_id()
@@ -1103,7 +1125,7 @@ def send_syn_packet(client_ip, server_ip, source_port, destination_port):
 
         while True:
 
-            psh_ack = sniff(iface="Ethernet 2",filter=f"tcp and src host {server_ip} and port {destination_port}", count=1, timeout=1) # Adjust the Ethernet port name to correspond with the connected interface.
+            psh_ack = sniff(iface=interface_name, filter=f"tcp and src host {server_ip} and port {destination_port}", count=1, timeout=1) # Adjust the Ethernet port name to correspond with the connected interface.
 
             if not psh_ack:
                 # print("no packet")
@@ -1179,6 +1201,13 @@ def send_RST_packet(source_port, server_isn, server_ack, source_ip, destination_
 def start_send_manual_feed(source_port, server_isn, server_ack, source_ip, destination_ip):
     destination_port = 50000
     encoded_data = "ccdda10100010001a448"
+
+    try:
+        interface_name = get_interface_by_ip(source_ip)
+    except RuntimeError as e:
+        print(f"[Error] {e}")
+        return
+
     send_tcp_packet(
         encoded_byte=encoded_data,
         source_port=source_port,
@@ -1190,7 +1219,7 @@ def start_send_manual_feed(source_port, server_isn, server_ack, source_ip, desti
     packet_counter = 0
     while True:
         packet_counter += 1
-        sniffpacket = sniff(iface="Ethernet 2",
+        sniffpacket = sniff(iface=interface_name,
                             filter=f"tcp and src host {destination_ip} and port {destination_port}",
                             count=1, timeout=0.1) # Adjust the Ethernet port name to correspond with the connected interface.
 
@@ -1232,6 +1261,12 @@ def start_send_manual_feed(source_port, server_isn, server_ack, source_ip, desti
 def stop_send_manual_feed(source_port, server_isn, server_ack, source_ip, destination_ip):
     destination_port = 50000
     encoded_data = "ccdda10100000001a346"
+
+    try:
+        interface_name = get_interface_by_ip(source_ip)
+    except RuntimeError as e:
+        print(f"[Error] {e}")
+        return
     send_tcp_packet(
         encoded_byte=encoded_data,
         source_port=source_port,
@@ -1243,7 +1278,7 @@ def stop_send_manual_feed(source_port, server_isn, server_ack, source_ip, destin
     packet_counter = 0
     while True:
         packet_counter += 1
-        sniffpacket = sniff(iface="Ethernet 2",
+        sniffpacket = sniff(iface=interface_name,
                             filter=f"tcp and src host {destination_ip} and port {destination_port}",
                             count=1, timeout=0.1) # Adjust the Ethernet port name to correspond with the connected interface.
 
