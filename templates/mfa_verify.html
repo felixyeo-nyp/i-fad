@@ -1,141 +1,160 @@
 {% extends "base.html" %}
 {% block title %}MFA Verification{% endblock %}
 
+{% block head %}
+  {{ super() }}
+  <!-- Font Awesome for the key icon -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    integrity="sha512-pZM7QbaxfMZ+gihEPN0YC79YC69lO2QJFiO4VVsaG1hCdb4tTfRNsqTUp4CShz5qM+YH0ZzwEtJwOu9gQHo+PQ=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+{% endblock %}
+
 {% block content %}
-{% from "includes/_formHelper.html" import render_field %}
+<style>
+  /* Reset & background */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("{{ url_for('static', filename='wall4.jpg') }}");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -1;
+    animation: bgZoomFade 1.5s ease-out forwards;
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  @keyframes bgZoomFade { to { opacity: 1; transform: scale(1); } }
 
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            color: black;
-            background-image: url("{{ url_for('static', filename='wall4.jpg') }}");
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size 18px;
-        }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #000;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
 
-        .form-container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 40px;
-            background-color: rgba(255, 255, 255);
-            border-radius: 15px;
-            box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.1);
+  /* Card */
+  .container {
+    max-width: 600px;  /* increased from 400px */
+    width: 100%;
+    z-index: 1;
+  }
+  .form-container {
+    background: #fff;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    border: 1px solid #e0e0e0;
+    animation: fadeIn 0.8s ease-out;
+  }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
 
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+  .form-container h2 {
+    font-size: 28px; font-weight: 700; text-align: center;
+    color: #333; margin-bottom: 20px; letter-spacing: 1px;
+  }
+  .form-container p {
+    font-size: 16px; color: #555; text-align: center;
+    margin-bottom: 30px;
+  }
 
-        .form-container h2 {
-            font-size: 30px;
-            font-weight: bold;
-            text-align: center;
-            color: black;
-            margin-bottom: 20px;
-        }
+  /* Alerts */
+  .alert { padding: 12px; margin-bottom: 20px; border-radius: 8px; text-align: center; font-weight: 500; }
+  .alert-success { background: #e8f5e9; color: #2e7d32; }
+  .alert-error   { background: #ffebee; color: #c62828; }
 
-        .form-container input {
-            width: 100%;
-            height: 45px;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 25px;
-            border: none;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            font-size: 16px;
-        }
+  /* Input + icon */
+  .input-with-icon {
+    position: relative; margin-bottom: 20px;
+  }
+  .input-with-icon .fa-icon {
+    position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+    color: #555; font-size: 20px; pointer-events: none;
+  }
+  .input-with-icon .form-control {
+    width: 100%;
+    padding: 14px 18px 14px 60px;  /* increased padding for larger height */
+    height: 60px;                   /* increased from 50px */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f9f9f9;
+    font-size: 18px;                /* increased from 16px */
+    color: #333;
+    transition: box-shadow .2s, border-color .2s;
+  }
+  .input-with-icon .form-control:focus {
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(52,152,219,0.2);
+    border-color: #3498db;
+    outline: none;
+  }
 
-        .input-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
+  /* Button */
+  .save-btn {
+    width: 100%;
+    padding: 16px 0;                /* increased from 12px */
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(45deg,#3498db,#8e44ad);
+    color: #fff;
+    font-size: 18px;                /* increased from 16px */
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .save-btn:hover { opacity: 0.9; }
 
-        .input-group label {
-            font-size: 16px;
-            font-weight: bold;
-            color: black;
-            text-align: right;
-        }
+  /* Responsive tweaks */
+  @media (max-width: 576px) {
+    .form-container { padding: 30px 20px; }
+    .form-container h2 { font-size: 24px; }
+    .input-with-icon .form-control {
+      height: 50px;
+      padding: 10px 12px 10px 44px;
+      font-size: 16px;
+    }
+    .input-with-icon .fa-icon { left: 18px; font-size: 16px; }
+    .save-btn { font-size: 16px; padding: 12px 0; }
+  }
+</style>
 
-        .input-group .input-group-text {
-            background-color: transparent;
-            border: none;
-            color: black;
-            height: 45px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+<div class="container">
+  <div class="form-container">
+    <h2>MFA Verification</h2>
+    <p>Please enter the 6-digit authentication code sent to your email.</p>
 
-        #code{
-            border-radius: 25px;
-            border: solid 2px;
-            background-color: rgba(255, 255, 255, 0.2);
-            color: black;
-            font-size: 16px;
-        }
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-        .save-btn {
-            background-color: #E8E8E8;
-            color: #0153FF;
-            border: none;
-            padding: 10px 0;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 25px;
-            display: block;
-            margin-top: 30px;
-            width: 100px;
-            text-align: center;
+    <form method="POST" action="{{ url_for('mfa_verify') }}">
+      {{ form.hidden_tag() }}
 
-        }
+      <div class="input-with-icon">
+        <i class="fas fa-key fa-icon"></i>
+        {{ form.code(class="form-control", placeholder="Enter 6-digit code") }}
+      </div>
+      {% if form.code.errors %}
+        <div class="alert alert-error">{{ form.code.errors[0] }}</div>
+      {% endif %}
 
-        .save-btn:hover {
-            background-color: #89CFF0;
-        }
-
-        @media (max-width: 767px) {
-            .form-group label {
-                text-align: left;
-                width: 100%;
-                margin-bottom: 5px;
-            }
-        }
-    </style>
-
-    <div class="form-container">
-        <h2>MFA Verification</h2>
-        <p>Please enter the 6-digit authentication code sent to your email.</p>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div>
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">
-                            {{ message }}
-                        </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        {% endwith %}
-
-        <form method="POST" action="{{ url_for('mfa_verify') }}">
-            {{ form.hidden_tag() }}
-            <div class="form-group">
-                {{ form.code.label(class="form-label") }}
-                {{ form.code(class="form-control", placeholder="Enter 6-digit code") }}
-                {% if form.code.errors %}
-                    <div class="text-danger">{{ form.code.errors[0] }}</div>
-                {% endif %}
-            </div>
-            <button type="submit" class="save-btn">Verify</button>
-        </form>
-    </div>
+      <button type="submit" class="save-btn">Verify</button>
+    </form>
+  </div>
+</div>
 {% endblock %}
