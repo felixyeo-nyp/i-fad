@@ -2034,7 +2034,11 @@ def retrieve_users():
             filtered_users = {
                 username: data
                 for username, data in user_dict.items()
-                if search_query in username.lower() or search_query in data.get('email', '').lower()
+                if (
+                    search_query in username.lower()
+                    or search_query in data.get('email', '').lower()
+                    or search_query in data.get('role', '').lower()  # NEW: match by role
+                )
             }
         else:
             filtered_users = user_dict
