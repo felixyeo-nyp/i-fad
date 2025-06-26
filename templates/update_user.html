@@ -1,141 +1,451 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit User</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #2f3136;
-            color: #e2e8f0;
+        :root {
+            --primary-gradient: linear-gradient(45deg, #3498db, #8e44ad);
+            --dark-bg: #0f172a;
+            --card-bg: #1e293b;
+            --highlight: #818cf8;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 20px;
-            line-height: 1.6;
+            position: relative;
         }
 
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 40px;
-            background-color: rgba(0, 0, 0, 0.3);
-            border-radius: 5px;
-            backdrop-filter: blur(10px);
-            border: 1px solid black;
+        body::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(52, 152, 219, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(142, 68, 173, 0.1) 0%, transparent 20%);
+            z-index: -1;
         }
 
-        h1 {
-            font-size: 30px;
-            font-weight: bold;
-            text-align: center;
-            color: white;
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-        }
-
-        .form-control {
+        .user-update-container {
             width: 100%;
-            height: 35px;
-            padding: 10px;
-            margin-top: 5px;
-            border-radius: 25px;
-            border: solid;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .back-btn:hover {
             background: rgba(255, 255, 255, 0.2);
-            color: white;
-            font-size: 16px;
+        }
+
+        .back-btn i {
+            transition: transform 0.3s ease;
+        }
+
+        .back-btn:hover i {
+            transform: translateX(-2px);
+        }
+
+        .user-form-container {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.6s ease-out forwards;
+            position: relative;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-form-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 35px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #334155;
+        }
+
+        .user-form-header i {
+            font-size: 2.5rem;
+            color: var(--highlight);
+        }
+
+        .user-form-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .user-input-group {
+            margin-bottom: 25px;
+        }
+
+        .user-input-group label {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .user-input-with-icon {
+            position: relative;
+        }
+
+        .user-input-with-icon i {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 1.2rem;
+        }
+
+        .user-form-control {
+            width: 100%;
+            padding: 16px 20px 16px 55px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        .user-form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.2);
+        }
+
+        .user-form-control::placeholder {
+            color: #64748b;
         }
 
         .radio-group {
             display: flex;
+            gap: 30px;
+            margin-top: 15px;
+        }
+
+        .radio-option {
+            display: flex;
             align-items: center;
             gap: 10px;
-            margin-top: 10px;
-        }
-
-        .save-btn {
-            background-color: #E8E8E8;
-            color: #393d45;
-            border: none;
-            padding: 10px 0;
-            font-size: 18px;
-            font-weight: bold;
+            padding: 12px 20px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 12px;
             cursor: pointer;
-            border-radius: 25px;
-            display: block;
-            margin-top: 25px;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .radio-option:hover {
+            border-color: #3498db;
+        }
+
+        .radio-option.active {
+            border-color: var(--highlight);
+            background: rgba(129, 140, 248, 0.1);
+        }
+
+        .radio-option input {
+            display: none;
+        }
+
+        .radio-option label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1rem;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status-active {
+            color: var(--success);
+        }
+
+        .status-suspended {
+            color: var(--warning);
+        }
+
+        .text-role-admin {
+            color: var(--highlight);
+        }
+
+        .text-role-guest {
+            color: #60a5fa;
+        }
+
+        .role-admin {
+            background-color: rgba(129, 140, 248, 0.2);
+            color: var(--highlight);
+        }
+
+        .role-guest {
+            background-color: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+        }
+
+        .user-submit-btn {
             width: 100%;
-            text-align: center;
+            padding: 18px 0;
+            margin-top: 35px;
+            border: none;
+            border-radius: 12px;
+            background: var(--primary-gradient);
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 5px 20px rgba(52, 152, 219, 0.3);
         }
 
-        .save-btn:hover {
-            background-color: #C8C8C8;
+        .user-submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
         }
 
-        @media (max-width: 767px) {
-            .container {
-                width: 90%;
-                padding: 20px;
+        .user-submit-btn:active {
+            transform: translateY(1px);
+        }
+
+        .current-indicator {
+            font-size: 0.9rem;
+            margin-top: 5px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .user-form-container {
+                padding: 30px;
             }
+            
+            .user-form-header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .radio-group {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
 
-            label {
-                font-size: 14px;
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+            
+            .back-btn {
+                top: 15px;
+                left: 15px;
+                padding: 8px 12px;
+            }
+            
+            .user-form-container {
+                padding: 25px 20px;
+            }
+            
+            .user-form-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+            
+            .user-form-control {
+                padding: 14px 15px 14px 50px;
+                font-size: 1rem;
+            }
+            
+            .user-submit-btn {
+                padding: 16px 0;
+                font-size: 1.1rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Edit User: {{ username }}</h1>
-        <form method="post" action="{{ url_for('update_user', username=username) }}">
-            {{ form.hidden_tag() }} <!-- Prevent CSRF attacks -->
-
-            <!-- Email Field -->
-            <div class="form-group">
-                <label>Email:</label>
-                {{ form.email(class="form-control", id="email") }}
+    <a href="javascript:history.back()" class="back-btn">
+        <i class="fas fa-arrow-left"></i> Back
+    </a>
+    
+    <div class="user-update-container">
+        <div class="user-form-container">
+            <div class="user-form-header">
+                <i class="fas fa-user-edit"></i>
+                <h1>Edit User: <span style="color: var(--highlight);">{{ username }}</span></h1>
             </div>
+            
+            <form method="post" action="{{ url_for('update_user', username=username) }}">
+                {{ form.hidden_tag() }}
 
-            <!-- Role Field -->
-            <div class="form-group">
-                <label>Role:</label>
-                <div class="radio-group">
-                    <input type="radio" id="roleGuest" name="role" value="Guest">
-
-                    <label for="roleGuest">Guest</label>
-                    {% if user_data.role == "Guest" %}(Currently){% endif %}
-                    <input type="radio" id="roleAdmin" name="role" value="Admin">
-
-                    <label for="roleAdmin">Admin</label>
-                    {% if user_data.role == "Admin" %}(Currently){% endif %}
+                <!-- Email Field -->
+                <div class="user-input-group">
+                    <label for="email">Email Address</label>
+                    <div class="user-input-with-icon">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="email" name="email" class="user-form-control" 
+                               value="{{ user_data.email }}" placeholder="user@example.com">
+                    </div>
                 </div>
-            </div>
-
-            <!-- Status Field -->
-            <div class="form-group">
-                <label>Status:</label>
-                <div class="radio-group">
-                    <input type="radio" id="actives" name="status" value="Active">
-
-                    <label for="actives">Active</label>
-                    {% if user_data['status'] == "Active" %}(Currently){% endif %}
-                    <input type="radio" id="suspend" name="status" value="Suspended">
-
-                    <label for="suspend">Suspended</label>
-                    {% if user_data['status'] == "Suspended" %}(Currently){% endif %}
+                
+                <!-- Role Field -->
+                <div class="user-input-group">
+                    <label>User Role</label>
+                    <div class="radio-group">
+                        <div class="radio-option {% if user_data.role == 'Guest' %}active{% endif %}" 
+                             onclick="selectOption(this, 'role')">
+                            <input type="radio" id="roleGuest" name="role" value="Guest" 
+                                   {% if user_data.role == 'Guest' %}checked{% endif %}>
+                            <label for="roleGuest">Guest</label>
+                            <span class="status-badge role-guest">Guest</span>
+                        </div>
+                        <div class="radio-option {% if user_data.role == 'Admin' %}active{% endif %}" 
+                             onclick="selectOption(this, 'role')">
+                            <input type="radio" id="roleAdmin" name="role" value="Admin" 
+                                   {% if user_data.role == 'Admin' %}checked{% endif %}>
+                            <label for="roleAdmin">Admin</label>
+                            <span class="status-badge role-admin">Admin</span>
+                        </div>
+                    </div>
+                    <div class="current-indicator">
+                        Current role:
+                        <strong class="{% if user_data.role == 'Admin' %}text-role-admin{% elif user_data.role == 'Guest' %}text-role-guest{% endif %}">
+                            {{ user_data.role }}
+                        </strong>
+                    </div>
                 </div>
-            </div>
-
-
-            <!-- Submit Button -->
-            <button type="submit" class="save-btn">Save Changes</button>
-        </form>
+                
+                <!-- Status Field -->
+                <div class="user-input-group">
+                    <label>Account Status</label>
+                    <div class="radio-group">
+                        <div class="radio-option {% if user_data.status == 'Active' %}active{% endif %}" 
+                             onclick="selectOption(this, 'status')">
+                            <input type="radio" id="actives" name="status" value="Active" 
+                                   {% if user_data.status == 'Active' %}checked{% endif %}>
+                            <label for="actives">Active</label>
+                            <span class="status-badge status-active">Active</span>
+                        </div>
+                        <div class="radio-option {% if user_data.status == 'Suspended' %}active{% endif %}" 
+                             onclick="selectOption(this, 'status')">
+                            <input type="radio" id="suspend" name="status" value="Suspended" 
+                                   {% if user_data.status == 'Suspended' %}checked{% endif %}>
+                            <label for="suspend">Suspended</label>
+                            <span class="status-badge status-suspended">Suspended</span>
+                        </div>
+                    </div>
+                    <div class="current-indicator">
+                        Current status: 
+                        <strong class="{% if user_data.status == 'Active' %}status-active{% else %}status-suspended{% endif %}">
+                            {{ user_data.status }}
+                        </strong>
+                    </div>
+                </div>
+                
+                <button type="submit" class="user-submit-btn">
+                    <i class="fas fa-save"></i>
+                    Save Changes
+                </button>
+            </form>
+        </div>
     </div>
+    
+    <script>
+        // Function to handle radio option selection
+        function selectOption(element, groupName) {
+            // Remove active class from all options in the same group
+            const container = element.parentElement;
+            container.querySelectorAll('.radio-option').forEach(opt => {
+                opt.classList.remove('active');
+            });
+            
+            // Add active class to the selected option
+            element.classList.add('active');
+            
+            // Check the radio input
+            const radioInput = element.querySelector('input[type="radio"]');
+            radioInput.checked = true;
+        }
+        
+        // Form submission handling
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const submitBtn = document.querySelector('.user-submit-btn');
+            const originalBtnHTML = submitBtn.innerHTML;
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            submitBtn.disabled = true;
+            
+            // Simulate saving process
+            setTimeout(() => {
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Saved Successfully!';
+                submitBtn.style.background = 'linear-gradient(45deg, #10b981, #047857)';
+                
+                // Reset after 3 seconds
+                setTimeout(() => {
+                    submitBtn.innerHTML = originalBtnHTML;
+                    submitBtn.disabled = false;
+                    submitBtn.style.background = '';
+                }, 3000);
+            }, 1500);
+        });
+    </script>
 </body>
 </html>
