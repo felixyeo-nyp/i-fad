@@ -124,4 +124,7 @@ class FeedbackForm(FlaskForm):
 class ipForm(FlaskForm):
     source_ip = StringField("Source IP", validators=[DataRequired(), IPAddress()])
     destination_ip = StringField("Destination IP", validators=[DataRequired(), IPAddress()])
+    camera_ip = StringField('Camera IP', validators=[DataRequired(), IPAddress()])
+    amcrest_username = StringField('Amcrest Username', validators=[DataRequired()])
+    amcrest_password = PasswordField('Amcrest Password', validators=[DataRequired()])
 

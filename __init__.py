@@ -206,26 +206,50 @@ def check_feeding_time():
         time.sleep(1)  # Check every second
 
 def capture_frames():
-    cap = cv2.VideoCapture('rtsp://admin:fyp2024Fish34535@192.168.1.108:554/cam/realmonitor?channel=1&subtype=0')
-
-    if not cap.isOpened():
-        print("Warning: Cannot open video capture stream.")
-
-    global  freshest_frame
-    with freshest_frame_lock:
-        freshest_frame = FreshestFrame(cap)
-    global latest_processed_frame
     while not stop_event.is_set():
-        if not cap.isOpened():
-            time.sleep(1)
+        try:
+            with shelve.open('IP.db', 'c') as ip_db:
+                cam = ip_db.get('IP', {})
+                ip = cam.get('camera_ip')
+                user = cam.get('amcrest_username')
+                pw = cam.get('amcrest_password')
+
+                if not all([ip, user, pw]):
+                    print("Camera config incomplete, waiting...")
+                    time.sleep(5)
+                    continue  # Try again in a few seconds
+
+                rtsp_url = f"rtsp://{user}:{pw}@{ip}:554/cam/realmonitor?channel=1&subtype=0"
+                print(f"Connecting to RTSP stream: {rtsp_url}")
+        except Exception as e:
+            print(f"Error reading IP.db: {e}")
+            time.sleep(5)
             continue
-        # Wait for the newest frame
-        sequence_num, frame = freshest_frame.read(wait=True)
-        if frame is not None:
-            # Process the frame
-            with latest_processed_frame_lock:
-                latest_processed_frame = frame
-        time.sleep(0.03)  # Adjust to control frame rate (~30 FPS)
+
+        cap = cv2.VideoCapture(rtsp_url)
+
+        if not cap.isOpened():
+            print("Warning: Cannot open video stream. Retrying in 10s...")
+            time.sleep(10)
+            continue
+
+        global freshest_frame
+        with freshest_frame_lock:
+            freshest_frame = FreshestFrame(cap)
+
+        global latest_processed_frame
+        while not stop_event.is_set():
+            if not cap.isOpened():
+                break
+
+            sequence_num, frame = freshest_frame.read(wait=True)
+            if frame is not None:
+                with latest_processed_frame_lock:
+                    latest_processed_frame = frame
+
+            time.sleep(0.03)
+
+        cap.release()
 
 def process_frames():
     # define the dictionary to store the number of pellets
@@ -2065,7 +2089,10 @@ def set_ip():
     if request.method == 'POST' and setting.validate():
         source_ip = setting.source_ip.data
         destination_ip = setting.destination_ip.data
-        print(f"Source IP: {source_ip}, Destination IP: {destination_ip}")
+        camera_ip = setting.camera_ip.data
+        amcrest_username = setting.amcrest_username.data
+        amcrest_password = setting.amcrest_password.data
+        print(f"Source IP: {source_ip}, Destination IP: {destination_ip}, Camera IP: {camera_ip}, Username: {amcrest_username}, Password: {amcrest_password}")
 
         db = shelve.open('settings.db', 'w')
         port = db['Port']
@@ -2075,7 +2102,7 @@ def set_ip():
 
         send_udp_packet(source_ip, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
         db = shelve.open('IP.db', 'n')
-        db["IP"] = {"source":source_ip , "destination":destination_ip}
+        db["IP"] = {"source":source_ip , "destination":destination_ip, "camera_ip": camera_ip, "amcrest_username": amcrest_username, "amcrest_password": amcrest_password}
         db.close()
         return redirect(url_for('update_setting'))
 

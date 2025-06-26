@@ -16,19 +16,21 @@
         <form method="POST" action="/set_ip">
             {{ form.hidden_tag() }}
 
-            <div class="ip-input-group">
-                <label for="source_ip">Your Computer IP</label>
-                <div class="ip-input-with-icon">
-                    <i class="fas fa-desktop fa-icon"></i>
-                    {{ form.source_ip(class="ip-form-control", placeholder="E.g. 192.168.1.65") }}
+            <div class="ip-double-row">
+                <div class="ip-input-group half">
+                    <label for="source_ip">Your Computer IP</label>
+                    <div class="ip-input-with-icon">
+                        <i class="fas fa-desktop fa-icon"></i>
+                        {{ form.source_ip(class="ip-form-control", placeholder="E.g. 192.168.1.65") }}
+                    </div>
                 </div>
-            </div>
 
-            <div class="ip-input-group">
-                <label for="destination_ip">Feeding Machine IP</label>
-                <div class="ip-input-with-icon">
-                    <i class="fas fa-cog fa-icon"></i>
-                    {{ form.destination_ip(class="ip-form-control", placeholder="E.g. 192.168.1.18") }}
+                <div class="ip-input-group half">
+                    <label for="destination_ip">Feeding Machine IP</label>
+                    <div class="ip-input-with-icon">
+                        <i class="fas fa-cog fa-icon"></i>
+                        {{ form.destination_ip(class="ip-form-control", placeholder="E.g. 192.168.1.18") }}
+                    </div>
                 </div>
             </div>
 
@@ -36,9 +38,21 @@
                 <label for="camera_ip">Camera IP</label>
                 <div class="ip-input-with-icon">
                     <i class="fas fa-video fa-icon"></i>
-                    <!-- Disabled for now -->
-                    <input type="text" name="camera_ip" class="ip-form-control" placeholder="E.g. 192.168.1.108"
-                        disabled>
+                    {{ form.camera_ip(class="ip-form-control", placeholder="E.g. 192.168.1.108") }}
+                </div>
+            </div>
+            <div class="ip-input-group">
+                <label for="amcrest_username">Amcrest Username</label>
+                <div class="ip-input-with-icon">
+                    <i class="fas fa-user fa-icon"></i>
+                    {{ form.amcrest_username(class="ip-form-control", placeholder="E.g. admin") }}
+                </div>
+            </div>
+            <div class="ip-input-group">
+                <label for="amcrest_password">Amcrest Password</label>
+                <div class="ip-input-with-icon">
+                    <i class="fas fa-lock fa-icon"></i>
+                    {{ form.amcrest_password(class="ip-form-control", placeholder="Your Amcrest password") }}
                 </div>
             </div>
 
@@ -101,12 +115,23 @@
 
     .ip-form-container {
         width: 100%;
-        max-width: 500px;
+        max-width: 800px;
         background: var(--card-bg);
         border-radius: 16px;
         padding: 40px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         animation: slideInUp 0.5s ease-out both;
+    }
+
+    .ip-double-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .ip-double-row .half {
+        flex: 1 1 48%;
     }
 
     @keyframes slideInUp {
@@ -236,6 +261,14 @@
 
         .title-icon {
             font-size: 28px;
+        }
+
+        .ip-double-row {
+            flex-direction: column;
+        }
+
+        .ip-double-row .half {
+            flex: 1 1 100%;
         }
     }
 </style>
