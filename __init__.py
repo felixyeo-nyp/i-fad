@@ -381,8 +381,8 @@ def process_frames():
                     with shelve.open('currentcount.db', 'c') as db2:
                         db2['object_count'] = count  # Save the dictionary
                         db2.close()
-                except:
-                    print("Somethinh wrong")
+                except Exception as e:
+                    print(f"Failed to save pellet count to 'currentcount.db': {e}")
 
         # Check feeding timer and switch to stop feeding if required
         if feeding_timer is not None and feeding and starting_timer is not None:
@@ -2076,7 +2076,7 @@ def update_user(username):
     try:
         with shelve.open('users.db', 'w') as db:  # 'w' mode for read/write
             if username not in db:
-                flash('User not found.', 'danger')
+                
                 return redirect(url_for('retrieve_users'))
 
             user_data = db[username]  # Retrieve the current user data
@@ -2131,7 +2131,6 @@ def set_ip():
         camera_ip = setting.camera_ip.data
         amcrest_username = setting.amcrest_username.data
         amcrest_password = setting.amcrest_password.data
-        print(f"Source IP: {source_ip}, Destination IP: {destination_ip}, Camera IP: {camera_ip}, Username: {amcrest_username}, Password: {amcrest_password}")
 
         db = shelve.open('settings.db', 'w')
         port = db['Port']
