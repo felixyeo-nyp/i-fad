@@ -1573,34 +1573,55 @@ import re
 def update_setting():
     setting = configurationForm(request.form)
     mode = request.args.get("mode", "auto")
-    manual_form = request.form.get("manual_form")
+    
+    if request.method == 'POST':
+        if request.is_json:
+            data = request.get_json()
+            manual_form = data.get("manual_form")
+            manual_feed_action = data.get("manual_feed_action")
+        else:
+            manual_form = request.form.get("manual_form")
+            manual_feed_action = request.form.get("manual_feed_action")
 
-    if request.method == 'POST' and manual_form:
-        manual_feed_action = request.form.get('manual_feed_action')
+        if manual_form:
+            if manual_feed_action in ["start", "stop"]:
+                with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
+                    port = db.get('Port')
+                    server_isn = db.get('syn_ack_seq')
+                    if server_isn is None:
+                        msg = "⚠️ Missing 'syn_ack_seq' in settings. Please initialize it first."
+                        if request.is_json:
+                            return jsonify({"status": "error", "message": msg}), 400
+                        flash(msg, "danger")
+                        return redirect(url_for('update_setting', mode="manual"))
 
-        if manual_feed_action in ["start", "stop"]:
-            with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
-                port = db.get('Port')
-                server_isn = db.get('syn_ack_seq')
-                if server_isn is None:
-                    flash("⚠️ Missing 'syn_ack_seq' in settings. Please initialize it first.", "danger")
+                    server_ack = db.get('syn_ack_ack')
+                    ip_data = ip_db.get("IP", {})
+                    source_ip = ip_data.get("source")
+                    destination_ip = ip_data.get("destination")
+                    Time_Record_dict = db.get('Time_Record', {})
+                    db['Time_Record'] = Time_Record_dict
+
+                if manual_feed_action == "start":
+                    start_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                    if request.is_json:
+                        return jsonify({"status": "success", "message": "Manual feeding started."})
+                    flash("Manual feeding started.", "success")
                     return redirect(url_for('update_setting', mode="manual"))
-                server_ack = db.get('syn_ack_ack')
-                ip_data = ip_db.get("IP", {})
-                source_ip = ip_data.get("source")
-                destination_ip = ip_data.get("destination")
-                Time_Record_dict = db.get('Time_Record', {})
-                db['Time_Record'] = Time_Record_dict
 
-            if manual_feed_action == "start":
-                start_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-                flash("Manual feeding started.", "success")
+                elif manual_feed_action == "stop":
+                    stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                    if request.is_json:
+                        return jsonify({"status": "success", "message": "Manual feeding stopped."})
+                    flash("Manual feeding stopped.", "info")
+                    return redirect(url_for('update_setting', mode="manual"))
 
-            elif manual_feed_action == "stop":
-                stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-                flash("Manual feeding stopped.", "info")
-
+            if request.is_json:
+                return jsonify({"status": "error", "message": "Invalid manual feed action."}), 400
+            flash("Invalid manual feed action.", "warning")
             return redirect(url_for('update_setting', mode="manual"))
+        
+        return jsonify({"status": "error", "message": "Invalid manual feed action."}), 400
 
     elif request.method == 'POST' and setting.validate():
         pattern = r'^(?:[01]\d[0-5]\d|2[0-3][0-5]\d)$'
