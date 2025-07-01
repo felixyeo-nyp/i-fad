@@ -1571,13 +1571,12 @@ import re
 @app.route('/update', methods=['GET', 'POST'])
 @login_required
 def update_setting():
-
     setting = configurationForm(request.form)
-    print("check2")
-    if request.method == 'POST' and setting.validate():
+    mode = request.args.get("mode", "auto")
+    manual_form = request.form.get("manual_form")
+
+    if request.method == 'POST' and manual_form:
         manual_feed_action = request.form.get('manual_feed_action')
-        pattern = r'^(?:[01]\d[0-5]\d|2[0-3][0-5]\d)$'  # Matches HHMM format
-        print("check3")
 
         if manual_feed_action in ["start", "stop"]:
             with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
@@ -1585,7 +1584,7 @@ def update_setting():
                 server_isn = db.get('syn_ack_seq')
                 if server_isn is None:
                     flash("⚠️ Missing 'syn_ack_seq' in settings. Please initialize it first.", "danger")
-                    return redirect(url_for('update_setting'))
+                    return redirect(url_for('update_setting', mode="manual"))
                 server_ack = db.get('syn_ack_ack')
                 ip_data = ip_db.get("IP", {})
                 source_ip = ip_data.get("source")
@@ -1601,9 +1600,12 @@ def update_setting():
                 stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
                 flash("Manual feeding stopped.", "info")
 
-            return redirect(url_for('update_setting'))
+            return redirect(url_for('update_setting', mode="manual"))
 
-        elif re.match(pattern, setting.first_timer.data) and re.match(pattern, setting.second_timer.data):
+    elif request.method == 'POST' and setting.validate():
+        pattern = r'^(?:[01]\d[0-5]\d|2[0-3][0-5]\d)$'
+
+        if re.match(pattern, setting.first_timer.data) and re.match(pattern, setting.second_timer.data):
             try:
                 first_hour = int(setting.first_timer.data[:2])
                 first_minute = int(setting.first_timer.data[2:])
@@ -1611,14 +1613,11 @@ def update_setting():
                 second_hour = int(setting.second_timer.data[:2])
                 second_minute = int(setting.second_timer.data[2:])
 
-                # Validate ranges
                 if (6 <= first_hour <= 12) and (12 <= second_hour <= 24):
-                    print("check4")
                     time.sleep(0.5)
 
                     db = shelve.open('settings.db', 'c')
                     Time_Record_dict = db.get('Time_Record', {})
-
                     j = Time_Record_dict.get('Time_Record_Info')
 
                     j.set_first_timer(setting.first_timer.data)
@@ -1628,18 +1627,16 @@ def update_setting():
                         if setting.interval_minutes.data is not None or setting.interval_seconds.data is not None:
                             total_intervalinsec = 0
                             if setting.interval_minutes.data:
-                                total_intervalinsec += int(
-                                    setting.interval_minutes.data) * 60
+                                total_intervalinsec += int(setting.interval_minutes.data) * 60
                             if setting.interval_seconds.data:
                                 total_intervalinsec += int(setting.interval_seconds.data)
 
                             j.set_interval_seconds(total_intervalinsec)
-                            print(f"Updated interval time: {total_intervalinsec} seconds ({total_intervalinsec // 60} min {total_intervalinsec % 60} sec)")
-
+                            print(f"Updated interval time: {total_intervalinsec} seconds")
                         else:
                             j.set_interval_seconds(0)
                     except ValueError:
-                        print("Invalid interval input detected.")  # Debugging message
+                        print("Invalid interval input detected.")
 
                     j.set_pellets(setting.pellets.data)
 
@@ -1657,64 +1654,45 @@ def update_setting():
                     db.close()
 
                     feeding_duration = setting.minutes.data
-
-                    # Calculate the end time for the first feeding session
                     end_hour = first_hour + (first_minute + feeding_duration) // 60
                     end_minute = (first_minute + feeding_duration) % 60
-
-                    # Ensure it does not exceed 24:00
                     if end_hour >= 24:
                         end_hour = 24
                         end_minute = 0
 
                     encoded_byte = encode_time(0x01, first_hour, first_minute, end_hour, end_minute)
 
-                    # Calculate the end time for the second feeding session
                     end_hour2 = second_hour + (second_minute + feeding_duration) // 60
                     end_minute2 = (second_minute + feeding_duration) % 60
-
-                    # Ensure it does not exceed 24:00
                     if end_hour2 >= 24:
                         end_hour2 = 24
                         end_minute2 = 0
 
                     encoded_byte2 = encode_time(0x02, second_hour, second_minute, end_hour2, end_minute2)
 
-                    print(encoded_byte2)
-
-                    print(setting.first_timer.data)
                     with shelve.open("IP.db") as db:
-                        # Check if "IP" key exists
-                        if "IP" in db:
-                            ip_data = db["IP"]  # Retrieve the dictionary
-                            source_ip = ip_data.get("source", "Source IP not found")
-                            destination_ip = ip_data.get("destination", "Destination IP not found")
-                            print("Source IP:", source_ip)
-                            print("Destination IP:", destination_ip)
-                        else:
-                            print("No IP data found.")
-                    send_tcp_packet(encoded_byte, port, server_isn, server_ack,source_ip,destination_ip)
+                        ip_data = db.get("IP", {})
+                        source_ip = ip_data.get("source", "Source IP not found")
+                        destination_ip = ip_data.get("destination", "Destination IP not found")
+
+                    send_tcp_packet(encoded_byte, port, server_isn, server_ack, source_ip, destination_ip)
                     print(f"Encoded packet 1: {encoded_byte}")
+
                     time.sleep(2)
-                    db = shelve.open('settings.db', 'c')
-                    port = db['Port']
-                    server_isn = db['syn_ack_seq']
-                    server_ack = db['syn_ack_ack']
 
-                    db['Time_Record'] = Time_Record_dict
-                    db.close()
+                    with shelve.open('settings.db', 'c') as db:
+                        port = db['Port']
+                        server_isn = db['syn_ack_seq']
+                        server_ack = db['syn_ack_ack']
+                        db['Time_Record'] = Time_Record_dict
 
-                    print(setting.second_timer.data)
-                    send_tcp_packet(encoded_byte2, port, server_isn, server_ack,source_ip,destination_ip)
-                    print(f"Encoded packet 2: {encoded_byte}")
+                    send_tcp_packet(encoded_byte2, port, server_isn, server_ack, source_ip, destination_ip)
+                    print(f"Encoded packet 2: {encoded_byte2}")
 
                     user_email = session.get("user_email")
-                    first_timer = setting.first_timer.data
-                    second_timer = setting.second_timer.data
                     total_minute = setting.minutes.data // 60
+                    schedule_feeding_alerts(setting.first_timer.data, setting.second_timer.data, total_minute, user_email)
 
-                    # Pass total_seconds to the scheduling function
-                    schedule_feeding_alerts(first_timer, second_timer, total_minute, user_email)
                     return redirect(url_for('dashboard'))
                 else:
                     if not (6 <= first_hour <= 12):
@@ -1730,19 +1708,19 @@ def update_setting():
             if not re.match(pattern, setting.second_timer.data):
                 setting.second_timer.errors.append('Invalid time format. Please use HHMM format.')
 
-        return render_template('settings.html', form=setting)
+        return render_template('settings.html', form=setting, mode=mode)
+
     else:
         time.sleep(0.5)
-        Time_Record_dict = {}
         db = shelve.open('settings.db', 'r')
-        Time_Record_dict = db['Time_Record']
+        Time_Record_dict = db.get('Time_Record', {})
         db.close()
 
         j = Time_Record_dict.get('Time_Record_Info')
         setting.first_timer.data = j.get_first_timer()
         setting.second_timer.data = j.get_second_timer()
-        total_intervalinsec = j.get_interval_seconds()
 
+        total_intervalinsec = j.get_interval_seconds()
         if total_intervalinsec:
             setting.interval_minutes.data = total_intervalinsec // 60
             setting.interval_seconds.data = total_intervalinsec % 60
@@ -1751,10 +1729,9 @@ def update_setting():
             setting.interval_seconds.data = None
 
         setting.pellets.data = j.get_pellets()
-
         setting.minutes.data = j.get_seconds() // 60
 
-        return render_template('settings.html', form=setting)
+        return render_template('settings.html', form=setting, mode=mode)
 
 def send_feeding_complete_email(user_email, feed_time):
     with app.app_context():
@@ -1779,7 +1756,6 @@ def reschedule_feeding_alerts():
     feeding_duration = j.get_seconds()*60
 
     user_email = db.get("CurrentUserEmail")
-    print("User email in current User email:", user_email)
     if not user_email:
         email_db = db.get("Email_Data", {})
         email_instance = email_db.get("Email_Info")
@@ -2177,7 +2153,7 @@ def set_ip():
         db = shelve.open('IP.db', 'n')
         db["IP"] = {"source":source_ip , "destination":destination_ip, "camera_ip": camera_ip, "amcrest_username": amcrest_username, "amcrest_password": amcrest_password}
         db.close()
-        return redirect(url_for('update_setting'))
+        return redirect(url_for('update_setting', mode="auto"))
 
     return render_template('setIP.html', form=setting)
 
