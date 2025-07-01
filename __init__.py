@@ -785,6 +785,10 @@ def login():
                         session['username'] = username  # Save username for next steps
                         session['role'] = role
 
+                        # Save current logged in user email to shelve
+                        with shelve.open('settings.db', writeback=True) as settings_db:
+                            settings_db['CurrentUserEmail'] = user_email
+
                         # Send the code via email
                         msg =  flask_mail.Message(subject = 'MFA Code',
                                       recipients=[user_email])
@@ -928,6 +932,15 @@ def mfa_verify():
 @app.route('/logout')
 def logout():
     session.clear()
+
+    # Clear the stored user email from shelve
+    try:
+        with shelve.open('settings.db', writeback=True) as db:
+            if 'CurrentUserEmail' in db:
+                del db['CurrentUserEmail']
+    except Exception as e:
+        print(f"Error clearing CurrentUserEmail: {e}")
+
     flash('Please log in to access.', 'info')
     return redirect(url_for('login'))
 
@@ -1747,7 +1760,7 @@ def send_feeding_complete_email(user_email, feed_time):
     with app.app_context():
         try:
             msg = flask_mail.Message(subject="Feeding Complete",
-                          recipients=["testproject064@gmail.com"],
+                          recipients=user_email,
                           body= f"The {feed_time} has been completed",
                           )
             mail.send(msg)
@@ -1764,14 +1777,18 @@ def reschedule_feeding_alerts():
     first_timer = j.get_first_timer()
     second_timer = j.get_second_timer()
     feeding_duration = j.get_seconds()*60
-    try:
-        user_email = session.get("email")
-    except:
-        db = shelve.open('settings.db', 'r')
-        email_db = db.get("Email_Data", {"Email_Info":Email("iatfadteam@gmail.com","testproject064@gmail.com",'pmtu cilz uewx xqqi',3)})
+
+    user_email = db.get("CurrentUserEmail")
+    print("User email in current User email:", user_email)
+    if not user_email:
+        email_db = db.get("Email_Data", {})
         email_instance = email_db.get("Email_Info")
-        user_email = email_instance.get_recipient_email()
-        print("reschedule"+ user_email)
+        if email_instance and hasattr(email_instance, "get_recipient_email"):
+            user_email = email_instance.get_recipient_email()
+        else:
+            user_email = "iatfadteam@gmail.com"
+
+    print("Rescheduling emails for:", user_email)
 
     # Calculate new run_date for the first alert (next day)
     now = datetime.now()
@@ -1952,21 +1969,38 @@ def feedback():
     form = FeedbackForm()
     user_email = session.get('email')  # Retrieve the email from the session
     user_name = session.get('username')
+
     if not user_email:
         flash('Please log in to access the feedback form.', 'danger')
         return redirect(url_for('login'))
+    
+    try:
+        db = shelve.open('settings.db', 'r')
+        Email_dict = db.get('Email_Data', {})
+        recipient_email = "iatfadteam@gmail.com"  # Default fallback
+
+        if 'Email_Info' in Email_dict:
+            email_info = Email_dict['Email_Info']
+            if hasattr(email_info, 'get_recipient_email'):
+                configured_email = email_info.get_recipient_email()
+                if configured_email:
+                    recipient_email = configured_email
+        db.close()
+    except Exception as e:
+        recipient_email = "iatfadteam@gmail.com"
+        app.logger.warning(f"Could not retrieve recipient email, using fallback: {e}")
+
 
     if form.validate_on_submit():
         try:
-            administration = ["iatfadteam@gmail.com"] # change to admin email
             # Attempt to compose and send the email
             msg = flask_mail.Message(
                 subject="New Feedback",
                 sender=user_email,
-                recipients=administration,
+                recipients=[recipient_email],
                 body=f"Name: {user_name}\nEmail: {user_email}\nMessage:\n{form.message.data}"
             )
-            print(f"message sent to {administration}")
+            print(f"message sent to {recipient_email}")
             mail.send(msg)
 
             # Flash success message and redirect to dashboard
@@ -1980,6 +2014,7 @@ def feedback():
             app.logger.error(f'Feedback form error: {e}')
 
     return render_template('feedback.html', form=form)
+
 @app.route('/changed_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
@@ -2339,7 +2374,7 @@ if __name__ == '__main__':
         # create the basic email setup for user
         email_sender = 'iatfadteam@gmail.com'
         email_password = 'pmtu cilz uewx xqqi'
-        email_receiver = 'testproject064@gmail.com'
+        email_receiver = 'iatfadteam@gmail.com'
         email_setup = Email(email_sender, email_receiver, email_password, 3)
         Email_dict['Email_Info'] = email_setup
         db['Email_Data'] = Email_dict
