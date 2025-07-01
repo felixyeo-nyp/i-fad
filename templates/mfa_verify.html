@@ -19,43 +19,24 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body::before {
     content: "";
-    position: absolute;
-    inset: 0;
-    background-image: url("{{ url_for('static', filename='wall4.jpg') }}");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    z-index: -1;
+    position: absolute; inset: 0;
+    background: url("{{ url_for('static', filename='wall4.jpg') }}") center/cover no-repeat;
+    z-index: -1; opacity: 0; transform: scale(1.05);
     animation: bgZoomFade 1.5s ease-out forwards;
-    opacity: 0;
-    transform: scale(1.05);
   }
   @keyframes bgZoomFade { to { opacity: 1; transform: scale(1); } }
 
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #000;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
+    background: #000; height: 100vh;
+    display: flex; justify-content: center; align-items: center;
+    padding: 20px; overflow: hidden; position: relative;
   }
 
-  /* Card */
-  .container {
-    max-width: 600px;  /* increased from 400px */
-    width: 100%;
-    z-index: 1;
-  }
+  .container { max-width: 600px; width: 100%; z-index: 1; }
   .form-container {
-    background: #fff;
-    border-radius: 20px;
-    padding: 40px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-    border: 1px solid #e0e0e0;
+    background: #fff; border-radius: 20px; padding: 40px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2); border: 1px solid #e0e0e0;
     animation: fadeIn 0.8s ease-out;
   }
   @keyframes fadeIn { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
@@ -69,60 +50,46 @@
     margin-bottom: 30px;
   }
 
-  /* Alerts */
   .alert { padding: 12px; margin-bottom: 20px; border-radius: 8px; text-align: center; font-weight: 500; }
   .alert-success { background: #e8f5e9; color: #2e7d32; }
   .alert-error   { background: #ffebee; color: #c62828; }
 
-  /* Input + icon */
-  .input-with-icon {
-    position: relative; margin-bottom: 20px;
-  }
+  .input-with-icon { position: relative; margin-bottom: 20px; }
   .input-with-icon .fa-icon {
     position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
     color: #555; font-size: 20px; pointer-events: none;
   }
   .input-with-icon .form-control {
-    width: 100%;
-    padding: 14px 18px 14px 60px;  /* increased padding for larger height */
-    height: 60px;                   /* increased from 50px */
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #f9f9f9;
-    font-size: 18px;                /* increased from 16px */
-    color: #333;
-    transition: box-shadow .2s, border-color .2s;
+    width: 100%; padding: 14px 18px 14px 60px; height: 60px;
+    border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;
+    font-size: 18px; color: #333; transition: box-shadow .2s, border-color .2s;
   }
   .input-with-icon .form-control:focus {
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(52,152,219,0.2);
-    border-color: #3498db;
-    outline: none;
+    background: #fff; box-shadow: 0 0 0 3px rgba(52,152,219,0.2);
+    border-color: #3498db; outline: none;
   }
 
-  /* Button */
   .save-btn {
-    width: 100%;
-    padding: 16px 0;                /* increased from 12px */
-    border: none;
-    border-radius: 8px;
+    width: 100%; padding: 16px 0; border: none; border-radius: 8px;
     background: linear-gradient(45deg,#3498db,#8e44ad);
-    color: #fff;
-    font-size: 18px;                /* increased from 16px */
-    font-weight: 600;
-    cursor: pointer;
+    color: #fff; font-size: 18px; font-weight: 600; cursor: pointer;
     transition: opacity .2s;
   }
   .save-btn:hover { opacity: 0.9; }
+  .save-btn.disabled { opacity: 0.6; cursor: not-allowed; }
 
-  /* Responsive tweaks */
+  .resend-section {
+    text-align: center; margin-top: 20px;
+  }
+  #timer-container {
+    display: none; font-weight: bold; margin-left: 8px;
+  }
+
   @media (max-width: 576px) {
     .form-container { padding: 30px 20px; }
     .form-container h2 { font-size: 24px; }
     .input-with-icon .form-control {
-      height: 50px;
-      padding: 10px 12px 10px 44px;
-      font-size: 16px;
+      height: 50px; padding: 10px 12px 10px 44px; font-size: 16px;
     }
     .input-with-icon .fa-icon { left: 18px; font-size: 16px; }
     .save-btn { font-size: 16px; padding: 12px 0; }
@@ -134,6 +101,11 @@
     <h2>MFA Verification</h2>
     <p>Please enter the 6-digit authentication code sent to your email.</p>
 
+    <!-- OTP expiry timer -->
+    <div class="otp-expiry">
+      Code expires in <span id="otp-timer">60</span>s
+    </div>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, msg in messages %}
@@ -144,7 +116,6 @@
 
     <form method="POST" action="{{ url_for('mfa_verify') }}">
       {{ form.hidden_tag() }}
-
       <div class="input-with-icon">
         <i class="fas fa-key fa-icon"></i>
         {{ form.code(class="form-control", placeholder="Enter 6-digit code") }}
@@ -152,9 +123,98 @@
       {% if form.code.errors %}
         <div class="alert alert-error">{{ form.code.errors[0] }}</div>
       {% endif %}
-
       <button type="submit" class="save-btn">Verify</button>
     </form>
+
+    <div class="resend-section">
+      <button id="resend-btn" class="save-btn disabled" disabled>
+        Resend code (<span id="resend-timer">5</span>s)
+      </button>
+    </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initialize the two timers from Flask
+    let otpSec    = {{ expiry_timer }};  // 0–60
+    let resendSec = {{ resend_timer }};  // 0–5
+
+    const otpTimerEl    = document.getElementById('otp-timer');
+    const resendBtn     = document.getElementById('resend-btn');
+    const resendTimerEl = document.getElementById('resend-timer');
+
+    // Tick down the OTP validity
+    const otpInterval = setInterval(() => {
+      if (otpSec <= 0) {
+        clearInterval(otpInterval);
+        otpTimerEl.textContent = '00';
+      } else {
+        otpTimerEl.textContent = otpSec < 10 ? '0' + otpSec : otpSec;
+        otpSec--;
+      }
+    }, 1000);
+
+    // Tick down the resend lockout
+    function startResendCountdown() {
+      resendBtn.disabled = true;
+      resendBtn.classList.add('disabled');
+
+      const id = setInterval(() => {
+        if (resendSec <= 0) {
+          clearInterval(id);
+          resendBtn.disabled = false;
+          resendBtn.classList.remove('disabled');
+          resendBtn.textContent = 'Resend code';
+        } else {
+          resendTimerEl.textContent = resendSec;
+          resendSec--;
+        }
+      }, 1000);
+    }
+
+    // On load, if resendSec > 0, start countdown immediately
+    if (resendSec > 0) {
+      startResendCountdown();
+    } else {
+      resendBtn.disabled = false;
+      resendBtn.classList.remove('disabled');
+      resendBtn.textContent = 'Resend code';
+    }
+
+    // Hook up the click to both resend and reset both timers
+    resendBtn.addEventListener('click', () => {
+      // Reset both timers client-side
+      otpSec = 60;
+      resendSec = 5;
+
+      // Update UI instantly
+      otpTimerEl.textContent    = otpSec;
+      resendTimerEl.textContent = resendSec;
+      resendBtn.textContent     = `Resend code (${resendSec}s)`;
+
+      // restart both intervals
+      startResendCountdown();
+      clearInterval(otpInterval);  // clear old OTP interval
+      setInterval(() => {
+        if (otpSec <= 0) {
+          clearInterval(otpInterval);
+          otpTimerEl.textContent = '00';
+        } else {
+          otpTimerEl.textContent = otpSec < 10 ? '0' + otpSec : otpSec;
+          otpSec--;
+        }
+      }, 1000);
+
+      // Fire off the POST to actually resend on the server
+      fetch("{{ url_for('resend_mfa') }}", { method: 'POST' })
+        .then(res => {
+          if (res.status !== 204) {
+            return res.json().then(j => alert(j.error || 'Could not resend'));
+          }
+        })
+        .catch(() => alert('Network error, try again.'));
+    });
+  });
+</script>
 {% endblock %}

@@ -1,6 +1,7 @@
 # Flask-related imports #
 import flask_mail
-from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, send_file, session
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, send_file, session, \
+    current_app
 import socket
 import struct
 from scapy.all import *
@@ -49,6 +50,9 @@ import os
 # Security-related imports #
 from functools import wraps
 from flask import abort
+
+
+
 
 # Back-end codes for object detection & processing #
 if torch.cuda.is_available():
@@ -642,6 +646,34 @@ def open_shelve(filename, mode='c'):
         return None
 
 # Routes for Registration and Login using shelve
+def seed_admin_account():
+    with shelve.open('users.db', 'c') as db:
+        # 1. Check if any existing user already has the Admin role
+        has_admin = False
+        for key, user_data in db.items():
+            if user_data.get('role') == 'Admin':
+                has_admin = True
+                break
+
+        # 2. If no Admin found, create your static account
+        if not has_admin:
+            hashed = generate_password_hash('Password1!', method='pbkdf2:sha256')
+            admin = User(
+                username='admin',
+                email='testproject064@gmail.com',
+                password=hashed,
+                role='Admin'
+            )
+            db['admin'] = {
+                'username': admin.username,
+                'email':    admin.email,
+                'password': admin.password,
+                'role':     admin.role,
+                'status':   admin.status
+            }
+
+
+seed_admin_account()
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm()  # Create an instance of RegisterForm
@@ -671,7 +703,6 @@ def register():
                 return redirect(url_for('login'))
 
     return render_template('register.html', form=form)
-
 @app.route('/register2', methods=['GET', 'POST'])
 @login_required
 @role_required('Admin')
@@ -713,47 +744,150 @@ def login():
         try:
             with shelve.open('users.db', 'c') as db:
                 if username in db:
-                    user = db[username]  # Get the user data as a dictionary
-                    role = user['role']
-                    stored_password_hash = user['password']
-
-                    if check_password_hash(stored_password_hash, password):
-                        if user['status'] in ["Suspended", "Breached"]:  # Check user status
+                    user = db[username]
+                    # 1) Verify password
+                    if check_password_hash(user['password'], password):
+                        # 2) Block suspended/breached accounts
+                        if user['status'] in ["Suspended", "Breached"]:
                             flash(f"Your account is {user['status']}. Access denied.", "danger")
-                            return redirect(url_for("login"))
+                            return redirect(url_for('login'))
 
-                        # Passwords match, proceed with MFA
-                        user_email = user['email']
+                        # 3) Credentials OK → stash for MFA
+                        session['username'] = username
+                        session['email']    = user['email']
+                        session['role']     = user['role']
 
-                        # Generate a 6-digit MFA code
-                        mfa_code = str(secrets.randbelow(899999) + 100000)
-                        session['email'] = user_email  # Save email in session
-                        session['mfa_code'] = mfa_code  # Store in session
-                        session['username'] = username  # Save username for next steps
-                        session['role'] = role
-
-                        # Send the code via email
-                        msg =  flask_mail.Message(subject = 'MFA Code',
-                                      recipients=[user_email])
-                        msg.body = f'Your 6-digit MFA code is {mfa_code}'
-
-                        try:
-                            print(mfa_code)
-                            mail.send(msg)
-                            flash('An authentication code has been sent to your email.', 'info')
-                            print(session)
-                            return redirect(url_for('mfa_verify'))  # Redirect to MFA verification page
-                        except Exception as e:
-                            print(f"Email send error: {e}")
-                            flash("Error sending MFA", 'danger')
+                        # 4) Send them to the MFA page (which will call send_mfa_code())
+                        return redirect(url_for('mfa_verify'))
                     else:
                         flash('Invalid login credentials', 'danger')
                 else:
                     flash('Invalid login credentials', 'danger')
         except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
+            flash(f'Error: {e}', 'danger')
 
     return render_template('login.html', form=form)
+
+#send OTP (Login)
+
+def send_mfa_code():
+    # 1) Generate a fresh 6-digit code
+    code = str(secrets.randbelow(900_000) + 100_000)
+
+    # 2) Store it + UTC-aware timestamps in session as ISO strings
+    now = datetime.now(timezone.utc)
+    session['mfa_code']       = code
+    session['mfa_sent_at']    = now.isoformat()   # drives 60 s expiry
+    session['last_resend_at'] = now.isoformat()   # drives 5 s lockout
+
+    # 2a) Print it so you can test locally
+    print(f"[DEBUG] MFA code for {session.get('username','<no-user>')}: {code}")
+
+    # 3) Send via Flask-Mail’s send_message
+    mail.send_message(
+        subject    = current_app.config.get('MFA_SUBJECT', 'Your MFA Code'),
+        sender     = current_app.config['MAIL_DEFAULT_SENDER'],
+        recipients = [ session.get('email') ],
+        body       = (
+            f"Your 6-digit MFA code is {code}.\n\n"
+            "It will expire in 60 seconds."
+        )
+    )
+
+
+@app.route('/mfa-verify', methods=['GET', 'POST'])
+def mfa_verify():
+    # ensure they came via login
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    form = MFAForm()
+
+    # on first GET, send code
+    if request.method == 'GET':
+        send_mfa_code()
+        flash('An authentication code has been sent to your email.', 'info')
+
+    # on POST, validate OTP
+    if form.validate_on_submit():
+        entered  = form.code.data
+        sent_iso = session.get('mfa_sent_at')
+        now      = datetime.now(timezone.utc)
+
+        if not sent_iso:
+            flash('No code found. Please resend.', 'danger')
+            return redirect(url_for('mfa_verify'))
+
+        sent_at = datetime.fromisoformat(sent_iso)
+        # expiry check (60 s)
+        if (now - sent_at).total_seconds() > 60:
+            flash('Code expired. A new code is send.', 'danger')
+            return redirect(url_for('mfa_verify'))
+
+        if entered == session.get('mfa_code'):
+            # clear MFA bits
+            for k in ('mfa_code', 'mfa_sent_at', 'last_resend_at'):
+                session.pop(k, None)
+
+            # reload user and log in
+            with shelve.open('users.db', 'r') as db:
+                stored = db.get(session['username'])
+            user = User(
+                username= session['username'],
+                email=    stored['email'],
+                password= stored['password'],
+                role=     stored['role'],
+                status=   stored.get('status', 'Active')
+            )
+            login_user(user)
+            return redirect(url_for('dashboard'))
+
+        flash('Invalid authentication code', 'danger')
+
+    # compute OTP-expiry countdown (max 60 s)
+    expiry_timer = 0
+    sent_iso = session.get('mfa_sent_at')
+    if sent_iso:
+        sent    = datetime.fromisoformat(sent_iso)
+        elapsed = (datetime.now(timezone.utc) - sent).total_seconds()
+        expiry_timer = int(max(0, 60 - elapsed))
+
+    # compute resend-lockout countdown (max 5 s)
+    resend_timer = 0
+    last_iso = session.get('last_resend_at')
+    if last_iso:
+        last    = datetime.fromisoformat(last_iso)
+        elapsed = (datetime.now(timezone.utc) - last).total_seconds()
+        resend_timer = int(max(0, 5 - elapsed))
+
+    return render_template(
+        'mfa_verify.html',
+        form=           form,
+        expiry_timer=   expiry_timer,
+        resend_timer=   resend_timer
+    )
+
+
+@app.route('/resend-mfa', methods=['POST'])
+def resend_mfa():
+    last_iso = session.get('last_resend_at')
+    now      = datetime.now(timezone.utc)
+
+    # only allow resend if ≥ 5 s have passed
+    if not last_iso or (now - datetime.fromisoformat(last_iso)).total_seconds() >= 5:
+        send_mfa_code()
+        return ('', 204)
+
+    retry_after = 5 - (now - datetime.fromisoformat(last_iso)).total_seconds()
+    return (
+        jsonify({
+            'error': 'Too many requests',
+            'retry_after': int(retry_after)
+        }),
+        429
+    )
+
+
 
 @app.route('/forgetpassword', methods=['GET', 'POST'])
 def forget_password():
@@ -845,32 +979,7 @@ def reset_password():
 
     return render_template('reset_password.html', form=form)
 
-@app.route('/mfa-verify', methods=['GET', 'POST'])
-def mfa_verify():
-    form = MFAForm()
 
-    if form.validate_on_submit():
-        entered_code = form.code.data
-
-        if entered_code == session.get('mfa_code'):
-            # MFA passed, log the user in
-            username = session.get('username')
-
-            # Use context manager to ensure the shelf is properly opened and closed
-            with shelve.open('users.db', 'r') as db:
-                user_email = db[username]['email']
-                hashed_password = db[username]['password']
-                role = db[username]['role']
-
-            user = User(username, user_email, hashed_password, role)
-            login_user(user)
-            flash('You are now logged in', 'success')
-            session.pop('mfa_code')  # Clear MFA code after success
-            return redirect(url_for('dashboard'))
-        else:
-            flash('Invalid authentication code', 'danger')
-
-    return render_template('mfa_verify.html', form=form)
 
 @app.route('/logout')
 def logout():
@@ -1390,7 +1499,7 @@ def dashboard():
     response = get_pellet_data()
     pellet_data = response.json # Convert the Flask Response to JSON
 
-    with shelve.open('currentcount.db', 'r') as db2:
+    with shelve.open('currentcount.db', 'c') as db2:
         object_count = db2.get('object_count', 0)  # Get count dictionary, default to empty
         db2.close()
     latest_count = object_count  # Get latest count for label 1, default to 0 if not found
