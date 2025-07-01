@@ -4,138 +4,189 @@
 {% block content %}
 {% from "includes/_formHelper.html" import render_field %}
 
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            color: black;
-            background-image: url("{{ url_for('static', filename='wall4.jpg') }}");
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size 18px;
-        }
+<style>
+  /* background & centering */
+  body {
+    font-family: 'Arial', sans-serif;
+    color: black;
+    background-image: url("{{ url_for('static', filename='wall4.jpg') }}");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 18px;
+    margin: 0;
+  }
 
-        .form-container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 40px;
-            background-color: rgba(255, 255, 255);
-            border-radius: 15px;
-            box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.1);
+  /* form wrapper */
+  .form-container {
+    position: relative;
+    max-width: 600px;
+    width: 100%;
+    padding: 40px;
+    background-color: rgba(255,255,255,0.9);
+    border-radius: 15px;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+    border: 1px solid rgba(255,255,255,0.3);
+  }
 
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+  /* back arrow */
+  .back-btn {
+    position: absolute;
+    top: 20px; left: 20px;
+    font-size: 24px;
+    color: #0153FF;
+    text-decoration: none;
+  }
 
-        .form-container h2 {
-            font-size: 30px;
-            font-weight: bold;
-            text-align: center;
-            color: black;
-            margin-bottom: 20px;
-        }
+  .back-btn:hover {
+    color: #0033AA;
+  }
 
-        .form-container input {
-            width: 100%;
-            height: 45px;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 25px;
-            border: none;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            font-size: 16px;
-        }
+  /* header */
+  .form-container h2 {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  .form-container p.intro {
+    text-align: center;
+    margin-bottom: 30px;
+  }
 
-        .input-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
+  /* input + icon */
+  .input-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  .input-group-text {
+    padding: 0 15px;
+    font-size: 18px;
+    color: #0153FF;
+  }
+  .form-control {
+    flex: 1;
+    height: 45px;
+    padding: 0 15px;
+    border-radius: 25px;
+    border: 2px solid #0153FF;
+    font-size: 16px;
+  }
 
-        .input-group label {
-            font-size: 16px;
-            font-weight: bold;
-            color: black;
-            text-align: right;
-        }
+  /* buttons */
+  .save-btn {
+    background-color: #0153FF;
+    color: #FFF;
+    border: none;
+    padding: 12px 0;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 25px;
+    width: 100%;
+    margin-top: 20px;
+  }
+  .save-btn:hover {
+    background-color: #0033AA;
+  }
 
-        .input-group .input-group-text {
-            background-color: transparent;
-            border: none;
-            color: black;
-            height: 45px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+  /* timer text */
+  .timer-container {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: #333;
+  }
+  .timer-container p {
+    margin: 5px 0;
+  }
+</style>
 
-        #code{
-            border-radius: 25px;
-            border: solid 2px;
-            background-color: rgba(255, 255, 255, 0.2);
-            color: black;
-            font-size: 16px;
-        }
+<div class="form-container">
+  <a href="{{ url_for('forget_password') }}" class="back-btn">
+    <i class="fa-solid fa-arrow-left"></i>
+  </a>
 
-        .save-btn {
-            background-color: #E8E8E8;
-            color: #0153FF;
-            border: none;
-            padding: 10px 0;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 25px;
-            display: block;
-            margin-top: 30px;
-            width: 100px;
-            text-align: center;
+  <h2>MFA Verification</h2>
+  <p class="intro">Please enter the 6-digit authentication code sent to your email.</p>
 
-        }
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div>
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
 
-        .save-btn:hover {
-            background-color: #89CFF0;
-        }
+  <form method="POST" action="{{ url_for('mfa_verify2') }}">
+    {{ form.hidden_tag() }}
 
-        @media (max-width: 767px) {
-            .form-group label {
-                text-align: left;
-                width: 100%;
-                margin-bottom: 5px;
-            }
-        }
-    </style>
-
-    <div class="form-container">
-        <h2>MFA Verification 2</h2>
-        <p>Please enter the 6-digit authentication code sent to your email.</p>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div>
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">
-                            {{ message }}
-                        </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        {% endwith %}
-
-        <form method="POST" action="{{ url_for('mfa_verify2') }}">
-            {{ form.hidden_tag() }}
-            <div class="form-group">
-                {{ form.code.label(class="form-label") }}
-                {{ form.code(class="form-control", placeholder="Enter 6-digit code") }}
-                {% if form.code.errors %}
-                    <div class="text-danger">{{ form.code.errors[0] }}</div>
-                {% endif %}
-            </div>
-            <button type="submit" class="save-btn">Verify</button>
-        </form>
+    <div class="input-group">
+      <span class="input-group-text"><i class="fa-solid fa-key"></i></span>
+      {{ form.code(class="form-control", placeholder="Enter code") }}
     </div>
+    {% if form.code.errors %}
+      <div class="text-danger">{{ form.code.errors[0] }}</div>
+    {% endif %}
+
+    <button type="submit" class="save-btn">Verify</button>
+  </form>
+
+  <div class="timer-container">
+    {% if expiry_timer > 0 %}
+      <p>Code expires in <span id="expiry">{{ expiry_timer }}</span>s</p>
+    {% endif %}
+    {% if resend_timer > 0 %}
+      <p>Resend available in <span id="resend">{{ resend_timer }}</span>s</p>
+    {% else %}
+      <button id="resend-btn" class="save-btn" style="width:auto; padding:8px 20px; margin-top:10px;">
+        Resend code
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  // Countdown for expiry
+  const expiryEl = document.getElementById('expiry');
+  if (expiryEl) {
+    let t = parseInt(expiryEl.textContent, 10);
+    setInterval(() => {
+      if (t > 0) expiryEl.textContent = --t;
+    }, 1000);
+  }
+
+  // Countdown for resend
+  const resendEl = document.getElementById('resend');
+  if (resendEl) {
+    let r = parseInt(resendEl.textContent, 10);
+    const ri = setInterval(() => {
+      if (r > 0) resendEl.textContent = --r;
+      else {
+        clearInterval(ri);
+        // After timer hits zero, replace with a fresh button
+        window.location.reload();
+      }
+    }, 1000);
+  }
+
+  // AJAX resend button
+  const btn = document.getElementById('resend-btn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      fetch('{{ url_for("resend_mfa2") }}', { method: 'POST' })
+        .then(resp => {
+          if (resp.status === 204) window.location.reload();
+          else resp.json().then(js => alert(`Please wait ${js.retry_after}s`));
+        });
+    });
+  }
+</script>
 {% endblock %}

@@ -888,63 +888,149 @@ def resend_mfa():
     )
 
 
+#mfa for forget_password
+def send_reset_mfa_code():
+    """Generate/store a 6-digit code and email it for password reset MFA."""
+    code = str(secrets.randbelow(900_000) + 100_000)
+    now = datetime.now(timezone.utc)
+
+    session['reset_mfa_code']       = code
+    session['reset_mfa_sent_at']    = now.isoformat()   # drives 60s expiry
+    session['reset_last_resend_at'] = now.isoformat()   # drives 5s lockout
+
+    # Debug print
+    current_app.logger.debug(f"[DEBUG] Reset MFA code for {session.get('username')}: {code}")
+
+    # Send email
+    mail.send_message(
+        subject    = 'Your password‐reset MFA code',
+        sender     = current_app.config['MAIL_DEFAULT_SENDER'],
+        recipients = [ session['email'] ],
+        body       = (
+            f"Your 6-digit password reset code is {code}.\n\n"
+            "It will expire in 60 seconds."
+        )
+    )
+
+# ── 1) User submits “forget password” ────────────────────────────────────────
 
 @app.route('/forgetpassword', methods=['GET', 'POST'])
 def forget_password():
-    form = forgetpassword()  # Instantiate the form
+    form = forgetpassword()
     if form.validate_on_submit():
         foremail = form.email.data
 
         try:
             with shelve.open('users.db', 'r') as db:
-                for username, user_data in db.items():
-                    if user_data['email'] == foremail:
-                        user_email = foremail
-                        mfa_code = str(secrets.randbelow(899999) + 100000)
+                # find by email
+                match = next(
+                    (u for u, data in db.items() if data.get('email') == foremail),
+                    None
+                )
 
-                        # Store details in session
-                        session['mfa_code'] = mfa_code
-                        session['email'] = user_email
-                        session['username'] = username
-
-                        msg = flask_mail.Message(subject='MFA Code',
-                                      sender='iatfadteam@gmail.com',
-                                      recipients=[user_email])
-                        msg.body = f'Your 6-digit MFA code is {mfa_code}'
-                        mail.send(msg)
-                        flash('An authentication code has been sent to your email.', 'info')
-                        return redirect(url_for('mfa_verify2'))
-
-                        # Email not found
+            if not match:
                 flash('Email not found', 'danger')
+                return render_template('forget_password.html', form=form)
+
+            # stash user and email
+            session['username'] = match
+            session['email']    = foremail
+
+            # send the code and go to MFA page
+            send_reset_mfa_code()
+            flash('An authentication code has been sent to your email.', 'info')
+            return redirect(url_for('mfa_verify2'))
+
         except Exception as e:
-                    # Log the error and inform the user
-            app.logger.error(f"Error during password recovery: {str(e)}")
+            current_app.logger.error(f"Error during password recovery: {e}")
             flash('An internal error occurred. Please try again later.', 'danger')
 
     return render_template('forget_password.html', form=form)
 
+
+# ── 2) MFA verification for reset ────────────────────────────────────────────
+
 @app.route('/mfa-verify2', methods=['GET', 'POST'])
 def mfa_verify2():
+    # must’ve come from forget_password
+    if 'username' not in session or 'email' not in session:
+        flash('Please submit your email first.', 'warning')
+        return redirect(url_for('forget_password'))
+
     form = MFAForm()
 
+    # on first GET, we already sent in forget_password; skip resend here
+
     if form.validate_on_submit():
-        entered_code = form.code.data
+        entered = form.code.data
+        sent_iso = session.get('reset_mfa_sent_at')
+        now      = datetime.now(timezone.utc)
 
-        if entered_code == session.get('mfa_code'):
-            # MFA passed, redirect to reset password
-            flash('MFA verification successful. Please reset your password.', 'info')
-            return redirect(url_for('reset_password'))  # Redirect to reset password page
-        else:
-            flash('Invalid authentication code', 'danger')
+        # no code?
+        if not sent_iso:
+            flash('No code found. Please resend.', 'danger')
+            return redirect(url_for('mfa_verify2'))
 
-    return render_template('mfa_verify2.html', form=form)
+        sent_at = datetime.fromisoformat(sent_iso)
+        # expiry check
+        if (now - sent_at).total_seconds() > 60:
+            flash('Code expired. A new code has been sent.', 'danger')
+            send_reset_mfa_code()
+            return redirect(url_for('mfa_verify2'))
+
+        if entered == session.get('reset_mfa_code'):
+            # clear only MFA bits
+            for k in ('reset_mfa_code','reset_mfa_sent_at','reset_last_resend_at'):
+                session.pop(k, None)
+            flash('MFA verification successful. Please reset your password.', 'success')
+            return redirect(url_for('reset_password'))
+
+        flash('Invalid authentication code', 'danger')
+
+    # compute timers for the template
+    def _timer(key, limit):
+        iso = session.get(key)
+        if not iso: return 0
+        elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(iso)).total_seconds()
+        return int(max(0, limit - elapsed))
+
+    expiry_timer = _timer('reset_mfa_sent_at', 60)
+    resend_timer = _timer('reset_last_resend_at', 5)
+
+    return render_template(
+        'mfa_verify2.html',
+        form=         form,
+        expiry_timer= expiry_timer,
+        resend_timer= resend_timer
+    )
+
+# ── 3) AJAX endpoint to resend reset‐MFA ─────────────────────────────────────
+
+@app.route('/resend-mfa2', methods=['POST'])
+def resend_mfa2():
+    last_iso = session.get('reset_last_resend_at')
+    now      = datetime.now(timezone.utc)
+
+    if not last_iso or (now - datetime.fromisoformat(last_iso)).total_seconds() >= 5:
+        send_reset_mfa_code()
+        return ('', 204)
+
+    retry_after = 5 - (now - datetime.fromisoformat(last_iso)).total_seconds()
+    return (
+        jsonify({
+            'error': 'Too many requests',
+            'retry_after': int(retry_after)
+        }),
+        429
+    )
+
+# ── 4) Finally, reset the password ───────────────────────────────────────────
 
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
-    form = updatepasswordForm()  # Form for password reset
+    form = updatepasswordForm()
 
-    # Ensure the user has completed MFA
+    # guard: must’ve done MFA
     if 'username' not in session or 'email' not in session:
         flash('You must verify your identity before resetting your password.', 'danger')
         return redirect(url_for('forget_password'))
@@ -952,30 +1038,28 @@ def reset_password():
     username = session['username']
 
     if form.validate_on_submit():
-        new_password = form.password.data
-        confirm_password = form.confirm_password.data
+        p1 = form.password.data
+        p2 = form.confirm_password.data
 
-        if new_password != confirm_password:
+        if p1 != p2:
             flash('Passwords do not match.', 'danger')
         else:
             try:
                 with shelve.open('users.db', 'w') as db:
-                    # Update the user's password
                     if username in db:
-                        user_data = db[username]
-                        hashed_password = generate_password_hash(new_password, method='pbkdf2:sha256')
-                        user_data['password'] = hashed_password
-                        db[username] = user_data  # Save updated password
-
+                        user = db[username]
+                        user['password'] = generate_password_hash(p1, method='pbkdf2:sha256')
+                        db[username] = user
                         flash('Your password has been updated. Please log in with the new password.', 'success')
-                        # Clear session data after password reset
                         session.clear()
-                        return redirect(url_for('login'))  # Redirect to login page
+                        return redirect(url_for('login'))
                     else:
-                        flash('User not found. Please start the process again.', 'danger')
+                        flash('User not found. Please start again.', 'danger')
                         return redirect(url_for('forget_password'))
+
             except Exception as e:
-                flash(f'An error occurred: {str(e)}', 'danger')
+                current_app.logger.error(f"Error resetting password: {e}")
+                flash('An error occurred. Please try again.', 'danger')
 
     return render_template('reset_password.html', form=form)
 
