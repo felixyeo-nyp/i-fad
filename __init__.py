@@ -1573,18 +1573,15 @@ import re
 def update_setting():
     setting = configurationForm(request.form)
     mode = request.args.get("mode", "auto")
-    
+
     if request.method == 'POST':
         if request.is_json:
+            # Manual feed
             data = request.get_json()
             manual_form = data.get("manual_form")
             manual_feed_action = data.get("manual_feed_action")
-        else:
-            manual_form = request.form.get("manual_form")
-            manual_feed_action = request.form.get("manual_feed_action")
 
-        if manual_form:
-            if manual_feed_action in ["start", "stop"]:
+            if manual_form and manual_feed_action in ["start", "stop"]:
                 with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
                     port = db.get('Port')
                     server_isn = db.get('syn_ack_seq')
@@ -1592,7 +1589,6 @@ def update_setting():
                         msg = "⚠️ Missing 'syn_ack_seq' in settings. Please initialize it first."
                         if request.is_json:
                             return jsonify({"status": "error", "message": msg}), 400
-                        flash(msg, "danger")
                         return redirect(url_for('update_setting', mode="manual"))
 
                     server_ack = db.get('syn_ack_ack')
@@ -1604,161 +1600,140 @@ def update_setting():
 
                 if manual_feed_action == "start":
                     start_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-                    if request.is_json:
-                        return jsonify({"status": "success", "message": "Manual feeding started."})
-                    flash("Manual feeding started.", "success")
-                    return redirect(url_for('update_setting', mode="manual"))
+                    return jsonify({"status": "success", "message": "Manual feeding started."})
 
                 elif manual_feed_action == "stop":
                     stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-                    if request.is_json:
-                        return jsonify({"status": "success", "message": "Manual feeding stopped."})
-                    flash("Manual feeding stopped.", "info")
-                    return redirect(url_for('update_setting', mode="manual"))
+                    return jsonify({"status": "success", "message": "Manual feeding stopped."})
 
-            if request.is_json:
-                return jsonify({"status": "error", "message": "Invalid manual feed action."}), 400
-            flash("Invalid manual feed action.", "warning")
-            return redirect(url_for('update_setting', mode="manual"))
-        
-        return jsonify({"status": "error", "message": "Invalid manual feed action."}), 400
+            return jsonify({"status": "error", "message": "Invalid manual feed action."}), 400
 
-    elif request.method == 'POST' and setting.validate():
-        pattern = r'^(?:[01]\d[0-5]\d|2[0-3][0-5]\d)$'
-
-        if re.match(pattern, setting.first_timer.data) and re.match(pattern, setting.second_timer.data):
-            try:
-                first_hour = int(setting.first_timer.data[:2])
-                first_minute = int(setting.first_timer.data[2:])
-
-                second_hour = int(setting.second_timer.data[:2])
-                second_minute = int(setting.second_timer.data[2:])
-
-                if (6 <= first_hour <= 12) and (12 <= second_hour <= 24):
-                    time.sleep(0.5)
-
-                    db = shelve.open('settings.db', 'c')
-                    Time_Record_dict = db.get('Time_Record', {})
-                    j = Time_Record_dict.get('Time_Record_Info')
-
-                    j.set_first_timer(setting.first_timer.data)
-                    j.set_second_timer(setting.second_timer.data)
-
-                    try:
-                        if setting.interval_minutes.data is not None or setting.interval_seconds.data is not None:
-                            total_intervalinsec = 0
-                            if setting.interval_minutes.data:
-                                total_intervalinsec += int(setting.interval_minutes.data) * 60
-                            if setting.interval_seconds.data:
-                                total_intervalinsec += int(setting.interval_seconds.data)
-
-                            j.set_interval_seconds(total_intervalinsec)
-                            print(f"Updated interval time: {total_intervalinsec} seconds")
-                        else:
-                            j.set_interval_seconds(0)
-                    except ValueError:
-                        print("Invalid interval input detected.")
-
-                    j.set_pellets(setting.pellets.data)
-
-                    if setting.minutes.data is not None:
-                        total_seconds = int(setting.minutes.data * 60)
-                        j.set_seconds(total_seconds)
-                    else:
-                        j.set_seconds(0)
-
-                    port = db['Port']
-                    server_isn = db['syn_ack_seq']
-                    server_ack = db['syn_ack_ack']
-
-                    db['Time_Record'] = Time_Record_dict
-                    db.close()
-
-                    feeding_duration = setting.minutes.data
-                    end_hour = first_hour + (first_minute + feeding_duration) // 60
-                    end_minute = (first_minute + feeding_duration) % 60
-                    if end_hour >= 24:
-                        end_hour = 24
-                        end_minute = 0
-
-                    encoded_byte = encode_time(0x01, first_hour, first_minute, end_hour, end_minute)
-
-                    end_hour2 = second_hour + (second_minute + feeding_duration) // 60
-                    end_minute2 = (second_minute + feeding_duration) % 60
-                    if end_hour2 >= 24:
-                        end_hour2 = 24
-                        end_minute2 = 0
-
-                    encoded_byte2 = encode_time(0x02, second_hour, second_minute, end_hour2, end_minute2)
-
-                    with shelve.open("IP.db") as db:
-                        ip_data = db.get("IP", {})
-                        source_ip = ip_data.get("source", "Source IP not found")
-                        destination_ip = ip_data.get("destination", "Destination IP not found")
-
-                    send_tcp_packet(encoded_byte, port, server_isn, server_ack, source_ip, destination_ip)
-                    print(f"Encoded packet 1: {encoded_byte}")
-
-                    time.sleep(2)
-
-                    with shelve.open('settings.db', 'c') as db:
-                        port = db['Port']
-                        server_isn = db['syn_ack_seq']
-                        server_ack = db['syn_ack_ack']
-                        db['Time_Record'] = Time_Record_dict
-
-                    send_tcp_packet(encoded_byte2, port, server_isn, server_ack, source_ip, destination_ip)
-                    print(f"Encoded packet 2: {encoded_byte2}")
-
-                    user_email = session.get("user_email")
-                    total_minute = setting.minutes.data // 60
-                    schedule_feeding_alerts(setting.first_timer.data, setting.second_timer.data, total_minute, user_email)
-
-                    return redirect(url_for('dashboard'))
-                else:
-                    if not (6 <= first_hour <= 12):
-                        setting.first_timer.errors.append('First timer should be between 0600 and 1200.')
-                    if not (12 <= second_hour <= 24):
-                        setting.second_timer.errors.append('Second timer should be between 1200 and 2400.')
-            except ValueError:
-                setting.first_timer.errors.append('Invalid time format. Please use HHMM format.')
-                setting.second_timer.errors.append('Invalid time format. Please use HHMM format.')
         else:
-            if not re.match(pattern, setting.first_timer.data):
-                setting.first_timer.errors.append('Invalid time format. Please use HHMM format.')
-            if not re.match(pattern, setting.second_timer.data):
-                setting.second_timer.errors.append('Invalid time format. Please use HHMM format.')
+            # Auto feed
+            if setting.validate():
+                pattern = r'^(?:[01]\d[0-5]\d|2[0-3][0-5]\d)$'
 
-        return render_template('settings.html', form=setting, mode=mode)
+                if re.match(pattern, setting.first_timer.data) and re.match(pattern, setting.second_timer.data):
+                    try:
+                        first_hour = int(setting.first_timer.data[:2])
+                        first_minute = int(setting.first_timer.data[2:])
+                        second_hour = int(setting.second_timer.data[:2])
+                        second_minute = int(setting.second_timer.data[2:])
 
-    else:
-        time.sleep(0.5)
-        db = shelve.open('settings.db', 'r')
-        Time_Record_dict = db.get('Time_Record', {})
-        db.close()
+                        if (6 <= first_hour <= 12) and (12 <= second_hour <= 24):
+                            time.sleep(0.5)
+                            db = shelve.open('settings.db', 'c')
+                            Time_Record_dict = db.get('Time_Record', {})
+                            j = Time_Record_dict.get('Time_Record_Info')
 
-        j = Time_Record_dict.get('Time_Record_Info')
-        setting.first_timer.data = j.get_first_timer()
-        setting.second_timer.data = j.get_second_timer()
+                            j.set_first_timer(setting.first_timer.data)
+                            j.set_second_timer(setting.second_timer.data)
 
-        total_intervalinsec = j.get_interval_seconds()
-        if total_intervalinsec:
+                            #  Feeding interval check
+                            try:
+                                if setting.interval_minutes.data is not None or setting.interval_seconds.data is not None:
+                                    total_intervalinsec = 0
+                                    if setting.interval_minutes.data:
+                                        total_intervalinsec += int(setting.interval_minutes.data) * 60
+                                    if setting.interval_seconds.data:
+                                        total_intervalinsec += int(setting.interval_seconds.data)
+
+                                    j.set_interval_seconds(total_intervalinsec)
+                                    print(f"Updated interval time: {total_intervalinsec} seconds")
+                                else:
+                                    j.set_interval_seconds(0)
+                            except ValueError:
+                                print("Invalid interval input detected.")
+
+                            j.set_pellets(setting.pellets.data)
+
+                            # Feeding Duration in minutes only
+                            if setting.minutes.data is not None:
+                                total_seconds = int(setting.minutes.data * 60)
+                                j.set_seconds(total_seconds)
+                            else:
+                                j.set_seconds(0)
+
+                            port = db['Port']
+                            server_isn = db['syn_ack_seq']
+                            server_ack = db['syn_ack_ack']
+                            db['Time_Record'] = Time_Record_dict
+                            db.close()
+
+                            # Encode first feed time
+                            feeding_duration = setting.minutes.data
+                            end_hour = first_hour + (first_minute + feeding_duration) // 60
+                            end_minute = (first_minute + feeding_duration) % 60
+                            if end_hour >= 24:
+                                end_hour, end_minute = 24, 0
+                            encoded_byte = encode_time(0x01, first_hour, first_minute, end_hour, end_minute)
+
+                            # Encode second feed time
+                            end_hour2 = second_hour + (second_minute + feeding_duration) // 60
+                            end_minute2 = (second_minute + feeding_duration) % 60
+                            if end_hour2 >= 24:
+                                end_hour2, end_minute2 = 24, 0
+                            encoded_byte2 = encode_time(0x02, second_hour, second_minute, end_hour2, end_minute2)
+
+                            with shelve.open("IP.db") as db:
+                                ip_data = db.get("IP", {})
+                                source_ip = ip_data.get("source", "Source IP not found")
+                                destination_ip = ip_data.get("destination", "Destination IP not found")
+
+                            send_tcp_packet(encoded_byte, port, server_isn, server_ack, source_ip, destination_ip)
+                            print(f"Encoded packet 1: {encoded_byte}")
+                            time.sleep(2)
+                            send_tcp_packet(encoded_byte2, port, server_isn, server_ack, source_ip, destination_ip)
+                            print(f"Encoded packet 2: {encoded_byte2}")
+
+                            user_email = session.get("email")
+                            total_minute = setting.minutes.data // 60
+                            schedule_feeding_alerts(setting.first_timer.data, setting.second_timer.data, total_minute, user_email)
+
+                            return redirect(url_for('dashboard'))
+                        else:
+                            if not (6 <= first_hour <= 12):
+                                setting.first_timer.errors.append('First timer should be between 0600 and 1200.')
+                            if not (12 <= second_hour <= 24):
+                                setting.second_timer.errors.append('Second timer should be between 1200 and 2400.')
+                    except ValueError:
+                        setting.first_timer.errors.append('Invalid time format. Please use HHMM format.')
+                        setting.second_timer.errors.append('Invalid time format. Please use HHMM format.')
+                else:
+                    if not re.match(pattern, setting.first_timer.data):
+                        setting.first_timer.errors.append('Invalid time format. Please use HHMM format.')
+                    if not re.match(pattern, setting.second_timer.data):
+                        setting.second_timer.errors.append('Invalid time format. Please use HHMM format.')
+
+            return render_template('settings.html', form=setting, mode=mode)
+
+    # Not a POST request, load existing settings
+    time.sleep(0.5)
+    db = shelve.open('settings.db', 'r')
+    Time_Record_dict = db.get('Time_Record', {})
+    db.close()
+
+    j = Time_Record_dict.get('Time_Record_Info')
+    setting.first_timer.data = j.get_first_timer()
+    setting.second_timer.data = j.get_second_timer()
+
+    total_intervalinsec = j.get_interval_seconds()
+    if total_intervalinsec:
             setting.interval_minutes.data = total_intervalinsec // 60
             setting.interval_seconds.data = total_intervalinsec % 60
-        else:
-            setting.interval_minutes.data = None
-            setting.interval_seconds.data = None
+    else:
+        setting.interval_minutes.data = None
+        setting.interval_seconds.data = None
+    setting.pellets.data = j.get_pellets()
+    setting.minutes.data = j.get_seconds() // 60
 
-        setting.pellets.data = j.get_pellets()
-        setting.minutes.data = j.get_seconds() // 60
-
-        return render_template('settings.html', form=setting, mode=mode)
+    return render_template('settings.html', form=setting, mode=mode)
 
 def send_feeding_complete_email(user_email, feed_time):
     with app.app_context():
         try:
             msg = flask_mail.Message(subject="Feeding Complete",
-                          recipients=user_email,
+                          recipients=[user_email],
                           body= f"The {feed_time} has been completed",
                           )
             mail.send(msg)

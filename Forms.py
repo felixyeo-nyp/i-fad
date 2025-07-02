@@ -28,7 +28,7 @@ class configurationForm(FlaskForm):
 
     pellets = IntegerField("", validators=[
         DataRequired(),
-        NumberRange(min=100, max=1000, message="Pellets must be between 100 and 1000 grams.")
+        NumberRange(min=1, max=1000, message="Pellets must be between 1 and 1000 grams.")
     ])
     minutes = IntegerField("", validators=[
         Optional(),
