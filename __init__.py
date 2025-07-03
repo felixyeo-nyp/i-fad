@@ -19,7 +19,7 @@ import win32service
 import win32event
 import servicemanager
 import subprocess
-from Forms import configurationForm, emailForm, LoginForm, RegisterForm,updatepasswordForm, MFAForm, FeedbackForm,updateemailrole, forgetpassword , ipForm
+from Forms import configurationForm, emailForm, LoginForm, RegisterForm,updatepasswordForm, MFAForm, FeedbackForm, updateemailrole, forgetpassword , ipForm
 from flask_mail import Mail, Message
 import random
 import secrets
@@ -757,7 +757,7 @@ def login():
                         session['email']    = user['email']
                         session['role']     = user['role']
 
-                        # 4) Send them to the MFA page (which will call send_mfa_code())
+                        # 4) Send them to the MFA page
                         return redirect(url_for('mfa_verify'))
                     else:
                         flash('Invalid login credentials', 'danger')
@@ -768,68 +768,108 @@ def login():
 
     return render_template('login.html', form=form)
 
-#send OTP (Login)
+
+# send OTP (Login)
+from datetime import datetime, timezone
+import secrets
+from flask import session, current_app, render_template
 
 def send_mfa_code():
-    # 1) Generate a fresh 6-digit code
+    # 1) generate code & timestamps
     code = str(secrets.randbelow(900_000) + 100_000)
-
-    # 2) Store it + UTC-aware timestamps in session as ISO strings
     now = datetime.now(timezone.utc)
     session['mfa_code']       = code
-    session['mfa_sent_at']    = now.isoformat()   # drives 60 s expiry
-    session['last_resend_at'] = now.isoformat()   # drives 5 s lockout
+    session['mfa_sent_at']    = now.isoformat()
+    session['last_resend_at'] = now.isoformat()
+    current_app.logger.debug(f"[DEBUG] Login MFA code is: {code}")
 
-    # 2a) Print it so you can test locally
-    print(f"[DEBUG] MFA code for {session.get('username','<no-user>')}: {code}")
-
-    # 3) Send via Flask-Mail’s send_message
-    mail.send_message(
-        subject    = current_app.config.get('MFA_SUBJECT', 'Your MFA Code'),
-        sender     = current_app.config['MAIL_DEFAULT_SENDER'],
-        recipients = [ session.get('email') ],
-        body       = (
-            f"Your 6-digit MFA code is {code}.\n\n"
-            "It will expire in 60 seconds."
-        )
+    # 2) build plain-text and HTML bodies
+    text_body = (
+        f"{current_app.config.get('APP_NAME','Your App')} MFA Verification\n\n"
+        f"Your 6-digit code is: {code}\n"
+        f"It expires in 60 seconds.\n\n"
+        "If you didn’t request this, ignore this email."
     )
+
+    html_body = render_template(
+        'email/login_mfa.html',
+        app_name=current_app.config.get('APP_NAME', 'Your App'),
+        code=code,
+        expires=60,
+        year=now.year
+    )
+
+    # 3) send via Flask-Mail’s send_message helper
+    try:
+        mail.send_message(
+            subject    = current_app.config.get('MFA_SUBJECT', 'Your MFA Code'),
+            sender     = current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients = [ session.get('email') ],
+            body       = text_body,
+            html       = html_body
+        )
+        return True
+
+    except Exception as e:
+        current_app.logger.error(f"[ERROR] Failed to send MFA email: {e}")
+        return False
+
 
 
 @app.route('/mfa-verify', methods=['GET', 'POST'])
 def mfa_verify():
-    # ensure they came via login
+    # 1) Ensure user just logged in
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    form = MFAForm()
+    form     = MFAForm()
+    now      = datetime.now(timezone.utc)
+    sent_iso = session.get('mfa_sent_at')
 
-    # on first GET, send code
+    # 2) Check if existing code is expired
+    expired = True
+    if sent_iso:
+        sent_at = datetime.fromisoformat(sent_iso)
+        expired = (now - sent_at).total_seconds() > 60
+
+    # 3) On GET: generate & send when missing or expired
     if request.method == 'GET':
-        send_mfa_code()
-        flash('An authentication code has been sent to your email.', 'info')
+        if not sent_iso or expired:
+            if not send_mfa_code():
+                flash(
+                    "Unable to send authentication code right now. "
+                    "Please try logging in again later.",
+                    'danger'
+                )
+                return redirect(url_for('login'))
 
-    # on POST, validate OTP
+            # only flash the “code sent” info on the very first GET
+            if not sent_iso:
+                flash('An authentication code has been sent to your email.', 'info')
+            # if expired, we’re re-sending silently (the POST already showed “Code expired…”)
+
+    # 4) On POST: validate the code
     if form.validate_on_submit():
-        entered  = form.code.data
+        entered = form.code.data
         sent_iso = session.get('mfa_sent_at')
-        now      = datetime.now(timezone.utc)
 
         if not sent_iso:
-            flash('No code found. Please resend.', 'danger')
+            flash('No code found. Please wait for the new one.', 'danger')
             return redirect(url_for('mfa_verify'))
 
         sent_at = datetime.fromisoformat(sent_iso)
-        # expiry check (60 s)
+        now     = datetime.now(timezone.utc)
+
         if (now - sent_at).total_seconds() > 60:
-            flash('Code expired. A new code is send.', 'danger')
+            flash('Code expired. A new code has been sent.', 'danger')
             return redirect(url_for('mfa_verify'))
 
         if entered == session.get('mfa_code'):
-            # clear MFA bits
+            # clear MFA session data
             for k in ('mfa_code', 'mfa_sent_at', 'last_resend_at'):
                 session.pop(k, None)
 
-            # reload user and log in
+            # reload user object and log them in
             with shelve.open('users.db', 'r') as db:
                 stored = db.get(session['username'])
             user = User(
@@ -844,18 +884,15 @@ def mfa_verify():
 
         flash('Invalid authentication code', 'danger')
 
-    # compute OTP-expiry countdown (max 60 s)
+    # 5) Compute timers for template rendering
     expiry_timer = 0
-    sent_iso = session.get('mfa_sent_at')
-    if sent_iso:
+    if (sent_iso := session.get('mfa_sent_at')):
         sent    = datetime.fromisoformat(sent_iso)
         elapsed = (datetime.now(timezone.utc) - sent).total_seconds()
         expiry_timer = int(max(0, 60 - elapsed))
 
-    # compute resend-lockout countdown (max 5 s)
     resend_timer = 0
-    last_iso = session.get('last_resend_at')
-    if last_iso:
+    if (last_iso := session.get('last_resend_at')):
         last    = datetime.fromisoformat(last_iso)
         elapsed = (datetime.now(timezone.utc) - last).total_seconds()
         resend_timer = int(max(0, 5 - elapsed))
@@ -866,8 +903,6 @@ def mfa_verify():
         expiry_timer=   expiry_timer,
         resend_timer=   resend_timer
     )
-
-
 @app.route('/resend-mfa', methods=['POST'])
 def resend_mfa():
     last_iso = session.get('last_resend_at')
@@ -2288,6 +2323,8 @@ if __name__ == '__main__':
         app.config['MAIL_USERNAME'] = 'iatfadteam@gmail.com'
         app.config['MAIL_PASSWORD'] = 'pmtu cilz uewx xqqi'
         app.config['MAIL_DEFAULT_SENDER'] = ('Admin', 'iatfadteam@gmail.com')
+
+        store_Feedback = FeedbackStore()
 
         mail = Mail(app)
         # newly added read config email from database

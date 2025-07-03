@@ -1,3 +1,4 @@
+{# templates/mfa_verify.html #}
 {% extends "base.html" %}
 {% block title %}MFA Verification{% endblock %}
 
@@ -79,10 +80,17 @@
   .save-btn.disabled { opacity: 0.6; cursor: not-allowed; }
 
   .resend-section {
-    text-align: center; margin-top: 20px;
+    text-align: center; margin-top: 20px; font-size: 16px; color: #555;
   }
-  #timer-container {
-    display: none; font-weight: bold; margin-left: 8px;
+  .resend-link {
+    color: #3498db; text-decoration: none; font-weight: 600; cursor: pointer;
+    margin-left: 4px;
+  }
+  .resend-link.disabled {
+    color: #aaa; pointer-events: none;
+  }
+  #resend-timer {
+    font-weight: bold; margin-left: 6px; display: inline-block;
   }
 
   @media (max-width: 576px) {
@@ -101,7 +109,6 @@
     <h2>MFA Verification</h2>
     <p>Please enter the 6-digit authentication code sent to your email.</p>
 
-    <!-- OTP expiry timer -->
     <div class="otp-expiry">
       Code expires in <span id="otp-timer">60</span>s
     </div>
@@ -127,24 +134,23 @@
     </form>
 
     <div class="resend-section">
-      <button id="resend-btn" class="save-btn disabled" disabled>
-        Resend code (<span id="resend-timer">5</span>s)
-      </button>
+      <span>Didn't receive a code?</span>
+      <a href="#" id="resend-link" class="resend-link disabled">Resend</a>
+      <span id="resend-timer">(5s)</span>
     </div>
   </div>
 </div>
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // Initialize the two timers from Flask
-    let otpSec    = {{ expiry_timer }};  // 0–60
-    let resendSec = {{ resend_timer }};  // 0–5
+    let otpSec    = {{ expiry_timer }};
+    let resendSec = {{ resend_timer }};
 
     const otpTimerEl    = document.getElementById('otp-timer');
-    const resendBtn     = document.getElementById('resend-btn');
+    const resendLink    = document.getElementById('resend-link');
     const resendTimerEl = document.getElementById('resend-timer');
 
-    // Tick down the OTP validity
+    // OTP countdown
     const otpInterval = setInterval(() => {
       if (otpSec <= 0) {
         clearInterval(otpInterval);
@@ -155,47 +161,41 @@
       }
     }, 1000);
 
-    // Tick down the resend lockout
+    // Resend countdown
     function startResendCountdown() {
-      resendBtn.disabled = true;
-      resendBtn.classList.add('disabled');
-
+      resendLink.classList.add('disabled');
+      resendTimerEl.style.display = 'inline';
+      let sec = resendSec;
+      resendTimerEl.textContent = `(${sec}s)`;
       const id = setInterval(() => {
-        if (resendSec <= 0) {
+        sec--;
+        if (sec <= 0) {
           clearInterval(id);
-          resendBtn.disabled = false;
-          resendBtn.classList.remove('disabled');
-          resendBtn.textContent = 'Resend code';
+          resendLink.classList.remove('disabled');
+          resendTimerEl.style.display = 'none';
         } else {
-          resendTimerEl.textContent = resendSec;
-          resendSec--;
+          resendTimerEl.textContent = `(${sec}s)`;
         }
       }, 1000);
     }
 
-    // On load, if resendSec > 0, start countdown immediately
     if (resendSec > 0) {
       startResendCountdown();
     } else {
-      resendBtn.disabled = false;
-      resendBtn.classList.remove('disabled');
-      resendBtn.textContent = 'Resend code';
+      resendLink.classList.remove('disabled');
+      resendTimerEl.style.display = 'none';
     }
 
-    // Hook up the click to both resend and reset both timers
-    resendBtn.addEventListener('click', () => {
-      // Reset both timers client-side
-      otpSec = 60;
+    resendLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (resendLink.classList.contains('disabled')) return;
+
+      otpSec    = 60;
       resendSec = 5;
-
-      // Update UI instantly
-      otpTimerEl.textContent    = otpSec;
-      resendTimerEl.textContent = resendSec;
-      resendBtn.textContent     = `Resend code (${resendSec}s)`;
-
-      // restart both intervals
+      otpTimerEl.textContent = otpSec;
       startResendCountdown();
-      clearInterval(otpInterval);  // clear old OTP interval
+
+      clearInterval(otpInterval);
       setInterval(() => {
         if (otpSec <= 0) {
           clearInterval(otpInterval);
@@ -206,7 +206,6 @@
         }
       }, 1000);
 
-      // Fire off the POST to actually resend on the server
       fetch("{{ url_for('resend_mfa') }}", { method: 'POST' })
         .then(res => {
           if (res.status !== 204) {
