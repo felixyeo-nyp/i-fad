@@ -1,116 +1,232 @@
 {% extends "base.html" %}
 {% block title %}Feedback{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha512-pZM7QbaxfMZ+gihEPN0YC79YC69lO2QJFiO4VVsaG1hCdb4tTfRNsqTUp4CShz5qM+YH0ZzwEtJwOu9gQHo+PQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+{% endblock %}
+
 {% block content %}
-    {% from "includes/_formHelper.html" import render_field %}
+{% from "includes/_formHelper.html" import render_field %}
+
 <style>
- body {
-            font-family: 'Arial', sans-serif;
-            background-color: #2f3136;
-            background-position: center;
-            background-repeat: no-repeat;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+:root {
+  --primary-gradient: linear-gradient(45deg, #3498db, #8e44ad);
+  --dark-bg: #0f172a;
+  --card-bg: rgba(30, 41, 59, 0.9);
+  --highlight: #818cf8;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --input-bg: rgba(255, 255, 255, 0.1);
+  --input-border: rgba(255, 255, 255, 0.2);
+  --success: #10b981;
+}
 
-        .feedback-container {
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 40px;
-            background-color: #393d45;
-            border-radius: 5px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            align-items: center;
-        }
-  .feedback-container h1 {
-    font-size: 28px;
-    color: white;
-    margin-bottom: 20px;
-    text-transform: uppercase;
-  }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background-color: var(--dark-bg);
+  color: var(--text-primary);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
 
-  .feedback-container p {
-    font-size: 16px;
-    color: white;
-    margin-bottom: 20px;
-  }
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.85);
+  z-index: -1;
+}
 
-  .form-group-name, .form-group-textarea {
-    margin-bottom: 15px;
-  }
+@keyframes slideInUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
 
-  .form-text {
-    color: white;
-  }
+.feedback-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  min-height: 80vh;
+  box-sizing: border-box;
+}
 
-  .form-group-name .form-control {
-    width: 100%;
-    padding: 10px;
-    font-size: 16px;
-    border-radius: 20px;
-    border: 1px solid #ddd;
-    background-color: #fff;
-    outline: none;
-  }
+.feedback-form-container {
+  width: 100%;
+  max-width: 700px;
+  padding: 30px;
+  border-radius: 16px;
+  background-color: var(--card-bg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  animation: slideInUp 0.5s ease-out both;
+  backdrop-filter: blur(10px);
+  position: relative;
+}
 
-  .form-group-textarea .form-control {
-    width: 100%;
-    padding: 10px;
-    font-size: 16px;
-    border-radius: 20px;
-    border: 1px solid #ddd;
-    background-color: #fff;
-    outline: none;
-    resize: none;
-    height: 100px;
-  }
+.feedback-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
 
-  .submit-btn {
-            background-color: #E8E8E8;
-            color: #393d45;
-            border: none;
-            padding: 10px 0;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 25px;
-            display: block;
-            margin-top: 25px;
-            display: block;
-            width: 100%;
-            text-align: center;
-        }
+.feedback-header h1 {
+  font-size: 40px;
+  font-weight: 800;
+  margin: 0;
+  background: linear-gradient(to right, #8e44ad, #3498db);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
 
+/* INLINE-CENTER “Hello, admin!” */
+.user-greeting {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25em;
+  color: var(--text-secondary);
+  font-size: 18px;
+  margin-bottom: 10px;
+}
 
+.username {
+  font-weight: 600;
+  color: var(--highlight);
+}
 
+.assistance-text {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 18px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 15px 20px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+/* MAKE TYPED TEXT WHITE ON FOCUS */
+.form-control:focus {
+  background-color: #1e293b;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+  color: #fff !important;
+}
+
+textarea.form-control {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.submit-btn {
+  background: var(--primary-gradient);
+  color: white;
+  border: none;
+  padding: 15px 0;
+  width: 100%;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 20px;
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.submit-btn i {
+  margin-right: 10px;
+}
+
+.submit-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+.submit-btn:active {
+  transform: translateY(1px);
+}
+
+.icon-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.feedback-icon {
+  font-size: 40px;
+  background: linear-gradient(45deg, #3498db, #8e44ad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 </style>
 
 <div class="feedback-container">
-    <h1>Get In Touch</h1>
-    <br>
-    <p>Hello {{current_user.username}}, <br> How can we provide assistance to you.</p>
-    <form method="POST">
-        {{ form.hidden_tag() }}
+  <div class="feedback-form-container">
+    <div class="icon-container">
+      <i class="fas fa-comment-dots feedback-icon"></i>
+    </div>
 
-        <div class="form-group-textarea">
-            {{ form.message.label(class="form-text") }} {{ form.message(class="form-control") }}
-        </div>
-        <div class="submit-form">
-        <button type="submit" class="submit-btn">Send Feedback</button>
-        </div>
+    <div class="feedback-header">
+      <h1>Feedback</h1>
+      <div class="user-greeting">
+         <span class="username">Hello, {{ current_user.username }}</span>!
+      </div>
+    </div>
 
+    <p class="assistance-text">
+      We value your feedback and are here to assist you. Let us know how we can improve your experience or resolve any issues you're facing.
+    </p>
+
+    <form method="POST" action="{{ url_for('feedback') }}">
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        <label class="form-label" for="message">Your Feedback</label>
+        {{ form.message(class="form-control", placeholder="Tell us what went well, what could be improved, or any challenges you faced...") }}
+      </div>
+
+      <button type="submit" class="submit-btn">
+        <i class="fas fa-paper-plane"></i> Send Feedback
+      </button>
     </form>
+  </div>
 </div>
+
 <script>
-    const username = "{{ current_user.username }}"; // Django/Flask template variable
-            const welcomeText = document.querySelector(".navbar-text");
-            if (welcomeText) {
-                welcomeText.textContent = `Welcome, ${username}`;
-            }
+  document.querySelector('form').addEventListener('submit', function (e) {
+    const btn = document.querySelector('.submit-btn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    btn.disabled = true;
+  });
 </script>
-
-
 {% endblock %}
-

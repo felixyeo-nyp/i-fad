@@ -125,3 +125,8 @@ class ipForm(FlaskForm):
     source_ip = StringField("Source IP", validators=[DataRequired(), IPAddress()])
     destination_ip = StringField("Destination IP", validators=[DataRequired(), IPAddress()])
 
+class DeleteForm(FlaskForm):
+    """Empty form, just for CSRF protection on deletes."""
+    pass
+
+

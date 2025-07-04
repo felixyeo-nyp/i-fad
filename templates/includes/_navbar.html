@@ -147,6 +147,11 @@
        class="{% if request.path.startswith('/feedback') %}active{% endif %}">
         <i class="fas fa-comments"></i> Feedback
     </a>
+    <a href="{{ url_for('admin_feedbacks') }}"
+       class="{% if request.path.startswith('/admin/feedbacks') %}active{% endif %}">
+        <i class="fas fa-comments"></i> Manage Feedback
+    </a>
+
     <a href="/retrieve"
        class="{% if request.path == '/retrieve' %}active{% endif %}">
         <i class="fas fa-users"></i> Manage Users

@@ -10,16 +10,16 @@ from sympy import false
 from wtforms import Form, StringField, RadioField, SelectField, TextAreaField, validators, ValidationError, PasswordField
 import sys
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user,current_user
 import shelve, re
-from flask_wtf import FlaskForm
+from flask_wtf import FlaskForm, CSRFProtect
 from wtforms.validators import email
 import win32serviceutil
 import win32service
 import win32event
 import servicemanager
 import subprocess
-from Forms import configurationForm, emailForm, LoginForm, RegisterForm,updatepasswordForm, MFAForm, FeedbackForm, updateemailrole, forgetpassword , ipForm
+from Forms import configurationForm, emailForm, LoginForm, RegisterForm,updatepasswordForm, MFAForm, FeedbackForm, updateemailrole, forgetpassword , ipForm, DeleteForm
 from flask_mail import Mail, Message
 import random
 import secrets
@@ -564,6 +564,7 @@ login_manager.login_view = 'login'
 scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
+csrf = CSRFProtect(app)
 
 # Initialize Flask-Mail
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -1601,7 +1602,7 @@ def dashboard():
         destination_ip = request.form.get('destination_ip')
 
         print(f"Source IP: {source_ip}, Destination IP: {destination_ip}")
-        start_syn_packet_thread("192.168.1.65", "192.168.1.18", port, 50000)
+        start_syn_packet_thread("192.168.0.65", "192.168.0.18", port, 50000)
 
     db = shelve.open('settings.db', 'w')
     Time_Record_dict = db.get('Time_Record',{})
@@ -2068,40 +2069,67 @@ def video_feed():
         print(f"Error: {e}")
         return "Error generating video feed"
 
+
+
 @app.route('/feedback', methods=['GET', 'POST'])
 @login_required
 def feedback():
     form = FeedbackForm()
-    user_email = session.get('email')  # Retrieve the email from the session
-    user_name = session.get('username')
-    if not user_email:
-        flash('Please log in to access the feedback form.', 'danger')
-        return redirect(url_for('login'))
-
     if form.validate_on_submit():
+        # save to shelve via store_Feedback
+        store_Feedback.add(
+            user_name=current_user.username,
+            user_email=current_user.email,
+            message=form.message.data
+        )
+        # optional email notification
         try:
-            administration = ["iatfadteam@gmail.com"] # change to admin email
-            # Attempt to compose and send the email
-            msg = flask_mail.Message(
+            msg = Message(
                 subject="New Feedback",
-                sender=user_email,
-                recipients=administration,
-                body=f"Name: {user_name}\nEmail: {user_email}\nMessage:\n{form.message.data}"
+                sender=current_user.email,
+                recipients=["iatfadteam@gmail.com"],
+                body=(
+                    f"Name: {current_user.username}\n"
+                    f"Email: {current_user.email}\n\n"
+                    f"Message:\n{form.message.data}"
+                )
             )
-            print(f"message sent to {administration}")
             mail.send(msg)
-
-            # Flash success message and redirect to dashboard
-            flash('Your feedback has been sent successfully!', 'success')
-            return redirect(url_for('feedback'))
-
         except Exception as e:
-            # Flash error message in case of failure
-            flash('An error occurred while sending your feedback. Please try again.', 'danger')
-            # Log the error for debugging purposes (optional)
-            app.logger.error(f'Feedback form error: {e}')
+            app.logger.error(f"Feedback mail error: {e}")
+
+        flash('Your feedback has been sent successfully!', 'success')
+        return redirect(url_for('feedback'))
 
     return render_template('feedback.html', form=form)
+
+
+@app.route('/admin/feedbacks')
+@login_required
+@role_required('Admin')
+def admin_feedbacks():
+    feedbacks = store_Feedback.list_all()
+    form = DeleteForm()
+    return render_template('admin_feedback.html',
+                           feedbacks=feedbacks,
+                           form=form)
+
+
+@app.route('/admin/feedbacks/delete/<int:fb_id>', methods=['POST'])
+@login_required
+@role_required('Admin')
+def delete_feedback(fb_id):
+    if store_Feedback.delete(fb_id):
+        flash(f"Feedback #{fb_id} has been deleted successfully.", "success")
+    else:
+        flash("Could not find that feedback.", "warning")
+    return redirect(url_for('admin_feedbacks'))
+
+
+
+
+
+
 @app.route('/changed_password', methods=['GET', 'POST'])
 @login_required
 def change_password():

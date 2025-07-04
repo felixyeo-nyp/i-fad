@@ -174,6 +174,10 @@ class Feedback:
 class FeedbackStore:
     def __init__(self, path: str = SHELVE_PATH):
         self.path = path
+        # Ensure database exists and counter is initialized
+        with shelve.open(self.path, writeback=True) as db:
+            if _COUNTER_KEY not in db:
+                db[_COUNTER_KEY] = 0
 
     def _open(self, writeback: bool = False):
         return shelve.open(self.path, writeback=writeback)
