@@ -75,12 +75,12 @@
                         <div class="primary-info">
                             {% for id in id_array %}
                             {{ id.get_pellets() }} gram(s)
-                            <span> {{ (id.get_pellets() * 100) | int }} pellets</span>
+                            <span> {{ (id.get_pellets() | float * 100) | int }} pellets</span>
                             {% endfor %}
                         </div>
                         <div class="secondary-info" style="display:none;">
                             {% for id in id_array %}
-                            {{ (id.get_pellets() * 100) | int }} pellets
+                            {{ (id.get_pellets() | float * 100) | int }} pellets
                             <span> {{ id.get_pellets() }} gram(s)</span>
                             {% endfor %}
                         </div>

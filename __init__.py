@@ -369,6 +369,10 @@ def feeding_scheduler_loop():
         # Check if feeding should start
         if not feeding and (now == scheduled1 or now == scheduled2):
             print(f"[FEED TRIGGER] Starting feeding session at {now.strftime('%H:%M:%S')}")
+            if now == scheduled1:
+                active_feeding_time_str = first_timer
+            elif now == scheduled2:
+                active_feeding_time_str = second_timer
             try:
                 with shelve_lock:
                     with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
@@ -382,13 +386,16 @@ def feeding_scheduler_loop():
                 feeding = True
                 feed_start_time = time.time()
                 last_check_index = -1
-                total_count = setting.get_pellets()
+                with object_count_lock:
+                    total_count += object_count[1]
             except Exception as e:
                 print(f"[ERROR] Failed to retrieve database settings: {e}")
 
         # If in feeding mode, manage interval checks
         if feeding and feed_start_time is not None:
             elapsed = int(time.time() - feed_start_time)
+            with object_count_lock:
+                    total_count += object_count[1]
             current_check_index = elapsed // interval
 
             print(f"[DEBUG] Elapsed: {elapsed}s | Check {current_check_index}/{check_count} | Pellet count: {current_count} | Re-feed threshold: {threshold}")
@@ -400,7 +407,6 @@ def feeding_scheduler_loop():
                     current_count = object_count[1]
 
                 if current_count < threshold:
-                    total_count += setting.get_pellets()
                     try:
                         print("[RE-FEED] Pellet low, continuing feed")
                         try:
@@ -461,23 +467,32 @@ def feeding_scheduler_loop():
                     print(f"[ERROR] Failed to stop final feed: {e}")
                 feeding = False
                 feed_start_time = None
-                save_chart_data(current_count, total_count)
+                if active_feeding_time_str:
+                    save_chart_data(total_count, active_feeding_time_str)
+                    print(f"[FEED END] Feeding session ended at {now.strftime('%H:%M:%S')} with {total_count} pellets.")
+                    total_count = 0
 
         time.sleep(1)
 
-def save_chart_data(current_count, total_count):
+def save_chart_data(total_count, feeding_time_str):
     try:
+        hour = int(feeding_time_str[:2])
+        session = 'Morning' if 6 <= hour < 12 else 'Evening'
+
         with shelve_lock:
             with shelve.open('mock_chart_data.db', 'c') as db:
-                date = datetime.today().strftime("%Y-%m-%d")
-                time_str = datetime.now().strftime("%I:%M %p")
-                if date not in db:
-                    db[date] = {}
-                day_data = db[date]
-                day_data[time_str] = current_count
-                day_data['Total'] = day_data.get('Total', 0) + total_count
-                db[date] = day_data
-        print("[SAVE] Feeding session data recorded.")
+                date_str = datetime.today().strftime("%Y-%m-%d")
+
+                if date_str not in db:
+                    db[date_str] = {}
+
+                day_data = db[date_str]
+                day_data[session] = day_data.get(session, 0) + int(total_count)
+                day_data['Total'] = day_data.get('Total', 0) + int(total_count)
+
+                db[date_str] = day_data
+
+        print(f"[SAVE] {session} session ({feeding_time_str}) recorded with {total_count} pellets.")
     except Exception as e:
         print(f"[ERROR] Failed to save feeding data: {e}")
 
@@ -1274,36 +1289,15 @@ def get_pellet_data():
         for day in last_7_days:
             if day in db:
                 day_data = db[day]
-                feed_times = [k for k in day_data.keys() if k != 'Total']
-
-                morning_feed_count = 0
-                evening_feed_count = 0
-
-                for ft in feed_times:
-                    feed_time_obj = datetime.strptime(ft, "%I:%M %p").time()
-
-                    # Define time ranges
-                    morning_start = datetime.strptime("06:00 AM", "%I:%M %p").time()
-                    morning_end = datetime.strptime("12:00 PM", "%I:%M %p").time()
-                    evening_start = datetime.strptime("12:00 PM", "%I:%M %p").time()
-                    evening_end = datetime.strptime("11:59 PM", "%I:%M %p").time()
-
-                    # Check which range the feed_time_obj falls into
-                    if morning_start <= feed_time_obj < morning_end:
-                        morning_feed_count += day_data.get(ft, 0)
-                    elif evening_start <= feed_time_obj <= evening_end:
-                        evening_feed_count += day_data.get(ft, 0)
-                    else:
-                        # TBD: Handle unexpected feed times
-                        pass
-
-                first_feed_counts.append(morning_feed_count)
-                second_feed_counts.append(evening_feed_count)
-                total_feed_counts.append(day_data.get('Total', 0))
+                morning_count = day_data.get('Morning', 0)
+                evening_count = day_data.get('Evening', 0)
+                total = day_data.get('Total', 0)
             else:
-                first_feed_counts.append(0)
-                second_feed_counts.append(0)
-                total_feed_counts.append(0)
+                morning_count = evening_count = total = 0
+
+            first_feed_counts.append(morning_count)
+            second_feed_counts.append(evening_count)
+            total_feed_counts.append(total)
 
     response_data = {
         'labels': [datetime.strptime(day, "%Y-%m-%d").strftime("%d %b") for day in last_7_days],
