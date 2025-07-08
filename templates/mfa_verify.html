@@ -51,6 +51,11 @@
     margin-bottom: 30px;
   }
 
+  .otp-expiry {
+    font-size: 14px; color: #555; text-align: center;
+    margin-bottom: 20px;
+  }
+
   .alert { padding: 12px; margin-bottom: 20px; border-radius: 8px; text-align: center; font-weight: 500; }
   .alert-success { background: #e8f5e9; color: #2e7d32; }
   .alert-error   { background: #ffebee; color: #c62828; }
@@ -77,7 +82,6 @@
     transition: opacity .2s;
   }
   .save-btn:hover { opacity: 0.9; }
-  .save-btn.disabled { opacity: 0.6; cursor: not-allowed; }
 
   .resend-section {
     text-align: center; margin-top: 20px; font-size: 16px; color: #555;
@@ -110,7 +114,7 @@
     <p>Please enter the 6-digit authentication code sent to your email.</p>
 
     <div class="otp-expiry">
-      Code expires in <span id="otp-timer">60</span>s
+      Code expires in <span id="otp-timer">{{ expiry_timer }}</span>s
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -136,84 +140,93 @@
     <div class="resend-section">
       <span>Didn't receive a code?</span>
       <a href="#" id="resend-link" class="resend-link disabled">Resend</a>
-      <span id="resend-timer">(5s)</span>
+      <span id="resend-timer">({{ resend_timer }}s)</span>
     </div>
   </div>
 </div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    let otpSec    = {{ expiry_timer }};
-    let resendSec = {{ resend_timer }};
+document.addEventListener('DOMContentLoaded', () => {
+  let otpSec    = {{ expiry_timer }};
+  let resendSec = {{ resend_timer }};
 
-    const otpTimerEl    = document.getElementById('otp-timer');
-    const resendLink    = document.getElementById('resend-link');
-    const resendTimerEl = document.getElementById('resend-timer');
+  const otpTimerEl    = document.getElementById('otp-timer');
+  const resendLink    = document.getElementById('resend-link');
+  const resendTimerEl = document.getElementById('resend-timer');
 
-    // OTP countdown
+  // OTP expiry countdown
+  if (otpTimerEl) {
+    otpTimerEl.textContent = otpSec < 10 ? '0'+otpSec : otpSec;
     const otpInterval = setInterval(() => {
+      otpSec--;
       if (otpSec <= 0) {
         clearInterval(otpInterval);
         otpTimerEl.textContent = '00';
       } else {
-        otpTimerEl.textContent = otpSec < 10 ? '0' + otpSec : otpSec;
-        otpSec--;
+        otpTimerEl.textContent = otpSec < 10 ? '0'+otpSec : otpSec;
       }
     }, 1000);
+  }
 
-    // Resend countdown
-    function startResendCountdown() {
-      resendLink.classList.add('disabled');
-      resendTimerEl.style.display = 'inline';
-      let sec = resendSec;
-      resendTimerEl.textContent = `(${sec}s)`;
-      const id = setInterval(() => {
-        sec--;
-        if (sec <= 0) {
-          clearInterval(id);
-          resendLink.classList.remove('disabled');
-          resendTimerEl.style.display = 'none';
-        } else {
-          resendTimerEl.textContent = `(${sec}s)`;
-        }
-      }, 1000);
-    }
+  // Resend countdown helper
+  function startResendCountdown() {
+    resendLink.classList.add('disabled');
+    resendTimerEl.style.display = 'inline';
+    let sec = resendSec;
+    resendTimerEl.textContent = `(${sec}s)`;
+    const id = setInterval(() => {
+      sec--;
+      if (sec <= 0) {
+        clearInterval(id);
+        resendLink.classList.remove('disabled');
+        resendTimerEl.style.display = 'none';
+      } else {
+        resendTimerEl.textContent = `(${sec}s)`;
+      }
+    }, 1000);
+  }
 
-    if (resendSec > 0) {
-      startResendCountdown();
-    } else {
-      resendLink.classList.remove('disabled');
-      resendTimerEl.style.display = 'none';
-    }
+  // Start initial resend countdown if needed
+  if (resendSec > 0) {
+    startResendCountdown();
+  } else {
+    resendLink.classList.remove('disabled');
+    resendTimerEl.style.display = 'none';
+  }
 
-    resendLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (resendLink.classList.contains('disabled')) return;
+  // Resend button handler
+  resendLink.addEventListener('click', e => {
+    e.preventDefault();
+    if (resendLink.classList.contains('disabled')) return;
 
-      otpSec    = 60;
-      resendSec = 5;
-      otpTimerEl.textContent = otpSec;
-      startResendCountdown();
+    // reset timers
+    otpSec    = 60;
+    resendSec = 5;
+    if (otpTimerEl) otpTimerEl.textContent = otpSec < 10 ? '0'+otpSec : otpSec;
+    startResendCountdown();
 
-      clearInterval(otpInterval);
-      setInterval(() => {
-        if (otpSec <= 0) {
-          clearInterval(otpInterval);
-          otpTimerEl.textContent = '00';
-        } else {
-          otpTimerEl.textContent = otpSec < 10 ? '0' + otpSec : otpSec;
-          otpSec--;
-        }
-      }, 1000);
-
-      fetch("{{ url_for('resend_mfa') }}", { method: 'POST' })
-        .then(res => {
-          if (res.status !== 204) {
-            return res.json().then(j => alert(j.error || 'Could not resend'));
-          }
-        })
-        .catch(() => alert('Network error, try again.'));
+    fetch("{{ url_for('resend_mfa') }}", {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token() }}',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(res => {
+      if (res.status === 204) return;
+      if (res.status === 429) {
+        return res.json().then(data => {
+          alert(`Please wait ${data.retry_after}s before trying again.`);
+        });
+      }
+      alert('Unable to resend code right now. Please try again later.');
+    })
+    .catch(err => {
+      console.error('Fetch error:', err);
+      alert('Network error, try again.');
     });
   });
+});
 </script>
 {% endblock %}

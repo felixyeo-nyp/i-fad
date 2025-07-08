@@ -772,8 +772,6 @@ def login():
 
 # send OTP (Login)
 from datetime import datetime, timezone
-import secrets
-from flask import session, current_app, render_template
 
 def send_mfa_code():
     # 1) generate code & timestamps
@@ -926,107 +924,136 @@ def resend_mfa():
 
 #mfa for forget_password
 def send_reset_mfa_code():
-    """Generate/store a 6-digit code and email it for password reset MFA."""
+    """
+    Generate/store a 6-digit code for password-reset MFA and email it.
+    """
     code = str(secrets.randbelow(900_000) + 100_000)
     now = datetime.now(timezone.utc)
 
     session['reset_mfa_code']       = code
-    session['reset_mfa_sent_at']    = now.isoformat()   # drives 60s expiry
-    session['reset_last_resend_at'] = now.isoformat()   # drives 5s lockout
+    session['reset_mfa_sent_at']    = now.isoformat()
+    session['reset_last_resend_at'] = now.isoformat()
+    current_app.logger.debug(f"[DEBUG] Reset MFA code is: {code}")
 
-    # Debug print
-    current_app.logger.debug(f"[DEBUG] Reset MFA code for {session.get('username')}: {code}")
-
-    # Send email
-    mail.send_message(
-        subject    = 'Your password‐reset MFA code',
-        sender     = current_app.config['MAIL_DEFAULT_SENDER'],
-        recipients = [ session['email'] ],
-        body       = (
-            f"Your 6-digit password reset code is {code}.\n\n"
-            "It will expire in 60 seconds."
-        )
+    text_body = (
+        f"{current_app.config.get('APP_NAME','Your App')} Password Reset MFA\n\n"
+        f"Your 6-digit code is: {code}\n"
+        f"It expires in 60 seconds.\n\n"
+        "If you didn’t request this, ignore this email."
+    )
+    html_body = render_template(
+        'email/reset_mfa.html',
+        app_name=current_app.config.get('APP_NAME','Your App'),
+        code=code,
+        expires=60,
+        year=now.year
     )
 
-# ── 1) User submits “forget password” ────────────────────────────────────────
+    try:
+        mail.send_message(
+            subject    = current_app.config.get('MFA_SUBJECT','Your MFA Code'),
+            sender     = current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients = [ session.get('email') ],
+            body       = text_body,
+            html       = html_body
+        )
+        return True
+    except Exception as e:
+        current_app.logger.error(f"[ERROR] Failed to send reset-MFA email: {e}")
+        return False
 
-@app.route('/forgetpassword', methods=['GET', 'POST'])
+
+@app.route('/forgetpassword', methods=['GET','POST'])
 def forget_password():
     form = forgetpassword()
     if form.validate_on_submit():
         foremail = form.email.data
 
-        try:
-            with shelve.open('users.db', 'r') as db:
-                # find by email
-                match = next(
-                    (u for u, data in db.items() if data.get('email') == foremail),
-                    None
-                )
+        # lookup user by email
+        with shelve.open('users.db', 'r') as db:
+            match = next(
+                (u for u, data in db.items() if data.get('email') == foremail),
+                None
+            )
 
-            if not match:
-                flash('Email not found', 'danger')
-                return render_template('forget_password.html', form=form)
+        if not match:
+            flash('Email not found.', 'danger')
+            return render_template('forget_password.html', form=form)
 
-            # stash user and email
-            session['username'] = match
-            session['email']    = foremail
+        # stash and send code (no flash here)
+        session['username'] = match
+        session['email']    = foremail
 
-            # send the code and go to MFA page
-            send_reset_mfa_code()
-            flash('An authentication code has been sent to your email.', 'info')
-            return redirect(url_for('mfa_verify2'))
+        if not send_reset_mfa_code():
+            flash('Unable to send authentication code right now. Please try again later.', 'danger')
+            return redirect(url_for('forget_password'))
 
-        except Exception as e:
-            current_app.logger.error(f"Error during password recovery: {e}")
-            flash('An internal error occurred. Please try again later.', 'danger')
+        return redirect(url_for('mfa_verify2'))
 
     return render_template('forget_password.html', form=form)
 
 
-# ── 2) MFA verification for reset ────────────────────────────────────────────
-
-@app.route('/mfa-verify2', methods=['GET', 'POST'])
+@app.route('/mfa-verify2', methods=['GET','POST'])
 def mfa_verify2():
-    # must’ve come from forget_password
+    # ensure they came from forget_password
     if 'username' not in session or 'email' not in session:
         flash('Please submit your email first.', 'warning')
         return redirect(url_for('forget_password'))
 
-    form = MFAForm()
+    form     = MFAForm()
+    now      = datetime.now(timezone.utc)
+    sent_iso = session.get('reset_mfa_sent_at')
 
-    # on first GET, we already sent in forget_password; skip resend here
+    # determine expired state
+    expired = False
+    if sent_iso:
+        sent_at = datetime.fromisoformat(sent_iso)
+        expired = (now - sent_at).total_seconds() > 60
 
+    # ── GET: only flash on first send, silently re-send on expiry ──────────
+    if request.method == 'GET':
+        # first-ever GET: no code yet
+        if not sent_iso:
+            if not send_reset_mfa_code():
+                flash('Unable to send authentication code right now. Please try again later.', 'danger')
+                return redirect(url_for('forget_password'))
+            flash('An authentication code has been sent to your email.', 'info')
+
+        # subsequent GETs after expiry: re-send silently
+        elif expired:
+            send_reset_mfa_code()
+
+    # ── POST: validate submitted code ───────────────────────────────────────
     if form.validate_on_submit():
-        entered = form.code.data
+        entered  = form.code.data
         sent_iso = session.get('reset_mfa_sent_at')
         now      = datetime.now(timezone.utc)
 
-        # no code?
         if not sent_iso:
-            flash('No code found. Please resend.', 'danger')
+            flash('No code found. Please wait for the new one.', 'danger')
             return redirect(url_for('mfa_verify2'))
 
         sent_at = datetime.fromisoformat(sent_iso)
-        # expiry check
         if (now - sent_at).total_seconds() > 60:
             flash('Code expired. A new code has been sent.', 'danger')
             send_reset_mfa_code()
             return redirect(url_for('mfa_verify2'))
 
         if entered == session.get('reset_mfa_code'):
-            # clear only MFA bits
+            # clear MFA bits
             for k in ('reset_mfa_code','reset_mfa_sent_at','reset_last_resend_at'):
                 session.pop(k, None)
+
             flash('MFA verification successful. Please reset your password.', 'success')
             return redirect(url_for('reset_password'))
 
-        flash('Invalid authentication code', 'danger')
+        flash('Invalid authentication code.', 'danger')
 
-    # compute timers for the template
+    # ── Compute timers for template ───────────────────────────────────────
     def _timer(key, limit):
         iso = session.get(key)
-        if not iso: return 0
+        if not iso:
+            return 0
         elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(iso)).total_seconds()
         return int(max(0, limit - elapsed))
 
@@ -1035,12 +1062,11 @@ def mfa_verify2():
 
     return render_template(
         'mfa_verify2.html',
-        form=         form,
-        expiry_timer= expiry_timer,
-        resend_timer= resend_timer
+        form=           form,
+        expiry_timer=   expiry_timer,
+        resend_timer=   resend_timer
     )
 
-# ── 3) AJAX endpoint to resend reset‐MFA ─────────────────────────────────────
 
 @app.route('/resend-mfa2', methods=['POST'])
 def resend_mfa2():
@@ -1056,10 +1082,8 @@ def resend_mfa2():
         jsonify({
             'error': 'Too many requests',
             'retry_after': int(retry_after)
-        }),
-        429
+        }), 429
     )
-
 # ── 4) Finally, reset the password ───────────────────────────────────────────
 
 @app.route('/reset_password', methods=['GET', 'POST'])
@@ -2076,6 +2100,22 @@ def video_feed():
 def feedback():
     form = FeedbackForm()
     if form.validate_on_submit():
+        try:
+            db = shelve.open('settings.db', 'r')
+            Email_dict = db.get('Email_Data', {})
+            recipient_email = "iatfadteam@gmail.com"  # Default fallback
+
+            if 'Email_Info' in Email_dict:
+                email_info = Email_dict['Email_Info']
+                if hasattr(email_info, 'get_recipient_email'):
+                    configured_email = email_info.get_recipient_email()
+                    if configured_email:
+                        recipient_email = configured_email
+            db.close()
+        except Exception as e:
+            recipient_email = "iatfadteam@gmail.com"
+            app.logger.warning(f"Could not retrieve recipient email, using fallback: {e}")
+
         # save to shelve via store_Feedback
         store_Feedback.add(
             user_name=current_user.username,
@@ -2087,7 +2127,7 @@ def feedback():
             msg = Message(
                 subject="New Feedback",
                 sender=current_user.email,
-                recipients=["iatfadteam@gmail.com"],
+                recipients=[recipient_email],
                 body=(
                     f"Name: {current_user.username}\n"
                     f"Email: {current_user.email}\n\n"

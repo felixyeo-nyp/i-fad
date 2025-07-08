@@ -1,6 +1,6 @@
 import shelve
 from datetime import datetime
-
+from zoneinfo import ZoneInfo
 
 class Settings:
     def __init__(self, first_timer='', second_timer='', interval_seconds=0, pellets=0, seconds=0, confidence=0.0):
@@ -133,13 +133,23 @@ class Line_Chart_Data_Pellets():
 SHELVE_PATH    = 'feedback.db'
 _COUNTER_KEY   = 'counter'
 
+
 class Feedback:
-    def __init__(self, fb_id: int = 0, user_name: str = '', user_email: str = '', message: str = '', submitted_at: datetime = None ):
-        self.__id           = fb_id
-        self.__user_name    = user_name
-        self.__user_email   = user_email
-        self.__message      = message
-        self.__submitted_at = submitted_at or datetime.utcnow()
+    def __init__(
+        self,
+        fb_id: int = 0,
+        user_name: str = '',
+        user_email: str = '',
+        message: str = '',
+        submitted_at: datetime = None
+    ):
+        self.__id = fb_id
+        self.__user_name = user_name
+        self.__user_email = user_email
+        self.__message = message
+        # default to Singapore time (UTC+8)
+        sg_tz = ZoneInfo('Asia/Singapore')
+        self.__submitted_at = submitted_at or datetime.now(sg_tz)
 
     # Getter methods
     def get_id(self) -> int:

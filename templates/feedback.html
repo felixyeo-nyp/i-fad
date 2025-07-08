@@ -2,231 +2,267 @@
 {% block title %}Feedback{% endblock %}
 
 {% block head %}
-  {{ super() }}
-  <!-- Font Awesome for icons -->
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-        integrity="sha512-pZM7QbaxfMZ+gihEPN0YC79YC69lO2QJFiO4VVsaG1hCdb4tTfRNsqTUp4CShz5qM+YH0ZzwEtJwOu9gQHo+PQ=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
+{{ super() }}
+<!-- Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    integrity="sha512-pZM7QbaxfMZ+gihEPN0YC79YC69lO2QJFiO4VVsaG1hCdb4tTfRNsqTUp4CShz5qM+YH0ZzwEtJwOu9gQHo+PQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
 {% endblock %}
 
 {% block content %}
 {% from "includes/_formHelper.html" import render_field %}
 
 <style>
-:root {
-  --primary-gradient: linear-gradient(45deg, #3498db, #8e44ad);
-  --dark-bg: #0f172a;
-  --card-bg: rgba(30, 41, 59, 0.9);
-  --highlight: #818cf8;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --input-bg: rgba(255, 255, 255, 0.1);
-  --input-border: rgba(255, 255, 255, 0.2);
-  --success: #10b981;
-}
+    :root {
+        --primary-gradient: linear-gradient(45deg, #3498db, #8e44ad);
+        --dark-bg: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.9);
+        --highlight: #818cf8;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --input-bg: rgba(255, 255, 255, 0.1);
+        --input-border: rgba(255, 255, 255, 0.2);
+        --success: #10b981;
+    }
 
-html, body {
-  margin: 0; padding: 0; height: 100%;
-  background-color: var(--dark-bg);
-  color: var(--text-primary);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  position: relative;
-  overflow-x: hidden;
-}
+    html,
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: var(--dark-bg);
+        color: var(--text-primary);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-body::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-color: rgba(15, 23, 42, 0.85);
-  z-index: -1;
-}
+    body::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-color: rgba(15, 23, 42, 0.85);
+        z-index: -1;
+    }
 
-@keyframes slideInUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to   { transform: translateY(0);     opacity: 1; }
-}
+    @keyframes slideInUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
 
-.feedback-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  min-height: 80vh;
-  box-sizing: border-box;
-}
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
 
-.feedback-form-container {
-  width: 100%;
-  max-width: 700px;
-  padding: 30px;
-  border-radius: 16px;
-  background-color: var(--card-bg);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  animation: slideInUp 0.5s ease-out both;
-  backdrop-filter: blur(10px);
-  position: relative;
-}
+    .feedback-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        margin: 30px auto;
+        min-height: 80vh;
+        position: relative;
+    }
 
-.feedback-header {
-  text-align: center;
-  margin-bottom: 30px;
-}
+    .feedback-form-container {
+        width: 100%;
+        max-width: 700px;
+        margin: 30px auto;
+        padding: 30px;
+        border-radius: 16px;
+        background-color: var(--card-bg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        animation: slideInUp 0.5s ease-out both;
+        backdrop-filter: blur(10px);
+        position: relative;
+    }
 
-.feedback-header h1 {
-  font-size: 40px;
-  font-weight: 800;
-  margin: 0;
-  background: linear-gradient(to right, #8e44ad, #3498db);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
+    .feedback-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
 
-/* INLINE-CENTER “Hello, admin!” */
-.user-greeting {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25em;
-  color: var(--text-secondary);
-  font-size: 18px;
-  margin-bottom: 10px;
-}
+    .feedback-header h1 {
+        font-size: 40px;
+        font-weight: 800;
+        margin-bottom: 10px;
+        background: linear-gradient(to right, #8e44ad, #3498db);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
 
-.username {
-  font-weight: 600;
-  color: var(--highlight);
-}
+    .user-greeting {
+        color: var(--text-secondary);
+    }
 
-.assistance-text {
-  font-size: 14px;
-  color: var(--text-primary);
-  line-height: 1.6;
-  text-align: center;
-  margin-bottom: 20px;
-}
+    .username {
+        display: inline-block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: bottom;
+    }
 
-.form-group {
-  margin-bottom: 20px;
-}
+    .assistance-text {
+        font-size: 14px;
+        color: var(--text-primary);
+        line-height: 1.6;
+        text-align: center;
+        max-width: 100%;
+        margin-bottom: 20px;
+    }
 
-.form-label {
-  display: block;
-  margin-bottom: 10px;
-  font-weight: 600;
-  color: var(--text-primary);
-  font-size: 18px;
-}
+    .form-group {
+        margin-bottom: 20px;
+    }
 
-.form-control {
-  width: 100%;
-  padding: 15px 20px;
-  font-size: 16px;
-  border-radius: 12px;
-  border: 1px solid #334155;
-  background-color: var(--input-bg);
-  color: var(--text-primary);
-  outline: none;
-  transition: all 0.3s ease;
-  box-sizing: border-box;
-}
+    .form-label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 18px;
+    }
 
-/* MAKE TYPED TEXT WHITE ON FOCUS */
-.form-control:focus {
-  background-color: #1e293b;
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
-  color: #fff !important;
-}
+    .form-control {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        padding: 15px 20px;
+        font-size: 16px;
+        border-radius: 12px;
+        border: 1px solid #334155;
+        background-color: #0f172a;
+        color: #f1f5f9;
+        outline: none;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+    }
 
-textarea.form-control {
-  min-height: 150px;
-  resize: vertical;
-}
+    .form-control:focus {
+        background: #1e293b;
+        border-color: #3498db;
+        color: #f1f5f9;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    }
 
-.submit-btn {
-  background: var(--primary-gradient);
-  color: white;
-  border: none;
-  padding: 15px 0;
-  width: 100%;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 18px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-top: 20px;
-  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
-  position: relative;
-  overflow: hidden;
-}
+    .form-control::placeholder {
+        color: #64748b;
+    }
 
-.submit-btn i {
-  margin-right: 10px;
-}
+    textarea.form-control {
+        min-height: 150px;
+        resize: vertical;
+    }
 
-.submit-btn:hover {
-  transform: translateY(-1px);
-  opacity: 0.9;
-}
+    .submit-btn {
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+        padding: 15px 0;
+        width: 100%;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
 
-.submit-btn:active {
-  transform: translateY(1px);
-}
+    .submit-btn i {
+        margin-right: 10px;
+    }
 
-.icon-container {
-  text-align: center;
-  margin-bottom: 20px;
-}
+    .submit-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    }
 
-.feedback-icon {
-  font-size: 40px;
-  background: linear-gradient(45deg, #3498db, #8e44ad);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
+    .submit-btn:active {
+        transform: translateY(1px);
+    }
+
+    .icon-container {
+        text-align: center;
+    }
+
+    .feedback-icon {
+        font-size: 40px;
+        color: #3498db;
+        margin-bottom: 5px;
+        background: linear-gradient(45deg, #3498db, #8e44ad);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    @media (max-width: 768px) {
+        .feedback-form-container {
+            padding: 30px 20px;
+            margin: 20px;
+        }
+
+        .feedback-header h1 {
+            font-size: 32px
+        }
+
+        .assistance-text {
+            font-size: 16px
+        }
+    }
 </style>
 
 <div class="feedback-container">
-  <div class="feedback-form-container">
-    <div class="icon-container">
-      <i class="fas fa-comment-dots feedback-icon"></i>
+    <div class="feedback-form-container">
+        <div class="icon-container">
+            <i class="fas fa-comment-dots feedback-icon"></i>
+        </div>
+
+        <div class="feedback-header">
+            <div class="user-greeting">
+                <h1>Hello, <h1 class="username">{{ current_user.username }} !</h1>
+                </h1>
+            </div>
+        </div>
+
+        <p class="assistance-text">
+            We value your feedback and are here to assist you. Let us know how we can improve your experience or resolve any issues you're facing.
+        </p>
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+                <label for="message" class="form-label">Your Feedback</label>
+                {{ form.message(class="form-control", placeholder="Tell us what went well, what could be improved, or any challenges you faced using our service...") }}
+            </div>
+
+            <button type="submit" class="submit-btn">
+                <i class="fas fa-paper-plane"></i> Send Feedback
+            </button>
+        </form>
     </div>
-
-    <div class="feedback-header">
-      <h1>Feedback</h1>
-      <div class="user-greeting">
-         <span class="username">Hello, {{ current_user.username }}</span>!
-      </div>
-    </div>
-
-    <p class="assistance-text">
-      We value your feedback and are here to assist you. Let us know how we can improve your experience or resolve any issues you're facing.
-    </p>
-
-    <form method="POST" action="{{ url_for('feedback') }}">
-      {{ form.hidden_tag() }}
-
-      <div class="form-group">
-        <label class="form-label" for="message">Your Feedback</label>
-        {{ form.message(class="form-control", placeholder="Tell us what went well, what could be improved, or any challenges you faced...") }}
-      </div>
-
-      <button type="submit" class="submit-btn">
-        <i class="fas fa-paper-plane"></i> Send Feedback
-      </button>
-    </form>
-  </div>
 </div>
 
 <script>
-  document.querySelector('form').addEventListener('submit', function (e) {
-    const btn = document.querySelector('.submit-btn');
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-    btn.disabled = true;
-  });
+    // Add animation to the form
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const btn = document.querySelector('.submit-btn');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        btn.disabled = true;
+
+        // Simulate network delay for UX
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fas fa-check"></i> Sent Successfully!';
+            btn.style.background = 'linear-gradient(45deg, #10b981, #047857)';
+        }, 1500);
+    });
 </script>
 {% endblock %}
