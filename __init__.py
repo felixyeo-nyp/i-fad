@@ -143,6 +143,8 @@ frame_data_lock = threading.Lock()
 object_count_lock = threading.Lock()
 freshest_frame_lock = threading.Lock()
 total_time_lock = threading.Lock()
+shelve_lock = threading.Lock()
+stop_event = threading.Event()
 
 def create_model(num_classes, pretrained=False, coco_model=False):
     if pretrained:
@@ -251,315 +253,233 @@ def capture_frames():
 
         cap.release()
 
-def process_frames():
-    # define the dictionary to store the number of pellets
-    # Assuming 1 class for 'Pellet'
-    global freshest_frame
-    global frame_data
-    global object_count
-    object_count = {1: 0}
-    bounding_boxes = []
-    global latest_processed_frame
-    global feeding
-    global feeding_timer
-    global total_time
-    global total_count
-    showing_timer = None
-    line_chart_timer, email_TF = (None, False)
-    desired_time = None
-    total_time = None
-    total_count = 0
-    formatted_desired_time = None
+def delayed_stop_feed(port, server_isn, server_ack, source_ip, destination_ip, delay):
+    time.sleep(delay)
+    stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+    print("Auto-feeding stopped after delay.")
+    global feeding, feeding_timer, starting_timer
+    with feeding_lock:
+        feeding = False
+    feeding_timer = None
+    starting_timer = None
 
-    frame_counter = 0  # Counter to track frames
+def video_processing_loop():
+    global freshest_frame, object_count, frame_data, latest_processed_frame
     while True:
-        db = shelve.open('settings.db', 'w')
-        Time_Record_dict = db['Time_Record']
-        db.close()
-
-        setting = Time_Record_dict.get('Time_Record_Info')
-
-        checking_interval = setting.get_interval_seconds()
-
-        hours = setting.get_first_timer()[:2]
-        minutes = setting.get_first_timer()[2:]
-        hours1 = setting.get_second_timer()[:2]
-        minutes1 = setting.get_second_timer()[2:]
-
-        first_feeding_time = int(hours)
-        first_feeding_time_min = int(minutes)
-        second_feeding_time = int(hours1)
-        second_feeding_time_min = int(minutes1)
-
-        # change confidence from here.
-        confidence = float(setting.get_confidence()) / 100
-        current_datetime = datetime.now()
-        bounding_boxes = []
-        # Process the predictions and update object count
-        temp_object_count = {1: 0}  # Initialize count for the current frame
-
-        frame_counter += 1
-
-        # Process only every 5 seconds
-
-        db = shelve.open('settings.db', 'r')
-        # Pause for 1 second on each iteration
-        if not db.get('Generate_Status', True):
-            db.close()
-            print("processing at background")
-            time.sleep(20)
-
-        else:
-            print("Processing a frame...")
-            db.close()
+        try:
+            with shelve_lock:
+                with shelve.open('settings.db', 'r') as db:
+                    Time_Record_dict = db.get('Time_Record', {})
+                    setting = Time_Record_dict.get('Time_Record_Info')
+        except Exception as e:
+            print(f"[ERROR] Failed to read from settings.db: {e}")
             time.sleep(1)
-        current_time = datetime.now().time()
-
-        if ((current_time.hour == first_feeding_time and current_time.minute == first_feeding_time_min) or (
-                current_time.hour == second_feeding_time and current_time.minute == second_feeding_time_min)) and (
-                total_time is None or total_time > int(setting.get_seconds() * 60)) and not feeding:
-            with feeding_lock:
-                feeding = True
-                print("feeding set")
-            feeding_timer = None
-            showing_timer = None
-            starting_timer = None
-            line_chart_timer = time.time()
-            total_time = None
+            continue
+        
+        confidence = float(setting.get_confidence()) / 100
         with freshest_frame_lock:
             if freshest_frame is None:
-                # freshest_frame not ready yet, wait and retry
                 time.sleep(0.1)
                 continue
-
-            # Read the frame, allow waiting for newest frame
             cnt, frame = freshest_frame.read(sequence_number=object_count[1] + 1)
-
             if frame is None:
-                # Frame not available - skip this loop iteration and wait
                 time.sleep(0.1)
                 continue
 
-            # Preprocess the frame
-            img_tensor = torchvision.transforms.ToTensor()(frame).to(device)
-            img_tensor = img_tensor.unsqueeze(0)
+        # Inference
+        img_tensor = torchvision.transforms.ToTensor()(frame).unsqueeze(0).to(device)
+        with torch.no_grad():
+            predictions = model(img_tensor)
 
-            # Perform inference
-            with torch.no_grad():
-                predictions = model(img_tensor)
-
-            temp_object_count = {1: 0}
-            bounding_boxes = []
-
-            for i in range(len(predictions[0]['labels'])):
-                label = predictions[0]['labels'][i].item()
-
-                if label in class_labels:
-                    box = predictions[0]['boxes'][i].cpu().numpy().astype(int) # used to define the size of the object
-                    score = predictions[0]['scores'][i].item() #the probability of the object
-
-                    if (label == 1 and score > confidence):
-                        # Draw bounding box and label on the frame
-                        cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2) #(0,255,0) is the color (blue, green, yellow)
-                        cv2.putText(frame, f'{class_labels[label]}: {score:.2f}', (box[0], box[1] - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-                        temp_object_count[label] += 1
-                        bounding_boxes.append((box, label, score))
-
-                        # Start feeding timer if pellets are detected
-                        if label == 1 and feeding_timer is None and feeding:
-                            feeding_timer = time.time()
-                            starting_timer = time.time()
-
-        # store the pellets number to the object count which is permanently
-        for label, count in temp_object_count.items():
-            if label == 1:  # Assuming label 1 represents 'Pellets'
-                with object_count_lock:
-                    object_count[label] = count
-                try:
-                    with shelve.open('currentcount.db', 'c') as db2:
-                        db2['object_count'] = count  # Save the dictionary
-                        db2.close()
-                except Exception as e:
-                    print(f"Failed to save pellet count to 'currentcount.db': {e}")
-
-        # Check feeding timer and switch to stop feeding if required
-        if feeding_timer is not None and feeding and starting_timer is not None:
-            elapsed_time = time.time() - feeding_timer
-            total_time = time.time() - starting_timer
-
-            print(f'Elapsed time since last check: {elapsed_time:.3f} seconds')
-            print(f'Total feeding duration so far: {total_time:.3f} seconds')
-            print(f"Checking interval: {checking_interval} seconds")
-
-            with object_count_lock, total_time_lock:
-                # Ensure we check at correct intervals
-                if elapsed_time > checking_interval and total_time <= int(setting.get_seconds() * 60):
-                    if int(temp_object_count[1]) < int(setting.get_pellets() // 10):
-                        total_count += int(setting.get_pellets())
-                        feeding_timer = time.time()  # Reset timer
-                        print(f"Feeding again. Total pellets count: {total_count}")
-
-                        # Send TCP packet for continued feeding using the existing function
-                        try:
-                            db = shelve.open('settings.db', 'r')
-                            Time_Record_dict = db['Time_Record']
-                            port = db.get('Port')
-                            server_isn = db.get('syn_ack_seq')
-                            server_ack = db.get('syn_ack_ack')
-                            db.close()
-
-                            setting = Time_Record_dict.get('Time_Record_Info')
-
-                            with shelve.open('IP.db', 'r') as ip_db:
-                                ip_data = ip_db.get('IP', {})
-                                source_ip = ip_data.get('source')
-                                destination_ip = ip_data.get('destination')
-
-                            # Create feeding command bytes
-                            current_time = datetime.now()
-
-                            start_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-                            time.sleep(5)
-                            with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
-                                port = db.get('Port')
-                                server_isn = db.get('syn_ack_seq')
-                                server_ack = db.get('syn_ack_ack')
-                                ip_data = ip_db.get("IP", {})
-                                source_ip = ip_data.get("source")
-                                destination_ip = ip_data.get("destination")
-                                Time_Record_dict = db.get('Time_Record', {})
-                                db['Time_Record'] = Time_Record_dict
-                            stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-
-                            print("Feed Complete")
-
-                        except Exception as e:
-                            print(f"Error sending TCP feeding command: {e}")
-                    else:
-                        with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
-                            port = db.get('Port')
-                            server_isn = db.get('syn_ack_seq')
-                            server_ack = db.get('syn_ack_ack')
-                            ip_data = ip_db.get("IP", {})
-                            source_ip = ip_data.get("source")
-                            destination_ip = ip_data.get("destination")
-                            Time_Record_dict = db.get('Time_Record', {})
-                            db['Time_Record'] = Time_Record_dict
-                        print("Skipping feeding as pellet count is sufficient.")
-                        feeding_timer = time.time()  # Still reset, but skip feeding
-                        stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-
-                if total_time > int(setting.get_seconds() * 60) and sum(object_count.values()) != 0:
-                    with feeding_lock:
-                        feeding = False  # Stop feeding
-                    feeding_timer = None
-                    showing_timer = time.time()
-                    print("Feeding session ended.")
+        temp_object_count = {1: 0}
+        bounding_boxes = []
+        for i in range(len(predictions[0]['labels'])):
+            label = predictions[0]['labels'][i].item()
+            if label == 1 and predictions[0]['scores'][i].item() > confidence:
+                box = predictions[0]['boxes'][i].cpu().numpy().astype(int)
+                temp_object_count[label] += 1
+                bounding_boxes.append((box, label, predictions[0]['scores'][i].item()))
+        
         with object_count_lock:
-            # Display the frame with detections and object count
-            for label, count in temp_object_count.items():
-                text = f'{class_labels[label]} Count: {count}'
-                text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 2)[0]
-                text_position = (frame.shape[1] - text_size[0] - 10, 30 * (label + 1))
-                cv2.putText(frame, text, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2, (200, 255, 255), 2)
-        with object_count_lock:
-            # Display feeding or stop feeding text just below the object counter
-            text_position_feed = (frame.shape[1] - text_size[0] - 10, 30 * (max(object_count.keys()) + 1))
+            object_count[1] = temp_object_count[1]
 
-        if feeding:
-            cv2.putText(frame, "Feeding...", text_position_feed,
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
-        else:
-            if showing_timer is not None:
-                i = time.time() - showing_timer
+        try:
+            with shelve_lock:
+                with shelve.open('currentcount.db', 'c') as db2:
+                    db2['object_count'] = temp_object_count[1]
+        except Exception as e:
+            print(f"[ERROR] Failed to write to currentcount.db: {e}")
 
-                if i > 3:
-                    showing_timer = None
-                    j = time.time() - line_chart_timer
+        for box, label, score in bounding_boxes:
+            cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
+            cv2.putText(frame, f'Pellet: {score:.2f}', (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-                    line_chart_timer = None
-
-                    db = shelve.open('mock_chart_data.db', 'w')
-                    current_date = datetime.today().strftime("%Y-%m-%d")
-                    if current_date not in db:
-                        db[current_date] = {}  # Initialize an empty dictionary for this date
-
-                    # Retrieve the nested dictionary for current_date
-                    day_data = db[current_date]
-
-                    # Ensure the nested key ('8:05 AM') exists in the nested dictionary
-                    if '8:05 AM' not in day_data:
-                        day_data['8:05 AM'] = object_count[1]  # Initialize the count for this time
-
-                    else:
-                        day_data['6:05 PM'] = object_count[1]
-
-                    if 'Total' not in day_data:
-                        print(f"Total count in db: {total_count}")
-                        day_data['Total'] = total_count
-                        total_count = 0
-                    else:
-                        print(f"Total count in db: {total_count}")
-                        day_data['Total'] += total_count
-                        total_count = 0
-                    # Save the updated nested dictionary back to shelve
-                    db[current_date] = day_data
-
-                    db.close()
-
-                    if (current_time.hour >= first_feeding_time) and (
-                            current_time.hour >= second_feeding_time and current_time.minute > second_feeding_time_min):
-                        print('sending email feature')
-
-                    for today_date in Line_Chart_Data_dict:
-                        Line_chart_objects = Line_Chart_Data_dict.get(today_date)
-                        print(Line_chart_objects.get_date(), ': ', Line_chart_objects.get_timeRecord())
-
-                    print('running in website')
-                else:
-                    cv2.putText(frame, "Stop Feeding", text_position_feed,
-                                cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 2)
-            else:
-                if (current_time.hour <= first_feeding_time and current_time.minute <= first_feeding_time_min) or current_time.hour < first_feeding_time:
-                    desired_time = current_datetime.replace(hour=first_feeding_time, minute=first_feeding_time_min,
-                                                            second=0, microsecond=0)
-                    formatted_desired_time = 'Next Round: ' + desired_time.strftime("%I:%M %p")
-
-                    text_size = cv2.getTextSize(formatted_desired_time, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)[0]
-                    text_position = (frame.shape[1] - text_size[0] - 10, 30 * 4)
-                    cv2.putText(frame, formatted_desired_time, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2,
-                                (0, 255, 0), 2)
-
-                elif (
-                (current_time.hour <= second_feeding_time and current_time.minute <= second_feeding_time_min)) or (current_time.hour < second_feeding_time):
-                    desired_time = current_datetime.replace(hour=second_feeding_time, minute=second_feeding_time_min,
-                                                            second=0,
-                                                            microsecond=0)
-                    formatted_desired_time = 'next round: ' + desired_time.strftime("%I:%M %p")
-
-                    text_size = cv2.getTextSize(formatted_desired_time, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)[0]
-                    text_position = (frame.shape[1] - text_size[0] - 10, 30 * 4)
-                    cv2.putText(frame, formatted_desired_time, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
-
-                else:
-                    # Add one day to the current date and time
-                    next_day = current_datetime + timedelta(days=1)
-                    # Set desired_time to 8 AM of the next day
-                    desired_time = next_day.replace(hour=first_feeding_time, minute=first_feeding_time_min, second=0, microsecond=0)
-
-                    formatted_desired_time = 'Tomorrow at: ' + desired_time.strftime("%I:%M %p")
-
-                    text_size = cv2.getTextSize(formatted_desired_time, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)[0]
-                    text_position = (frame.shape[1] - text_size[0] - 10, 30 * 4)
-                    cv2.putText(frame, formatted_desired_time, text_position, cv2.FONT_HERSHEY_SIMPLEX, 1.2,
-                                (0, 0, 255), 2)
         with frame_data_lock:
             frame_data['object_count'] = temp_object_count
             frame_data['bounding_boxes'] = bounding_boxes
         with latest_processed_frame_lock:
             latest_processed_frame = frame
+
+def feeding_scheduler_loop():
+    global feeding, feed_start_time, total_count
+    feeding = False
+    feed_start_time = None
+    total_count = 0
+    last_check_index = -1
+
+    port = server_isn = server_ack = source_ip = destination_ip = None
+
+    while True:
+        try:
+            with shelve_lock:
+                with shelve.open('settings.db', 'r') as db:
+                    Time_Record_dict = db.get('Time_Record', {})
+                    setting = Time_Record_dict.get('Time_Record_Info')
+        except Exception as e:
+            print(f"[ERROR] Feeding loop failed to read settings: {e}")
+            time.sleep(1)
+            continue
+
+        tz = pytz.timezone("Asia/Singapore")  # Use your actual timezone
+        now = datetime.now(tz)
+
+        try:
+            first_timer = setting.get_first_timer()
+            second_timer = setting.get_second_timer()
+            scheduled1 = now.replace(hour=int(first_timer[:2]), minute=int(first_timer[2:]))
+            scheduled2 = now.replace(hour=int(second_timer[:2]), minute=int(second_timer[2:]))
+        except Exception as e:
+            print(f"[ERROR] Failed to parse feeding times: {e}")
+            time.sleep(1)
+            continue
+
+        try:
+            interval = max(int(setting.get_interval_seconds()), 10)
+            duration = int(setting.get_seconds())
+            check_count = duration // interval
+        except Exception as e:
+            print(f"[ERROR] Invalid interval or duration: {e}")
+            time.sleep(1)
+            continue
+
+        with object_count_lock:
+            current_count = object_count[1]
+        threshold = (setting.get_pellets() * 100) // 10
+
+        # Check if feeding should start
+        if not feeding and (now == scheduled1 or now == scheduled2):
+            print(f"[FEED TRIGGER] Starting feeding session at {now.strftime('%H:%M:%S')}")
+            try:
+                with shelve_lock:
+                    with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
+                        port = db.get('Port')
+                        server_isn = db.get('syn_ack_seq')
+                        server_ack = db.get('syn_ack_ack')
+                        ip_data = ip_db.get('IP', {})
+                        source_ip = ip_data.get('source')
+                        destination_ip = ip_data.get('destination')
+
+                feeding = True
+                feed_start_time = time.time()
+                last_check_index = -1
+                total_count = setting.get_pellets()
+            except Exception as e:
+                print(f"[ERROR] Failed to retrieve database settings: {e}")
+
+        # If in feeding mode, manage interval checks
+        if feeding and feed_start_time is not None:
+            elapsed = int(time.time() - feed_start_time)
+            current_check_index = elapsed // interval
+
+            print(f"[DEBUG] Elapsed: {elapsed}s | Check {current_check_index}/{check_count} | Pellet count: {current_count} | Re-feed threshold: {threshold}")
+
+            if current_check_index > last_check_index and current_check_index < check_count:
+                last_check_index = current_check_index
+
+                with object_count_lock:
+                    current_count = object_count[1]
+
+                if current_count < threshold:
+                    total_count += setting.get_pellets()
+                    try:
+                        print("[RE-FEED] Pellet low, continuing feed")
+                        try:
+                            with shelve_lock:
+                                with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
+                                    port = db.get('Port')
+                                    server_isn = db.get('syn_ack_seq')
+                                    server_ack = db.get('syn_ack_ack')
+                                    ip_data = ip_db.get('IP', {})
+                                    source_ip = ip_data.get('source')
+                                    destination_ip = ip_data.get('destination')
+                            print("[RE-FEED] Pellet low, continuing feed")
+                            start_send_manual_feed(port, server_isn, int(server_ack)+1, source_ip, destination_ip)
+                            print("[RE-FEED] Feed continued successfully")
+                        except Exception as e:
+                            print(f"[ERROR] Failed to continue feed: {e}")
+                        print("[RE-FEED] Feed continued successfully")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to continue feed: {e}")
+                else:
+                    try:
+                        print("[RE-FEED] Pellet level sufficient. Stopping feed.")
+                        try:
+                            with shelve_lock:
+                                with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
+                                    port = db.get('Port')
+                                    server_isn = db.get('syn_ack_seq')
+                                    server_ack = db.get('syn_ack_ack')
+                                    ip_data = ip_db.get('IP', {})
+                                    source_ip = ip_data.get('source')
+                                    destination_ip = ip_data.get('destination')
+                            print("[RE-FEED] Pellet level sufficient. Stopping feed.")
+                            stop_send_manual_feed(port, server_isn, int(server_ack), source_ip, destination_ip)
+                            print("[RE-FEED] Feed stopped successfully")
+                        except Exception as e:
+                            print(f"[ERROR] Failed to stop feed early: {e}")
+                        print("[RE-FEED] Feed stopped successfully")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to stop feed early: {e}")
+
+            # End feeding session if duration complete
+            if elapsed >= duration:
+                print("[FEED END] Duration complete. Ending session.")
+                try:
+                    try:
+                        with shelve_lock:
+                            with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
+                                port = db.get('Port')
+                                server_isn = db.get('syn_ack_seq')
+                                server_ack = db.get('syn_ack_ack')
+                                ip_data = ip_db.get('IP', {})
+                                source_ip = ip_data.get('source')
+                                destination_ip = ip_data.get('destination')
+                        stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                    except Exception as e:
+                        print(f"[ERROR] Failed to stop final feed: {e}")
+                except Exception as e:
+                    print(f"[ERROR] Failed to stop final feed: {e}")
+                feeding = False
+                feed_start_time = None
+                save_chart_data(current_count, total_count)
+
+        time.sleep(1)
+
+def save_chart_data(current_count, total_count):
+    try:
+        with shelve_lock:
+            with shelve.open('mock_chart_data.db', 'c') as db:
+                date = datetime.today().strftime("%Y-%m-%d")
+                time_str = datetime.now().strftime("%I:%M %p")
+                if date not in db:
+                    db[date] = {}
+                day_data = db[date]
+                day_data[time_str] = current_count
+                day_data['Total'] = day_data.get('Total', 0) + total_count
+                db[date] = day_data
+        print("[SAVE] Feeding session data recorded.")
+    except Exception as e:
+        print(f"[ERROR] Failed to save feeding data: {e}")
 
 @login_required
 def generate_frames():
@@ -672,7 +592,6 @@ def load_user(user_id):
         with shelve.open('users.db') as db:
             user_data = db.get(user_id)
             user = db[username]['username']
-            db.close()
             if user_data:
                 return User(user_data['username'], user_data['email'], user_data['password'], user_data['role'], user_data.get('status', 'Active'))
     except Exception as e:
@@ -989,13 +908,11 @@ def encode_time(timer_id, start_hour, start_minute, end_hour, end_minute):
 from scapy.all import *
 
 def get_next_ip_id():
-    # Load the current ID from a file (or create it if it doesn't exist)
     with shelve.open('settings.db', 'c') as db:
-        last_id = db.get('last_ip_id', 7500)  # Default to 1 if no ID is stored
-        db['last_ip_id'] = last_id + 1    # Increment the ID for the next packet
-        db.close()
-    return last_id
-
+        last_id = db.get('last_ip_id', 7500)
+        db['last_ip_id'] = last_id + 1
+        return last_id
+# 
 def get_interface_by_ip(target_ip):
     for iface_name, iface_addrs in psutil.net_if_addrs().items():
         for addr in iface_addrs:
@@ -1045,20 +962,22 @@ def send_tcp_packet(encoded_byte, source_port, server_isn, server_ack, source_ip
         print(f"Sniff attempt {packet_counter}")  # <-- Add this
         sniffpacket = sniff(iface=interface_name,
                             filter=f"tcp and src host {destination_ip} and port {destination_port}",
-                            count=1, timeout=0.1) # Adjust the Ethernet port name to correspond with the connected interface.
+                            count=1, timeout=0.5) # Adjust the Ethernet port name to correspond with the connected interface.
 
         if not sniffpacket:
             print(f"No packet received. Attempt: {packet_counter}")  # <-- Add this
-            if packet_counter == 10:
+            if packet_counter == 2:
                 print("Timeout reached, no packet captured.")
-                break
+                return False
             continue
 
-        tcp_payload = bytes(sniffpacket[0][TCP].payload).rstrip(b'\x00')
+        pkt = sniffpacket[0]
+        tcp_flags = pkt[TCP].flags
+        tcp_payload = bytes(pkt[TCP].payload).rstrip(b'\x00')
         payload_len = len(tcp_payload)
-        print(f"Packet captured: {payload_len} bytes")
+        print(f"Packet captured: {payload_len} bytes | Flags: {tcp_flags}")
 
-        if sniffpacket[0][TCP].flags == "PA" and payload_len > 0:
+        if tcp_flags in ["PA", "A", "FPA", "FA"]:
             stored_ack = sniffpacket[0][TCP].ack
             stored_seq = sniffpacket[0][TCP].seq
 
@@ -1076,10 +995,9 @@ def send_tcp_packet(encoded_byte, source_port, server_isn, server_ack, source_ip
             with shelve.open('settings.db', 'c') as db:
                 db['syn_ack_seq'] = stored_ack
                 db['syn_ack_ack'] = stored_seq + payload_len
-                db.close()
 
             print("Found correct packet and sent ACK")
-            break
+            return True
         else:
             continue
 
@@ -1178,7 +1096,6 @@ def send_syn_packet(client_ip, server_ip, source_port, destination_port):
                 with shelve.open('settings.db', 'c') as db:
                     db['syn_ack_seq'] = psh_ack.ack
                     db['syn_ack_ack'] = psh_ack.seq + payload_length
-                    db.close()
                 print("Acknowledged server's PSH, ACK")
                 print(f"ISN{syn_ack.seq}")
 
@@ -1212,16 +1129,9 @@ def send_RST_packet(source_port, server_isn, server_ack, source_ip, destination_
     send(packet, verbose=0)
 
 def start_send_manual_feed(source_port, server_isn, server_ack, source_ip, destination_ip):
-    destination_port = 50000
+    print(f"[DEBUG] --> start_send_manual_feed() triggered at {datetime.now().strftime('%H:%M:%S')}")
     encoded_data = "ccdda10100010001a448"
-
-    try:
-        interface_name = get_interface_by_ip(source_ip)
-    except RuntimeError as e:
-        print(f"[Error] {e}")
-        return
-
-    send_tcp_packet(
+    success = send_tcp_packet(
         encoded_byte=encoded_data,
         source_port=source_port,
         server_isn=server_isn,
@@ -1229,58 +1139,13 @@ def start_send_manual_feed(source_port, server_isn, server_ack, source_ip, desti
         source_ip=source_ip,
         dest_ip=destination_ip
     )
-    packet_counter = 0
-    while True:
-        packet_counter += 1
-        sniffpacket = sniff(iface=interface_name,
-                            filter=f"tcp and src host {destination_ip} and port {destination_port}",
-                            count=1, timeout=0.1) # Adjust the Ethernet port name to correspond with the connected interface.
-
-        if not sniffpacket:
-            if packet_counter == 10:
-                print("not found")
-                break
-            continue
-
-        tcp_payload = bytes(sniffpacket[0][TCP].payload).rstrip(b'\x00')
-        payload_len = len(tcp_payload)
-        print(f"Packet captured: {payload_len} bytes")
-
-        if sniffpacket[0][TCP].flags == "PA" and payload_len > 0:
-            stored_ack = sniffpacket[0][TCP].ack
-            stored_seq = sniffpacket[0][TCP].seq
-
-            # Send ACK with proper sequence and acknowledgment numbers
-            ip_id = get_next_ip_id()
-            ack_packet = IP(src=source_ip, dst=destination_ip, id=ip_id) / TCP(
-                sport=source_port,
-                dport=destination_port,
-                seq=stored_ack,
-                ack=stored_seq + payload_len,
-                flags="A",
-                window=64233
-            )
-            send(ack_packet)
-            with shelve.open('settings.db', 'c') as db:
-                db['syn_ack_seq'] = stored_ack
-                db['syn_ack_ack'] = stored_seq + payload_len
-                db.close()
-
-            print("Found correct packet and sent ACK")
-            break
-        else:
-            continue
+    if not success:
+        print("Start Manual feed packet not found")
 
 def stop_send_manual_feed(source_port, server_isn, server_ack, source_ip, destination_ip):
-    destination_port = 50000
+    print(f"[DEBUG] --> stop_send_manual_feed() triggered at {datetime.now().strftime('%H:%M:%S')}")
     encoded_data = "ccdda10100000001a346"
-
-    try:
-        interface_name = get_interface_by_ip(source_ip)
-    except RuntimeError as e:
-        print(f"[Error] {e}")
-        return
-    send_tcp_packet(
+    success = send_tcp_packet(
         encoded_byte=encoded_data,
         source_port=source_port,
         server_isn=server_isn,
@@ -1288,47 +1153,8 @@ def stop_send_manual_feed(source_port, server_isn, server_ack, source_ip, destin
         source_ip=source_ip,
         dest_ip=destination_ip
     )
-    packet_counter = 0
-    while True:
-        packet_counter += 1
-        sniffpacket = sniff(iface=interface_name,
-                            filter=f"tcp and src host {destination_ip} and port {destination_port}",
-                            count=1, timeout=0.1) # Adjust the Ethernet port name to correspond with the connected interface.
-
-        if not sniffpacket:
-            if packet_counter == 10:
-                print("not found")
-                break
-            continue
-
-        tcp_payload = bytes(sniffpacket[0][TCP].payload).rstrip(b'\x00')
-        payload_len = len(tcp_payload)
-        print(f"Packet captured: {payload_len} bytes")
-
-        if sniffpacket[0][TCP].flags == "PA" and payload_len > 0:
-            stored_ack = sniffpacket[0][TCP].ack
-            stored_seq = sniffpacket[0][TCP].seq
-
-            # Send ACK with proper sequence and acknowledgment numbers
-            ip_id = get_next_ip_id()
-            ack_packet = IP(src=source_ip, dst=destination_ip, id=ip_id) / TCP(
-                sport=source_port,
-                dport=destination_port,
-                seq=stored_ack,
-                ack=stored_seq + payload_len,
-                flags="A",
-                window=64233
-            )
-            send(ack_packet)
-            with shelve.open('settings.db', 'c') as db:
-                db['syn_ack_seq'] = stored_ack
-                db['syn_ack_ack'] = stored_seq + payload_len
-                db.close()
-
-            print("Found correct packet and sent ACK")
-            break
-        else:
-            continue
+    if not success:
+        print("Stop manual feed packet not found")
 
 # Route to update the interval setting
 @app.route('/update_interval', methods=['POST'])
@@ -1667,6 +1493,8 @@ def update_setting():
                             if end_hour >= 24:
                                 end_hour, end_minute = 24, 0
                             encoded_byte = encode_time(0x01, first_hour, first_minute, end_hour, end_minute)
+                            print(f"[DEBUG] Current time when sending first feeding packet: {datetime.now().strftime('%H:%M:%S')}")
+                            print(f"[DEBUG] Intended start time encoded: {first_hour}:{first_minute}")
 
                             # Encode second feed time
                             end_hour2 = second_hour + (second_minute + feeding_duration) // 60
@@ -1678,16 +1506,10 @@ def update_setting():
                             with shelve.open("IP.db") as db:
                                 ip_data = db.get("IP", {})
                                 source_ip = ip_data.get("source", "Source IP not found")
-                                destination_ip = ip_data.get("destination", "Destination IP not found")
-
-                            send_tcp_packet(encoded_byte, port, server_isn, server_ack, source_ip, destination_ip)
-                            print(f"Encoded packet 1: {encoded_byte}")
-                            time.sleep(2)
-                            send_tcp_packet(encoded_byte2, port, server_isn, server_ack, source_ip, destination_ip)
-                            print(f"Encoded packet 2: {encoded_byte2}")
+                                destination_ip = ip_data.get("destination", "Destination IP not found")\
 
                             user_email = session.get("email")
-                            total_minute = setting.minutes.data // 60
+                            total_minute = setting.minutes.data
                             schedule_feeding_alerts(setting.first_timer.data, setting.second_timer.data, total_minute, user_email)
 
                             return redirect(url_for('dashboard'))
@@ -1815,7 +1637,7 @@ def schedule_feeding_alerts(first_timer, second_timer, feeding_duration, user_em
         first_timer_dt = now.replace(hour=int(first_timer[:2]), minute=int(first_timer[2:]), second=0, microsecond=0)
         second_timer_dt = now.replace(hour=int(second_timer[:2]), minute=int(second_timer[2:]), second=0, microsecond=0)
 
-        feeding_duration = int(feeding_duration)
+        feeding_duration = int(feeding_duration * 60)  # Convert minutes to seconds
 
         # Localize the datetime objects
         timezone = pytz.timezone("Asia/Singapore")
@@ -1854,7 +1676,6 @@ def schedule_feeding_alerts(first_timer, second_timer, feeding_duration, user_em
                 # Update the existing job
                 scheduler.remove_job('second_feeding_alert')
 
-
             # Add a new job if it doesn't exist
             scheduler.add_job(
                     func=send_feeding_complete_email,
@@ -1864,7 +1685,7 @@ def schedule_feeding_alerts(first_timer, second_timer, feeding_duration, user_em
                     id='second_feeding_alert',
                     misfire_grace_time=3600
                 )
-            print("Job added.")
+            print("Job 'second_feeding_alert added.")
 
     except ValueError as e:
         print(f"Error parsing time: {e}")
@@ -2016,7 +1837,6 @@ def change_password():
                         db[username] = user_data  # Save updated password
                         flash('Your password has been updated successfully.', 'success')
                         print(user_data['role'])
-                        db.close()
                         return redirect(url_for('dashboard'))  # Redirect to a post-update page
                     else:
                         flash('User not found. Please log in.', 'danger')
@@ -2237,172 +2057,120 @@ def start_syn_packet_thread(client_ip, server_ip, port, destination_port):
     syn_thread.daemon = True  # Allow the thread to exit when the main program exits
     syn_thread.start()
 
-# Main code
-if __name__ == '__main__':
-    try:
-        # Attempt to open the shelve database file for reading
-        print("Attempting to open the database file for reading.")
-        print("Database file opened for reading.")
-        print("Attempting to open the database file for updating...")
-
-        with shelve.open('users.db', 'c') as db:
-            for key in db:
-                user_data = db[key]
-                print(user_data)
-
-                if 'status' not in user_data:  # Check if 'role' field exists
-                    user_data['status'] = 'Active'  # Set default role (e.g., 'Admin' or 'Guest')
-                    db[key] = user_data  # Update the record
-                    print(f"Added 'status' field to user: {key}")
-
-        print("Database file updated successfully.")
-
-        db = shelve.open('settings.db', 'w')
-        # Attempt to get 'Time_Record' from db, if not found, initialize with empty dictionary
-        Time_Record_dict = db.get('Time_Record',{})
-        Email_dict = db.get('Email_Data', {})
-        Generate_Status = db.get('Generate_Status', False)
-        email_setup = Email_dict['Email_Info']
-
-        # app.config['MAIL_USERNAME'] = email_setup.get_sender_email()
-        # app.config['MAIL_PASSWORD'] = email_setup.get_APPPassword()
-        # app.config['MAIL_DEFAULT_SENDER'] = ('admin', email_setup.get_sender_email())
-
-        app.config['MAIL_USERNAME'] = 'iatfadteam@gmail.com'
-        app.config['MAIL_PASSWORD'] = 'pmtu cilz uewx xqqi'
-        app.config['MAIL_DEFAULT_SENDER'] = ('Admin', 'iatfadteam@gmail.com')
-
-        mail = Mail(app)
-        # newly added read config email from database
-        port = random.randint(53100, 53199)
-        db['Port'] = port
-        db['last_ip_id'] = 7500
-        # Start the syn packet in a separate thread
-        db.close()
-
-        db = shelve.open('line_chart_data.db', 'w')
-        Line_Chart_Data_dict = db.get('Line_Chart_Data',{})  # Attempt to get 'Time_Record' from db, if not found, initialize with empty dictionary
-        current_date = (datetime.today()+timedelta(days=1)).strftime("%Y-%m-%d")
-
-        if current_date not in Line_Chart_Data_dict:
-            linechart = Line_Chart_Data(current_date, 0)
-            Line_Chart_Data_dict[current_date] = linechart
-            db['Line_Chart_Data'] = Line_Chart_Data_dict
-
-        ###### test code ####
-        today = datetime.today()
-        current_date = today - timedelta(days=3)
-        current_date1 = today - timedelta(days=2)
-        current_date2 = today - timedelta(days=1)
-        current_date3 = today
-
-        print(current_date3,'current')
-
-        if current_date3.strftime("%Y-%m-%d") == '2024-05-03':
-            oject = Line_Chart_Data_dict.get(current_date3.strftime("%Y-%m-%d"))
-            oject.set_timeRecord(0)
-
-            oject1 = Line_Chart_Data_dict.get(current_date2.strftime("%Y-%m-%d"))
-            oject1.set_timeRecord(80)
-
-            oject2 = Line_Chart_Data_dict.get(current_date1.strftime("%Y-%m-%d"))
-            oject2.set_timeRecord(300)
-
-            oject3 = Line_Chart_Data_dict.get(current_date.strftime("%Y-%m-%d"))
-            oject3.set_timeRecord(500)
-
-        db['Line_Chart_Data'] = Line_Chart_Data_dict
-        db.close()
-
-        print('the Date you have:\n-------------------------------------------------------')
-        for i in Line_Chart_Data_dict:
-            print(i,': ', (Line_Chart_Data_dict.get(i).get_timeRecord()))
-        print('-------------------------------------------------------')
-
-        # Start the threads for capturing frames and processing frames
-        capture_thread = threading.Thread(target=capture_frames)
-        print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<Set thread >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        inference_thread = threading.Thread(target=process_frames)
-        update_schedule_thread = threading.Thread(target=schedule_daily_task)
-
-        # Start the threads
-        capture_thread.start()
-        time.sleep(5)
-        inference_thread.start()
-        update_schedule_thread.start()
-    except:
-        mail = Mail(app)
-        # If the file doesn't exist, create a new one
-        print("Database file does not exist. Creating a new one.")
-        db = shelve.open('settings.db', 'c')
-
-        # create the basic setting for new user
-        setting =Settings('0830', '1800' ,1, 100,10,60)
-        Time_Record_dict['Time_Record_Info'] = setting
-        db['Time_Record'] = Time_Record_dict
+def initialize_databases():
+    print("Creating new databases and initializing default values.")
+    # settings.db
+    with shelve.open('settings.db', 'c') as db:
+        setting = Settings('0830', '1800', 1, 100, 10, 60)
+        db['Time_Record'] = {'Time_Record_Info': setting}
         db['Generate_Status'] = False
         db['Check_Interval'] = 10
 
-        # create the basic email setup for user
-        email_sender = 'iatfadteam@gmail.com'
-        email_password = 'pmtu cilz uewx xqqi'
-        email_receiver = 'iatfadteam@gmail.com'
-        email_setup = Email(email_sender, email_receiver, email_password, 3)
-        Email_dict['Email_Info'] = email_setup
-        db['Email_Data'] = Email_dict
-        port = random.randint(50001, 65535)
-        db['Port'] = port
+        email_setup = Email('iatfadteam@gmail.com', 'iatfadteam@gmail.com', 'pmtu cilz uewx xqqi', 3)
+        db['Email_Data'] = {'Email_Info': email_setup}
 
-        # close the db
-        db.close()
+        db['Port'] = random.randint(50001, 65535)
 
-        #  create the line chart database
-        db = shelve.open('line_chart_data.db', 'c')
-        # Get today's date
+    # line_chart_data.db
+    with shelve.open('line_chart_data.db', 'c') as db:
         today = datetime.today()
+        chart_data = {}
         for i in range(7):
-            # Calculate the date for the current iteration
-            current_date = today - timedelta(days=i)
+            day = today - timedelta(days=i)
+            chart_data[day.strftime("%Y-%m-%d")] = Line_Chart_Data(day, 0)
+        db['Line_Chart_Data'] = chart_data
 
-            # Generate data for the current date
-            linechart = Line_Chart_Data(current_date, 0)
 
-            # Store the data in the dictionary
-            Line_Chart_Data_dict[current_date.strftime("%Y-%m-%d")] = linechart
+def update_existing_databases():
+    print("Updating existing database values if needed.")
+
+    with shelve.open('users.db', 'c') as db:
+        for key in db:
+            user_data = db[key]
+            if 'status' not in user_data:
+                user_data['status'] = 'Active'
+                db[key] = user_data
+
+    with shelve.open('settings.db', 'w') as db:
+        db['Port'] = random.randint(53100, 53199)
+        db['last_ip_id'] = 7500
+
+    with shelve.open('line_chart_data.db', 'w') as db:
+        Line_Chart_Data_dict = db.get('Line_Chart_Data', {})
+        today = datetime.today()
+        current_date = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+        if current_date not in Line_Chart_Data_dict:
+            Line_Chart_Data_dict[current_date] = Line_Chart_Data(current_date, 0)
         db['Line_Chart_Data'] = Line_Chart_Data_dict
-        db.close()
-        capture_thread = threading.Thread(target=capture_frames)
-        print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<Set thread >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        inference_thread = threading.Thread(target=process_frames)
-        update_schedule_thread = threading.Thread(target=schedule_daily_task)
 
-        # Start the threads
-        capture_thread.start()
-        time.sleep(5)
-        inference_thread.start()
-        update_schedule_thread.start()
+
+def setup_mail():
+    print("Configuring mail...")
+    app.config['MAIL_USERNAME'] = 'iatfadteam@gmail.com'
+    app.config['MAIL_PASSWORD'] = 'pmtu cilz uewx xqqi'
+    app.config['MAIL_DEFAULT_SENDER'] = ('Admin', 'iatfadteam@gmail.com')
+    return Mail(app)
+
+
+def start_threads():
+    print("Starting all system threads...")
+
+    capture_thread = threading.Thread(target=capture_frames)
+    video_thread = threading.Thread(target=video_processing_loop)
+    feeding_thread = threading.Thread(target=feeding_scheduler_loop)
+    schedule_thread = threading.Thread(target=schedule_daily_task)
+
+    capture_thread.start()
+    time.sleep(5)  # ensure camera is ready
+    video_thread.start()
+    feeding_thread.start()
+    schedule_thread.start()
+
+    return [capture_thread, video_thread, feeding_thread, schedule_thread]
+
+
+def cleanup_on_exit():
+    print("Cleaning up and closing ports...")
+    stop_event.set()
+
     try:
-        mail = Mail(app)
-        app.run(host='0.0.0.0', port=5000, debug=True)
-    finally:
-        # Stop threads on exit
-        stop_event.set()
-        capture_thread.join()
-        inference_thread.join()
-        print("Closing the port after application finishes...")
-        db = shelve.open('settings.db', 'w')
-        port = db['Port']
-        server_isn = db['syn_ack_seq']
-        server_ack = db['syn_ack_ack']
-        db.close()
+        with shelve.open('settings.db', 'r') as db:
+            port = db.get('Port')
+            server_isn = db.get('syn_ack_seq')
+            server_ack = db.get('syn_ack_ack')
+
         with shelve.open("IP.db") as db:
-            if "IP" in db:
-                ip_data = db["IP"]  # Retrieve the dictionary
-                source_ip = ip_data.get("source", "Source IP not found")
-                destination_ip = ip_data.get("destination", "Destination IP not found")
-                print("Source IP:", source_ip)
-                print("Destination IP:", destination_ip)
-            else:
-                print("No IP data found.")
-        send_RST_packet(port, server_isn, server_ack,source_ip, destination_ip)  # Send a FIN packet to close the connection
-        print("Port closed.")
+            ip_data = db.get("IP", {})
+            source_ip = ip_data.get("source", "N/A")
+            destination_ip = ip_data.get("destination", "N/A")
+
+        send_RST_packet(port, server_isn, server_ack, source_ip, destination_ip)
+        print("Port closed successfully.")
+    except Exception as e:
+        print(f"[CLEANUP ERROR] Failed to send RST packet or close ports: {e}")
+
+
+if __name__ == '__main__':
+    try:
+        # Check if DB is readable
+        with shelve.open('settings.db', 'r') as _:
+            pass
+        update_existing_databases()
+
+    except Exception as e:
+        print(f"[INIT ERROR] Could not open DB, initializing new one: {e}")
+        initialize_databases()
+
+    # Setup mail
+    mail = setup_mail()
+
+    # Start all system threads
+    threads = start_threads()
+
+    # Start Flask app
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=False)
+    finally:
+        cleanup_on_exit()
+        for t in threads:
+            t.join()
