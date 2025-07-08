@@ -212,10 +212,16 @@
         margin-right: 8px;
     }
 
-    .info-badge.success {
+    .info-badge.info {
         background-color: #4477e7;
         color: #dbeafe;
         border-left-color: #60a5fa;
+    }
+
+    .info-badge.success {
+        background-color: #065f46;
+        color: #d1fae5;
+        border-left-color: #10b981;
     }
 
     .info-badge.warning {
@@ -424,7 +430,7 @@
     <div id="settingsFormContainer" class="settings-form-container">
         <h1>Feeding Settings</h1>
         <hr class="settings-divider">
-        <form method="POST" action="">
+        <form id="autoFeedForm">
             {{ form.csrf_token }}
 
             <div class="settings-input-group">
@@ -456,7 +462,7 @@
                         <label for="duration">Feeding Duration</label>
                         <div class="settings-input-with-icon">
                             <i class="fas fa-stopwatch fa-icon"></i>
-                            {{ render_field(form.minutes, class="form-control", placeholder="Minutes") }}
+                            {{ render_field(form.minutes, class="form-control", placeholder="") }}
                             <span class="unit-label">minutes</span>
                         </div>
                     </div>
@@ -467,12 +473,12 @@
                         <div class="compound-fields">
                             <div class="settings-input-with-icon">
                                 <i class="fas fa-hourglass-half fa-icon"></i>
-                                {{ render_field(form.interval_minutes, class="form-control", placeholder="Minutes") }}
+                                {{ render_field(form.interval_minutes, class="form-control", placeholder="") }}
                                 <span class="unit-label">minutes</span>
                             </div>
                             <div class="settings-input-with-icon">
                                 <i class="fas fa-hourglass-half fa-icon"></i>
-                                {{ render_field(form.interval_seconds, class="form-control", placeholder="Seconds") }}
+                                {{ render_field(form.interval_seconds, class="form-control", placeholder="") }}
                                 <span class="unit-label">seconds</span>
                             </div>
                         </div>
@@ -491,7 +497,7 @@
                     </div>
                 </div>
                 <div class="full-width">
-                    <div class="info-badge success" id="interval-info" style="display: none;">
+                    <div class="info-badge info" id="interval-info" style="display: none;">
                         <i class="fas fa-info-circle"></i> Estimated interval checks during feeding time: <span
                             id="interval-count">0</span> times.
                     </div>
@@ -509,7 +515,7 @@
                             <span class="unit-label">grams (g)</span>
                         </div>
                     </div>
-                    <div class="info-badge success" id="pellet-info">
+                    <div class="info-badge info" id="pellet-info">
                         <i class="fas fa-info-circle"></i>
                         <span id="pelletCalculation">0 g : 0 pellets (100 pellets/g)</span>
                     </div>
@@ -520,6 +526,8 @@
                 <i class="fas fa-save"></i>
                 Save Settings
             </button>
+
+            <div id="autoFeedMessageContainer" class="full-width" style="margin-top: 20px;"></div>
 
             <div style="text-align: center; margin-top: 15px;">
                 <a href="#" id="toggleMode" style="color: var(--highlight); cursor: pointer; user-select: none;">
@@ -583,6 +591,7 @@
     let manualFeedInterval = null;
     let feedStartTime = null;
     const manualFeedTimer = document.getElementById('manualFeedTimer');
+    const autoFeedForm = document.getElementById('autoFeedForm');
 
     if (initialMode === 'manual') {
         toggleMode();
@@ -755,5 +764,49 @@
             updateManualFeedTimer();
         }
     });
+
+    autoFeedForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = {
+            first_timer: document.querySelector('[name="first_timer"]').value.trim(),
+            second_timer: document.querySelector('[name="second_timer"]').value.trim(),
+            minutes: document.querySelector('[name="minutes"]').value.trim(),
+            interval_minutes: document.querySelector('[name="interval_minutes"]').value.trim(),
+            interval_seconds: document.querySelector('[name="interval_seconds"]').value.trim(),
+            pellets: document.querySelector('[name="pellets"]').value.trim()
+        };
+
+        try {
+            const response = await fetch('/update?mode=auto', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                showAutoFeedMessage(result.message || 'Feeding schedule updated.', 'success');
+            } else {
+                showAutoFeedMessage(result.message || 'Error saving settings.', 'warning');
+            }
+        } catch (err) {
+            showAutoFeedMessage('Network error. Please try again. ', 'warning');
+            console.error("Form submission error:", err);
+        }
+    });
+
+    function showAutoFeedMessage(message, status) {
+    const container = document.getElementById('autoFeedMessageContainer');
+    container.innerHTML = `
+        <div class="info-badge ${status === 'success' ? 'success' : 'warning'}">
+            <i class="fas ${status === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+}
 </script>
 {% endblock %}
