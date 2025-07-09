@@ -1258,13 +1258,13 @@ def get_threshold():
 def get_pellet_data():
     # Define test data
     pellet_data = {
-        '19 May 2025': {'8:05 AM': 35, '6:05 PM': 20, 'Total': 450},
-        '20 May 2025': {'8:05 AM': 25, '6:05 PM': 30, 'Total': 400},
-        '21 May 2025': {'8:05 AM': 15, '6:05 PM': 40, 'Total': 300},
-        '22 May 2025': {'8:05 AM': 25, '6:05 PM': 30, 'Total': 250},
-        '23 May 2025': {'8:05 AM': 25, '6:05 PM': 30, 'Total': 400},
-        '24 May 2025': {'8:05 AM': 15, '6:05 PM': 40, 'Total': 300},
-        '25 May 2025': {'8:05 AM': 45, '6:05 PM': 35, 'Total': 275},
+        '03 Jul 2025': {'Morning': 250, 'Evening': 200, 'Total': 450},
+        '04 Jul 2025': {'Morning': 200, 'Evening': 200, 'Total': 400},
+        '05 Jul 2025': {'Morning': 100, 'Evening': 200, 'Total': 300},
+        '06 Jul 2025': {'Morning': 120, 'Evening': 130, 'Total': 250},
+        '07 Jul 2025': {'Morning': 220, 'Evening': 180, 'Total': 400},
+        '08 Jul 2025': {'Morning': 140, 'Evening': 160, 'Total': 300},
+        '09 Jul 2025': {'Morning': 125, 'Evening': 150, 'Total': 275},
     }
     # Check if the database exists, and if not, create and populate it
     db_path = 'mock_chart_data.db'
