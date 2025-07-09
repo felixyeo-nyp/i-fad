@@ -1839,7 +1839,8 @@ def retrieve_users():
                 if (
                     search_query in username.lower()
                     or search_query in data.get('email', '').lower()
-                    or search_query in data.get('role', '').lower()  # NEW: match by role
+                    or search_query in data.get('role', '').lower()
+                    or search_query in data.get('status', '').lower()
                 )
             }
         else:
