@@ -38,12 +38,12 @@
     height: 100vh;
     display: flex; justify-content: center; align-items: center;
     padding: 20px;
-    position: relative; overflow: hidden;
+    position: relative; overflow: scroll;
   }
 
   /* Outer wrapper */
   .container {
-    max-width: 500px; width: 100%; z-index: 1;
+    max-width: 500px; width: 100%; z-index: 1; ;
   }
 
   /* White card */
@@ -120,24 +120,28 @@
 
   /* Role toggles */
   .role-title { font-size:16px; font-weight:600; margin-bottom:8px; color:#333; }
-  .role-group { display:flex; gap:10px; margin-bottom:20px; }
+  .role-group { display:flex; gap:10px; margin-bottom:20px; width: 100%;}
   .role-group input[type="radio"] { position:absolute; opacity:0; pointer-events:none; }
   .role-group label {
-    display:inline-flex; align-items:center; gap:6px;
+    display:flex; align-items:center; gap:6px;
     padding:8px 20px; border:1px solid #ccc; border-radius:8px;
     background:#f0f0f0; color:#333; cursor:pointer;
-    transition:background .2s, border-color .2s, color .2s;
+    transition:background .2s, border-color .2s, color .2s; flex:1; justify-content:center;
   }
   .role-group label:has(input:checked) {
     background:#3498db; border-color:#3498db; color:#fff;
   }
 
+   .role-group input[type="radio"] { position:absolute; opacity:0; pointer-events:none; }
+
   /* Password requirements */
   .req {
-    display:flex; flex-direction:column;
-    background:#fafafa; border:1px solid #e0e0e0;
-    border-radius:8px; padding:15px; margin-bottom:20px;
-  }
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      background:#fafafa; border:1px solid #e0e0e0;
+      border-radius:8px; padding:15px; margin-bottom:20px;
+    }
   .req-label {
     display:inline-flex; align-items:center; gap:8px;
     font-size:14px; color:#333; margin-bottom:8px;
@@ -145,7 +149,7 @@
   .req input[type="checkbox"] {
     width:18px; height:18px; border:2px solid #ccc;
     border-radius:4px; appearance:none; position:relative;
-    margin-bottom:6px; cursor:pointer;
+    margin-bottom:6px;
   }
   .req input:checked {
     background:#3498db; border-color:#3498db;
@@ -184,7 +188,7 @@
       <i class="fas fa-arrow-left"></i>
     </a>
 
-    <h2>Admin Registration</h2>
+    <h2>Add User</h2>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}

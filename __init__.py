@@ -2148,11 +2148,29 @@ def feedback():
 @login_required
 @role_required('Admin')
 def admin_feedbacks():
-    feedbacks = store_Feedback.list_all()
+    # grab the raw list
+    all_feedbacks = store_Feedback.list_all()
+
+    # pull the search term from ?q=…
+    q = request.args.get('q', '').strip().lower()
+
+    if q:
+        def matches(fb):
+            return (
+                q in fb.get_user_email().lower() or
+                q in fb.get_user_name().lower() or
+                q in fb.get_message().lower() or
+                q in fb.get_submitted_at().strftime('%Y-%m-%d %H:%M').lower()
+            )
+        feedbacks = [fb for fb in all_feedbacks if matches(fb)]
+    else:
+        feedbacks = all_feedbacks
+
     form = DeleteForm()
     return render_template('admin_feedback.html',
                            feedbacks=feedbacks,
-                           form=form)
+                           form=form,
+                           q=q)
 
 
 @app.route('/admin/feedbacks/delete/<int:fb_id>', methods=['POST'])
