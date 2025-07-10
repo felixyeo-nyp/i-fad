@@ -116,7 +116,6 @@ class FreshestFrame(threading.Thread):
 # do note that in the pth file, the pellet id also is 1
 class_labels = {
     1: 'Pellets',
-    #2: 'Fecal Matters'
 }
 
 # pth file where you have defined on roboflow
@@ -138,13 +137,10 @@ frame_data = {
 
 # Initialize locks for shared variables
 latest_processed_frame_lock = threading.Lock()
-feeding_lock = threading.Lock()
 frame_data_lock = threading.Lock()
 object_count_lock = threading.Lock()
 freshest_frame_lock = threading.Lock()
-total_time_lock = threading.Lock()
 shelve_lock = threading.Lock()
-stop_event = threading.Event()
 
 def create_model(num_classes, pretrained=False, coco_model=False):
     if pretrained:
@@ -253,15 +249,83 @@ def capture_frames():
 
         cap.release()
 
-def delayed_stop_feed(port, server_isn, server_ack, source_ip, destination_ip, delay):
-    time.sleep(delay)
-    stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-    print("Auto-feeding stopped after delay.")
-    global feeding, feeding_timer, starting_timer
-    with feeding_lock:
-        feeding = False
-    feeding_timer = None
-    starting_timer = None
+def validate_config_thread():
+    global latest_valid_settings, latest_set_ip_settings
+    print("Starting validation thread for settings and IP...")
+
+    fallback_setting = Settings('0830', '1800', 1, 100, 1, 60)
+    fallback_ip = {
+        "source": "192.168.0.65",
+        "destination": "192.168.0.18",
+        "camera_ip": "192.168.0.52",
+        "amcrest_username": "admin",
+        "amcrest_password": "fyp2025Fish34535"
+    }
+    fallback_email = Email('iatfadteam@gmail.com', 'iatfadteam@gmail.com', 'pmtu cilz uewx xqqi', 3)
+
+    while not stop_event.is_set():
+        try:
+            # Check IP.db
+            ip_config_updated = False
+            with shelve_lock:
+                with shelve.open('IP.db', 'c') as ip_db:
+                    ip_data = ip_db.get("IP", {})
+                    required_keys = ["source", "destination", "camera_ip", "amcrest_username", "amcrest_password"]
+
+                    if not all(k in ip_data and ip_data[k] for k in required_keys):
+                        ip_db["IP"] = latest_set_ip_settings if latest_set_ip_settings else fallback_ip
+                        ip_config_updated = True
+                        print("[VALIDATE] Fallback IP configuration written.")
+
+            # Check settings.db
+            with shelve_lock:
+                with shelve.open('settings.db', 'c') as settings_db:
+                    time_record = settings_db.get('Time_Record', {}).get('Time_Record_Info')
+                    if not time_record:
+                        if latest_valid_settings:
+                            settings_db['Time_Record'] = {'Time_Record_Info': latest_valid_settings}
+                            print("[VALIDATE] Restored missing settings from latest valid config.")
+                        else:
+                            settings_db['Time_Record'] = {'Time_Record_Info': fallback_setting}
+                            print("[VALIDATE] Fallback settings initialized.")
+
+                    if 'Port' not in settings_db:
+                        settings_db['Port'] = random.randint(50001, 65535)
+                        print("[VALIDATE] Missing Port generated.")
+
+                    if 'Generate_Status' not in settings_db:
+                        settings_db['Generate_Status'] = False
+                        print("[VALIDATE] Generate_Status set to False.")
+
+                    if 'Email_Data' not in settings_db:
+                        settings_db['Email_Data'] = {'Email_Info': fallback_email}
+                        print("[VALIDATE] Fallback Email_Data written.")
+
+                    if ip_config_updated or 'syn_ack_seq' not in settings_db or 'syn_ack_ack' not in settings_db:
+                        try:
+                            ip_data = None
+                            with shelve_lock:
+                                with shelve.open('IP.db', 'r') as ip_db:
+                                    ip_data = ip_db.get("IP", {})
+
+                            source = ip_data.get("source")
+                            destination = ip_data.get("destination")
+
+                            port = settings_db.get('Port')
+                            if source and destination and port:
+                                start_syn_packet_thread(source, destination, port, 50000)
+                                send_udp_packet(source, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
+                                print("[VALIDATE] SYN/ACK packets sent after IP config.")
+                            else:
+                                print("[VALIDATE WARNING] Could not send SYN/ACK packets due to missing source/destination/port.")
+
+                        except Exception as e:
+                            print(f"[VALIDATE ERROR] Failed to generate SYN/ACK packets: {e}")
+
+        except Exception as e:
+            print(f"[VALIDATE ERROR] {e}")
+
+        time.sleep(2)
 
 def video_processing_loop():
     global freshest_frame, object_count, frame_data, latest_processed_frame
@@ -1387,6 +1451,8 @@ def export_data():
     return send_file(file_path, as_attachment=True, download_name='leftover_feed_data.xlsx')
 
 import re
+latest_valid_settings = None
+latest_set_ip_settings = None
 
 @app.route('/update', methods=['GET', 'POST'])
 @login_required
@@ -1468,10 +1534,16 @@ def update_setting():
 
                             j.set_first_timer(data['first_timer'])
                             j.set_second_timer(data['second_timer'])
-                            interval_sec = int(data['interval_minutes']) * 60 + int(data['interval_seconds'])
+                            interval_minutes_str = str(data.get('interval_minutes', '')).strip()
+                            interval_minutes = int(interval_minutes_str) if interval_minutes_str.isdigit() else 0
+                            interval_seconds_str = str(data.get('interval_seconds', '')).strip()
+                            interval_seconds = int(interval_seconds_str) if interval_seconds_str.isdigit() else 0
+                            interval_sec = interval_minutes * 60 + interval_seconds
                             j.set_interval_seconds(interval_sec)
                             j.set_pellets(data['pellets'])
-                            j.set_seconds(int(data['minutes']) * 60)
+                            minutes_str = str(data.get('minutes', '')).strip()
+                            minutes = int(minutes_str) if minutes_str.isdigit() else 0
+                            j.set_seconds(minutes * 60)
 
                             db['Time_Record'] = Time_Record_dict
 
@@ -1488,6 +1560,8 @@ def update_setting():
                                 return jsonify({"status": "error", "message": f"Missing '{key}' in {location}."}), 400
 
                         try:
+                            global latest_valid_settings
+                            latest_valid_settings = j
                             schedule_feeding_alerts(data['first_timer'], data['second_timer'], data['minutes'], session.get("email"))
                             return jsonify({"status": "success", "message": "Feeding schedule updated."})
 
@@ -1503,9 +1577,10 @@ def update_setting():
             return render_template('settings.html', form=setting, mode=mode)
 
         # GET method – load current settings
-        with shelve.open('settings.db', 'r') as db:
-            Time_Record_dict = db.get('Time_Record', {})
-        j = Time_Record_dict.get('Time_Record_Info')
+        with shelve_lock:
+            with shelve.open('settings.db', 'r') as db:
+                Time_Record_dict = db.get('Time_Record', {})
+                j = Time_Record_dict.get('Time_Record_Info')
 
         setting.first_timer.data = j.get_first_timer()
         setting.second_timer.data = j.get_second_timer()
@@ -1927,6 +2002,7 @@ def delete_user(username):
 @login_required
 @role_required('Admin')
 def set_ip():
+    global latest_set_ip_settings
     setting = ipForm(request.form)
     if request.method == 'POST' and setting.validate():
         source_ip = setting.source_ip.data
@@ -1940,11 +2016,25 @@ def set_ip():
         db.close()
 
         start_syn_packet_thread(source_ip, destination_ip, port, 50000)
-
         send_udp_packet(source_ip, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
-        db = shelve.open('IP.db', 'n')
-        db["IP"] = {"source":source_ip , "destination":destination_ip, "camera_ip": camera_ip, "amcrest_username": amcrest_username, "amcrest_password": amcrest_password}
-        db.close()
+
+        with shelve_lock:
+            with shelve.open('IP.db', 'n') as db:
+                db["IP"] = {
+                    "source": source_ip,
+                    "destination": destination_ip,
+                    "camera_ip": camera_ip,
+                    "amcrest_username": amcrest_username,
+                    "amcrest_password": amcrest_password
+                }
+        latest_set_ip_settings = {
+            "source": source_ip,
+            "destination": destination_ip,
+            "camera_ip": camera_ip,
+            "amcrest_username": amcrest_username,
+            "amcrest_password": amcrest_password
+        }
+
         return redirect(url_for('update_setting', mode="auto"))
 
     return render_template('setIP.html', form=setting)
@@ -2040,7 +2130,6 @@ def initialize_databases():
         setting = Settings('0830', '1800', 1, 100, 1, 60)
         db['Time_Record'] = {'Time_Record_Info': setting}
         db['Generate_Status'] = False
-        db['Check_Interval'] = 10
 
         email_setup = Email('iatfadteam@gmail.com', 'iatfadteam@gmail.com', 'pmtu cilz uewx xqqi', 3)
         db['Email_Data'] = {'Email_Info': email_setup}
@@ -2055,7 +2144,6 @@ def initialize_databases():
             day = today - timedelta(days=i)
             chart_data[day.strftime("%Y-%m-%d")] = Line_Chart_Data(day, 0)
         db['Line_Chart_Data'] = chart_data
-
 
 def update_existing_databases():
     print("Updating existing database values if needed.")
@@ -2091,16 +2179,18 @@ def setup_mail():
 def start_threads():
     print("Starting all system threads...")
 
-    capture_thread = threading.Thread(target=capture_frames)
-    video_thread = threading.Thread(target=video_processing_loop)
-    feeding_thread = threading.Thread(target=feeding_scheduler_loop)
-    schedule_thread = threading.Thread(target=schedule_daily_task)
+    capture_thread = threading.Thread(target=capture_frames) # Capture frames from the camera
+    video_thread = threading.Thread(target=video_processing_loop) # Process the captured frames for video feed
+    feeding_thread = threading.Thread(target=feeding_scheduler_loop) # Schedule feeding tasks based on the configured times
+    schedule_thread = threading.Thread(target=schedule_daily_task) # Reschedule feeding alerts daily
+    validate_thread = threading.Thread(target=validate_config_thread) # Validate the configuration and settings periodically
 
     capture_thread.start()
     time.sleep(5)  # ensure camera is ready
     video_thread.start()
     feeding_thread.start()
     schedule_thread.start()
+    validate_thread.start()
 
     return [capture_thread, video_thread, feeding_thread, schedule_thread]
 
