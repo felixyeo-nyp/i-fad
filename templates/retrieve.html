@@ -64,10 +64,10 @@
                 </div>
                 
                 <div class="user-actions">
-                    <a href="{{ url_for('update_user', username=username) }}" class="action-btn edit-btn">
+                    <a href="{{ url_for('update_user', user_uuid=user_data.uuid) }}" class="action-btn edit-btn">
                         <i class="fas fa-edit"></i> Edit
                     </a>
-                    <button class="action-btn delete-btn" onclick="deleteUser('{{ username }}')">
+                    <button class="action-btn delete-btn" onclick="deleteUser('{{ username }}', '{{ user_data.uuid}}')">
                         <i class="fas fa-trash-alt"></i> Delete
                     </button>
                 </div>
@@ -111,23 +111,23 @@
 </div>
 
 <script>
-    function deleteUser(username) {
-        const confirmation = confirm(`Are you sure you want to delete the account for ${username}? This action is irreversible.`);
-        if (confirmation) {
-            fetch(`/delete/${username}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-            })
-            .then(response => {
-                if (response.ok) {
-                    alert(`${username}'s account has been deleted.`);
-                    location.reload();
-                } else {
-                    response.text().then(text => alert(`Error: ${text}`));
-                }
-            })
+    function deleteUser(username, user_uuid) {
+    const confirmation = confirm(`Are you sure you want to delete the account for ${username}? This action is irreversible.`);
+    if (confirmation) {
+        fetch(`/delete/${user_uuid}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                alert(`${username}'s account has been deleted.`);
+                location.reload();
+            } else {
+                response.text().then(text => alert(`Error: ${text}`));
+            }
+        })
             .catch(error => alert(`Failed to delete the account: ${error}`));
         }
     }

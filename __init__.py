@@ -53,6 +53,7 @@ from flask import abort
 # System-related imports #
 import socket
 import psutil
+import uuid
 
 # Back-end codes for object detection & processing #
 if torch.cuda.is_available():
@@ -701,25 +702,33 @@ def register():
         username = form.username.data
         email = form.email.data
         password = form.password.data
-        confirm_password = form.confirm_password.data
         role = form.role.data
 
         # Check if the username or email already exists in the database
-        with shelve.open('users.db', 'c') as db:
-            username_exists = username in db
-            email_exists = any(user_data['email'] == email for user_data in db.values())
+        with shelve_lock:
+            with shelve.open('users.db', 'c') as db:
+                username_exists = username in db
+                email_exists = any(user_data['email'] == email for user_data in db.values())
 
-            if username_exists:
-                flash('Username or email already in use', 'danger')
-            elif email_exists:
-                flash('Username or email already in use', 'danger')
-            else:
-                # If neither username nor email is already registered, proceed with registration
-                hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-                new_user = User(username, email, hashed_password, role, status="Active")
-                db[username] = {'username': new_user.username, 'email': new_user.email, 'password': new_user.password, 'role': new_user.role, 'status':new_user.status}
-                flash('You are now registered and can log in', 'success')
-                return redirect(url_for('login'))
+                if username_exists or email_exists:
+                    flash('Username or email already in use', 'danger')
+                else:
+                    user_uuid = str(uuid.uuid4())
+                    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+                    new_user = User(username, email, hashed_password, role, status="Active")
+                    db[username] = {
+                        'uuid': user_uuid,
+                        'username': new_user.username,
+                        'email': new_user.email,
+                        'password': new_user.password,
+                        'role': new_user.role,
+                        'status': new_user.status,
+                        'user_first_feed': "",
+                        'user_second_feed': "",
+                        'user_feeding_duration': 0
+                    }
+                    flash('You are now registered and can log in', 'success')
+                    return redirect(url_for('login'))
 
     return render_template('register.html', form=form)
 
@@ -733,7 +742,6 @@ def register2():
         username = form.username.data
         email = form.email.data
         password = form.password.data
-        confirm_password = form.confirm_password.data
         role = form.role.data
 
         # Check if the username or email already exists in the database
@@ -741,15 +749,23 @@ def register2():
             username_exists = username in db
             email_exists = any(user_data['email'] == email for user_data in db.values())
 
-            if username_exists:
-                flash('Username or email already in use', 'danger')
-            elif email_exists:
-                flash('Username or email already in use', 'danger')
+            if username_exists or email_exists:
+                    flash('Username or email already in use', 'danger')
             else:
-                # If neither username nor email is already registered, proceed with registration
+                user_uuid = str(uuid.uuid4())
                 hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
                 new_user = User(username, email, hashed_password, role, status="Active")
-                db[username] = {'username': new_user.username, 'email': new_user.email, 'password': new_user.password, 'role': new_user.role, 'status':new_user.status}
+                db[username] = {
+                    'uuid': user_uuid,
+                    'username': new_user.username,
+                    'email': new_user.email,
+                    'password': new_user.password,
+                    'role': new_user.role,
+                    'status': new_user.status,
+                    'user_first_feed': "",
+                    'user_second_feed': "",
+                    'user_feeding_duration': 0
+                }
                 return redirect(url_for('retrieve_users'))
 
     return render_template('register2.html', form=form)
@@ -913,6 +929,7 @@ def mfa_verify():
 
             # Use context manager to ensure the shelf is properly opened and closed
             with shelve.open('users.db', 'r') as db:
+                user_uuid = db[username]['uuid']
                 user_email = db[username]['email']
                 hashed_password = db[username]['password']
                 role = db[username]['role']
@@ -920,7 +937,8 @@ def mfa_verify():
             user = User(username, user_email, hashed_password, role)
             login_user(user)
             flash('You are now logged in', 'success')
-            session.pop('mfa_code')  # Clear MFA code after success
+            session.pop('mfa_code')
+            session["uuid"] = user_uuid 
             return redirect(url_for('set_ip'))
         else:
             flash('Invalid authentication code', 'danger')
@@ -1470,17 +1488,18 @@ def update_setting():
                     manual_feed_action = data.get("manual_feed_action")
                     if manual_form and manual_feed_action in ["start", "stop"]:
                         try:
-                            with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
-                                config = {
-                                    'Port': db.get('Port'),
-                                    'syn_ack_seq': db.get('syn_ack_seq'),
-                                    'syn_ack_ack': db.get('syn_ack_ack'),
-                                    'source': ip_db.get("IP", {}).get("source"),
-                                    'destination': ip_db.get("IP", {}).get("destination")
-                                }
+                            with shelve_lock:
+                                with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
+                                    config = {
+                                        'Port': db.get('Port'),
+                                        'syn_ack_seq': db.get('syn_ack_seq'),
+                                        'syn_ack_ack': db.get('syn_ack_ack'),
+                                        'source': ip_db.get("IP", {}).get("source"),
+                                        'destination': ip_db.get("IP", {}).get("destination")
+                                    }
 
-                                Time_Record_dict = db.get('Time_Record', {})
-                                db['Time_Record'] = Time_Record_dict
+                                    Time_Record_dict = db.get('Time_Record', {})
+                                    db['Time_Record'] = Time_Record_dict
 
                             for key, value in config.items():
                                 if not value:
@@ -1528,41 +1547,55 @@ def update_setting():
                         return jsonify({"status": "error", "message": "Morning feed must be between 06:00–12:00, and evening feed must be between 12:00–24:00."}), 400
 
                     try:
-                        with shelve.open('settings.db', 'c') as db:
-                            Time_Record_dict = db.get('Time_Record', {})
-                            j = Time_Record_dict.get('Time_Record_Info')
+                        with shelve_lock:
+                            with shelve.open('settings.db', 'c') as db:
+                                Time_Record_dict = db.get('Time_Record', {})
+                                j = Time_Record_dict.get('Time_Record_Info')
 
-                            j.set_first_timer(data['first_timer'])
-                            j.set_second_timer(data['second_timer'])
-                            interval_minutes_str = str(data.get('interval_minutes', '')).strip()
-                            interval_minutes = int(interval_minutes_str) if interval_minutes_str.isdigit() else 0
-                            interval_seconds_str = str(data.get('interval_seconds', '')).strip()
-                            interval_seconds = int(interval_seconds_str) if interval_seconds_str.isdigit() else 0
-                            interval_sec = interval_minutes * 60 + interval_seconds
-                            j.set_interval_seconds(interval_sec)
-                            j.set_pellets(data['pellets'])
-                            minutes_str = str(data.get('minutes', '')).strip()
-                            minutes = int(minutes_str) if minutes_str.isdigit() else 0
-                            j.set_seconds(minutes * 60)
+                                j.set_first_timer(data['first_timer'])
+                                j.set_second_timer(data['second_timer'])
+                                interval_minutes_str = str(data.get('interval_minutes', '')).strip()
+                                interval_minutes = int(interval_minutes_str) if interval_minutes_str.isdigit() else 0
+                                interval_seconds_str = str(data.get('interval_seconds', '')).strip()
+                                interval_seconds = int(interval_seconds_str) if interval_seconds_str.isdigit() else 0
+                                interval_sec = interval_minutes * 60 + interval_seconds
+                                j.set_interval_seconds(interval_sec)
+                                j.set_pellets(data['pellets'])
+                                minutes_str = str(data.get('minutes', '')).strip()
+                                minutes = int(minutes_str) if minutes_str.isdigit() else 0
+                                j.set_seconds(minutes * 60)
 
-                            db['Time_Record'] = Time_Record_dict
+                                db['Time_Record'] = Time_Record_dict
 
-                            config = {'Port': db.get('Port'), 'syn_ack_seq': db.get('syn_ack_seq'), 'syn_ack_ack': db.get('syn_ack_ack')}
+                                config = {'Port': db.get('Port'), 'syn_ack_seq': db.get('syn_ack_seq'), 'syn_ack_ack': db.get('syn_ack_ack')}
 
-                        with shelve.open("IP.db", 'r') as ip_db:
-                            ip_data = ip_db.get("IP", {})
-                            config['source'] = ip_data.get("source")
-                            config['destination'] = ip_data.get("destination")
+                        with shelve_lock:
+                            with shelve.open("IP.db", 'r') as ip_db:
+                                ip_data = ip_db.get("IP", {})
+                                config['source'] = ip_data.get("source")
+                                config['destination'] = ip_data.get("destination")
 
                         for key, value in config.items():
                             if not value:
                                 location = 'IP.db' if key in ['source', 'destination'] else 'settings'
                                 return jsonify({"status": "error", "message": f"Missing '{key}' in {location}."}), 400
+                            
+                        with shelve_lock:
+                            with shelve.open("users.db", 'w') as user_db:
+                                for username, user_data in user_db.items():
+                                    if user_data.get("uuid") == session.get("uuid"):
+                                        user_data["user_first_feed"] = data["first_timer"]
+                                        user_data["user_second_feed"] = data["second_timer"]
+                                        minutes_str = str(data.get('minutes', '')).strip()
+                                        user_data["user_feeding_duration"] = int(minutes_str) if minutes_str.isdigit() else 0
+                                        user_db[username] = user_data
+                                        print(f"[USER FEED SETTINGS] Updated feed settings for user {username}")
+                                        break
 
                         try:
                             global latest_valid_settings
                             latest_valid_settings = j
-                            schedule_feeding_alerts(data['first_timer'], data['second_timer'], data['minutes'], session.get("email"))
+                            schedule_feeding_alerts(data['first_timer'], data['second_timer'], data['minutes'], session.get("uuid"))
                             return jsonify({"status": "success", "message": "Feeding schedule updated."})
 
                         except Exception as e:
@@ -1609,138 +1642,152 @@ def send_feeding_complete_email(user_email, feed_time):
             print(f"Error sending email: {e}")
 
 def reschedule_feeding_alerts():
-    db = shelve.open('settings.db', 'r')
-    Time_Record_dict = db['Time_Record']
-    j = Time_Record_dict.get('Time_Record_Info')
-
-    # Get updated times and durations
-    first_timer = j.get_first_timer()
-    second_timer = j.get_second_timer()
-    feeding_duration = j.get_seconds()*60
-
-    print(f"[RESCHEDULE] First Timer: {first_timer}, Second Timer: {second_timer}, Feeding Duration: {feeding_duration} seconds")
-
-    user_email = db.get("CurrentUserEmail")
-    if not user_email:
-        email_db = db.get("Email_Data", {})
-        email_instance = email_db.get("Email_Info")
-        if email_instance and hasattr(email_instance, "get_recipient_email"):
-            user_email = email_instance.get_recipient_email()
-        else:
-            user_email = "iatfadteam@gmail.com"
-
-    print(f"[RESCHEDULE] Preparing to schedule feeding alert emails for: {user_email}")
-
-    # Calculate new run_date for the first alert (next day)
-    now = datetime.now()
-    timezone = pytz.timezone("Asia/Singapore")
-    first_timer_dt = now.replace(hour=int(first_timer[:2]), minute=int(first_timer[2:]), second=0, microsecond=0)
-    first_end_time = timezone.localize(first_timer_dt + timedelta(seconds=feeding_duration))
-    # Reschedule the feeding alerts for the next day
-
-    # Modify the existing job with the new run_date
-    job = scheduler.get_job('first_feeding_alert')
-    if job:
-        job.modify(run_date=first_end_time)
-        print(f"[RESCHEDULE] First feeding alert rescheduled to: {first_end_time}")
-    else:
-        scheduler.add_job(
-            func=send_feeding_complete_email,
-            trigger='date',
-            run_date=first_end_time,
-            args=[user_email, "first feeding complete"],
-            id='first_feeding_alert',
-            misfire_grace_time=3600  # Allow a 1-hour grace period for missed jobs
-        )
-        print(f"[RESCHEDULE] First feeding alert job created for: {first_end_time}")
-
-    # Repeat the process for the second timer
-    second_timer_dt = now.replace(hour=int(second_timer[:2]), minute=int(second_timer[2:]), second=0, microsecond=0)
-    second_end_time = timezone.localize(second_timer_dt + timedelta(seconds=feeding_duration))
-
-    # Modify the second feeding alert job
-    job = scheduler.get_job('second_feeding_alert')
-    if job:
-        job.modify(run_date=second_end_time)
-        print(f"[RESCHEDULE] Second feeding alert rescheduled to: {second_end_time}")
-    else:
-        scheduler.add_job(
-            func=send_feeding_complete_email,
-            trigger='date',
-            run_date=second_end_time,
-            args=[user_email, "second feeding complete"],
-            id='second_feeding_alert',
-            misfire_grace_time=3600  # Allow a 1-hour grace period for missed jobs
-        )
-        print(f"[RESCHEDULE] Second feeding alert job created for: {second_end_time}")
-
-def schedule_daily_task():
-    while True:
-        print("Updating schedule")
-        reschedule_feeding_alerts()
-        print("[SCHEDULER] Next reschedule will happen in 24 hours.")
-        time.sleep(86400)
-
-def schedule_feeding_alerts(first_timer, second_timer, feeding_duration, user_email):
     try:
-        now = datetime.now()  # Use current date for scheduling
-        first_timer_dt = now.replace(hour=int(first_timer[:2]), minute=int(first_timer[2:]), second=0, microsecond=0)
-        second_timer_dt = now.replace(hour=int(second_timer[:2]), minute=int(second_timer[2:]), second=0, microsecond=0)
+        with shelve_lock:
+            with shelve.open('users.db', 'r') as user_db:
+                users = list(user_db.values())
 
-        feeding_duration_in_seconds = int(feeding_duration) * 60  # Convert minutes to seconds
+        for user in users:
+            user_uuid = user.get("uuid")
+            user_email = user.get("email", "iatfadteam@gmail.com")
+            first_timer = str(user.get("user_first_feed", "")).zfill(4)
+            second_timer = str(user.get("user_second_feed", "")).zfill(4)
+            duration_raw = user.get("user_feeding_duration", "")
 
-        # Localize the datetime objects
-        timezone = pytz.timezone("Asia/Singapore")
-        first_end_time = timezone.localize(first_timer_dt + timedelta(seconds=feeding_duration_in_seconds))
-        second_end_time = timezone.localize(second_timer_dt + timedelta(seconds=feeding_duration_in_seconds))
+            # Skip if UUID is missing
+            if not user_uuid:
+                print("[RESCHEDULE] Skipping user with missing UUID.")
+                continue
 
-        # Ensure feeding times are in the future
-        if first_end_time < timezone.localize(now):
-            print("First feeding time is in the past. Skipping scheduling.")
-        else:
-            print("Scheduling first feeding alert at:", first_end_time)
-            existing_job = scheduler.get_job('first_feeding_alert')
+            # Skip if any value is missing or invalid
+            if not first_timer.strip() or not second_timer.strip() or not str(duration_raw).strip():
+                print(f"[RESCHEDULE] Skipping {user_email} due to missing feeding time or duration.")
+                continue
 
-            if existing_job:
-                # Reschedule the existing job
-                scheduler.remove_job('first_feeding_alert')
+            try:
+                feeding_duration_sec = int(duration_raw) * 60
+                if feeding_duration_sec <= 0:
+                    print(f"[RESCHEDULE] Skipping {user_email} due to zero feeding duration.")
+                    continue
+            except ValueError:
+                print(f"[RESCHEDULE] Skipping {user_email} due to invalid feeding duration format.")
+                continue
 
-            # Add the job if it doesn't exist
+            # Compute end times
+            first_end = (datetime(2000, 1, 1, int(first_timer[:2]), int(first_timer[2:])) +
+                         timedelta(seconds=feeding_duration_sec))
+            first_end_hour, first_end_minute = first_end.hour, first_end.minute
+
+            second_end = (datetime(2000, 1, 1, int(second_timer[:2]), int(second_timer[2:])) +
+                          timedelta(seconds=feeding_duration_sec))
+            second_end_hour, second_end_minute = second_end.hour, second_end.minute
+
+            print(f"[RESCHEDULE] {user_email} (UUID: {user_uuid}) → First alert at {first_end_hour:02d}:{first_end_minute:02d}, Second alert at {second_end_hour:02d}:{second_end_minute:02d}")
+
+            first_id = f"first_feeding_alert_{user_uuid}"
+            second_id = f"second_feeding_alert_{user_uuid}"
+
+            # First Feed Done Alert Email Sending Job
+            if scheduler.get_job(first_id):
+                scheduler.remove_job(first_id)
             scheduler.add_job(
-                    func=send_feeding_complete_email,
-                    trigger='date',
-                    run_date=first_end_time,
-                    args=[user_email, "first feeding complete"],
-                    id='first_feeding_alert',
-                    misfire_grace_time=3600  # Allow a 1-hour grace period for missed jobs
-                )
-            print("Job 'first_feeding_alert' added.")
+                func=send_feeding_complete_email,
+                trigger='cron',
+                hour=first_end_hour,
+                minute=first_end_minute,
+                args=[user_email, "first feeding complete"],
+                id=first_id,
+                replace_existing=True,
+                misfire_grace_time=3600
+            )
+            print(f"[RESCHEDULE] Scheduled job {first_id} at {first_end_hour:02d}:{first_end_minute:02d}")
 
-        if second_end_time < timezone.localize(now):
-            print("Second feeding time is in the past. Skipping scheduling.")
-        else:
-            print("Scheduling second feeding alert at:", second_end_time)
-            existing_job = scheduler.get_job('second_feeding_alert')
-
-            if existing_job:
-                # Update the existing job
-                scheduler.remove_job('second_feeding_alert')
-
-            # Add a new job if it doesn't exist
+            # Second Feed Done Alert Email Sending Job
+            if scheduler.get_job(second_id):
+                scheduler.remove_job(second_id)
             scheduler.add_job(
-                    func=send_feeding_complete_email,
-                    trigger='date',
-                    run_date=second_end_time,
-                    args=[user_email, "second feeding complete"],
-                    id='second_feeding_alert',
-                    misfire_grace_time=3600
-                )
-            print("Job 'second_feeding_alert added.")
+                func=send_feeding_complete_email,
+                trigger='cron',
+                hour=second_end_hour,
+                minute=second_end_minute,
+                args=[user_email, "second feeding complete"],
+                id=second_id,
+                replace_existing=True,
+                misfire_grace_time=3600
+            )
+            print(f"[RESCHEDULE] Scheduled job {second_id} at {second_end_hour:02d}:{second_end_minute:02d}")
 
-    except ValueError as e:
-        print(f"Error parsing time: {e}")
     except Exception as e:
-        print(f"Scheduling error: {e}")
+        print(f"[RESCHEDULE ERROR] {e}")
+
+def schedule_feeding_alerts(first_timer, second_timer, feeding_duration_minutes, user_uuid):
+    try:
+        with shelve_lock:
+            with shelve.open('users.db', 'w') as user_db:
+                matched_user = next((data for data in user_db.values() if data.get('uuid') == user_uuid), None)
+                if not matched_user:
+                    print(f"[SCHEDULE] No user found with UUID: {user_uuid}")
+                    return
+
+                matched_user["user_first_feed"] = first_timer
+                matched_user["user_second_feed"] = second_timer
+                matched_user["user_feeding_duration"] = int(feeding_duration_minutes)
+                for username, data in user_db.items():
+                    if data.get("uuid") == user_uuid:
+                        user_db[username] = matched_user
+                        break
+
+        user_email = matched_user.get("email", "iatfadteam@gmail.com")
+        feeding_duration_sec = int(feeding_duration_minutes) * 60
+
+        # Calculate feeding END times
+        first_hour = int(first_timer[:2])
+        first_minute = int(first_timer[2:])
+        first_end = (datetime(2000, 1, 1, first_hour, first_minute) + timedelta(seconds=feeding_duration_sec))
+        first_end_hour = first_end.hour
+        first_end_minute = first_end.minute
+
+        second_hour = int(second_timer[:2])
+        second_minute = int(second_timer[2:])
+        second_end = (datetime(2000, 1, 1, second_hour, second_minute) + timedelta(seconds=feeding_duration_sec))
+        second_end_hour = second_end.hour
+        second_end_minute = second_end.minute
+
+        first_id = f"first_feeding_alert_{user_uuid}"
+        second_id = f"second_feeding_alert_{user_uuid}"
+
+        # First Feed Done Alert Email Sending Job
+        if scheduler.get_job(first_id):
+            scheduler.remove_job(first_id)
+        scheduler.add_job(
+            func=send_feeding_complete_email,
+            trigger='cron',
+            hour=first_end_hour,
+            minute=first_end_minute,
+            args=[user_email, "first feeding complete"],
+            id=first_id,
+            replace_existing=True,
+            misfire_grace_time=3600
+        )
+        print(f"[SCHEDULE] First Feed Alert Job {first_id} set to run daily at {first_end_hour:02d}:{first_end_minute:02d}")
+
+        # Second Feed Done Alert Email Sending Job
+        if scheduler.get_job(second_id):
+            scheduler.remove_job(second_id)
+        scheduler.add_job(
+            func=send_feeding_complete_email,
+            trigger='cron',
+            hour=second_end_hour,
+            minute=second_end_minute,
+            args=[user_email, "second feeding complete"],
+            id=second_id,
+            replace_existing=True,
+            misfire_grace_time=3600
+        )
+        print(f"[SCHEDULE] Second Feed Alert Job {second_id} set to run daily at {second_end_hour:02d}:{second_end_minute:02d}")
+
+    except Exception as e:
+        print(f"[SCHEDULE ERROR] {e}")
 
 @app.route('/update/email', methods=['GET', 'POST'])
 @login_required
@@ -1896,6 +1943,18 @@ def change_password():
 
     return render_template('changed_password.html', form=form)
 
+@app.route('/scheduler/jobs')
+@login_required
+@role_required('Admin')
+def view_scheduled_jobs():
+    jobs = scheduler.get_jobs()
+    job_list = [{
+        'id': job.id,
+        'next_run_time': str(job.next_run_time),
+        'args': job.args
+    } for job in jobs]
+    return jsonify(job_list)
+
 @app.route('/retrieve', methods=['GET'])
 @login_required
 @role_required('Admin')
@@ -1945,57 +2004,75 @@ def retrieve_users():
         search_query=search_query,
     )
 
-@app.route('/update/<username>', methods=['GET', 'POST'])
+@app.route('/update/<user_uuid>', methods=['GET', 'POST'])
 @login_required
 @role_required('Admin')
-def update_user(username):
-    form = updateemailrole()  # Form instance for updating email, role, and status
+def update_user(user_uuid):
+    form = updateemailrole()
+    user_data = None
+    username = None
 
     try:
-        with shelve.open('users.db', 'w') as db:  # 'w' mode for read/write
-            if username not in db:
-                
-                return redirect(url_for('retrieve_users'))
+        with shelve_lock:
+            with shelve.open('users.db', 'w') as db:
+                # Find the user by UUID
+                for uname, data in db.items():
+                    if data.get('uuid') == user_uuid:
+                        user_data = data
+                        username = uname
+                        break
 
-            user_data = db[username]  # Retrieve the current user data
+                if not user_data:
+                    flash("User not found.", "danger")
+                    return redirect(url_for('retrieve_users'))
 
-            if form.validate_on_submit():  # Handle form submission (POST request)
-                # Sanitize and validate inputs for roles and statuses
-                valid_roles = {'Guest', 'Admin'}
-                valid_statuses = {'Active', 'Suspended'}
+                if form.validate_on_submit():  # Handle form submission
+                    valid_roles = {'Guest', 'Admin'}
+                    valid_statuses = {'Active', 'Suspended'}
 
-                # Update user details based on the submitted form
-                user_data['email'] = form.email.data
-                user_data['role'] = form.role.data if form.role.data in valid_roles else user_data['role']
-                user_data['status'] = form.status.data if form.status.data in valid_statuses else user_data['status']
+                    user_data['email'] = form.email.data
+                    user_data['role'] = form.role.data if form.role.data in valid_roles else user_data['role']
+                    user_data['status'] = form.status.data if form.status.data in valid_statuses else user_data['status']
 
-                db[username] = user_data  # Save the updated user data
-                flash('User details updated successfully.', 'success')
-                return redirect(url_for('retrieve_users'))  # Redirect back to the users' page
+                    db[username] = user_data
+                    flash('User details updated successfully.', 'success')
+                    return redirect(url_for('retrieve_users'))
 
-            # Pre-fill the form with the user's current details on GET request
-            form.email.data = user_data.get('email', '')
-            form.role.data = user_data.get('role', '')
-            form.status.data = user_data.get('status', '')
+                # Pre-fill form on GET
+                form.email.data = user_data.get('email', '')
+                form.role.data = user_data.get('role', '')
+                form.status.data = user_data.get('status', '')
 
     except Exception as e:
-        app.logger.error(f"Error updating user '{username}': {str(e)}")
+        app.logger.error(f"Error updating user UUID '{user_uuid}': {str(e)}")
         flash('An error occurred while updating the user. Please try again later.', 'danger')
         return redirect(url_for('retrieve_users'))
 
     return render_template('update_user.html', form=form, username=username, user_data=user_data)
 
 # Delete (Remove User)
-@app.route('/delete/<username>', methods=['POST'])
+@app.route('/delete/<user_uuid>', methods=['POST'])
 @login_required
 @role_required('Admin')
-def delete_user(username):
-    with shelve.open('users.db', 'w') as db:
-        if username in db:
-            del db[username]
-            flash(f"User {username} has been deleted successfully.", "success")
-        else:
-            return "User not found.", 404
+def delete_user(user_uuid):
+    with shelve_lock:
+        with shelve.open('users.db', 'w') as db:
+            username_to_delete = None
+            for uname, user_data in db.items():
+                if user_data.get('uuid') == user_uuid:
+                    username_to_delete = uname
+                    break
+
+            if not username_to_delete:
+                return "User not found.", 404
+
+            # Remove scheduler jobs for the user
+            scheduler.remove_job(f"first_feeding_alert_{user_uuid}")
+            scheduler.remove_job(f"second_feeding_alert_{user_uuid}")
+
+            del db[username_to_delete]
+            flash(f"User {username_to_delete} and associated jobs deleted.", "success")
+
     return redirect(url_for('retrieve_users'))
 
 @app.route('/set_ip', methods=['GET','POST'])
@@ -2182,17 +2259,16 @@ def start_threads():
     capture_thread = threading.Thread(target=capture_frames) # Capture frames from the camera
     video_thread = threading.Thread(target=video_processing_loop) # Process the captured frames for video feed
     feeding_thread = threading.Thread(target=feeding_scheduler_loop) # Schedule feeding tasks based on the configured times
-    schedule_thread = threading.Thread(target=schedule_daily_task) # Reschedule feeding alerts daily
     validate_thread = threading.Thread(target=validate_config_thread) # Validate the configuration and settings periodically
 
     capture_thread.start()
     time.sleep(5)  # ensure camera is ready
     video_thread.start()
     feeding_thread.start()
-    schedule_thread.start()
     validate_thread.start()
+    reschedule_feeding_alerts()
 
-    return [capture_thread, video_thread, feeding_thread, schedule_thread]
+    return [capture_thread, video_thread, feeding_thread]
 
 
 def cleanup_on_exit():
