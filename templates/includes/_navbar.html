@@ -136,10 +136,10 @@
          class="{% if request.path == '/camera_view' %}active{% endif %}">
         <i class="fas fa-camera"></i> Camera View
       </a>
-<!--      <a href="{{ url_for('feedback') }}"-->
-<!--         class="{% if request.path.startswith('/feedback') %}active{% endif %}">-->
-<!--        <i class="fas fa-comments"></i> Feedback-->
-<!--      </a>-->
+      <a href="{{ url_for('feedback') }}"
+         class="{% if request.path.startswith('/feedback') %}active{% endif %}">
+        <i class="fas fa-comments"></i> Feedback
+      </a>
       <a href="{{ url_for('admin_feedbacks') }}"
          class="{% if request.path.startswith('/admin/feedbacks') %}active{% endif %}">
         <i class="fas fa-comments"></i> Manage Feedback

@@ -739,37 +739,47 @@ def register2():
 
     return render_template('register2.html', form=form)
 
+def find_user(identifier: str):
+
+    identifier = identifier.strip().lower()
+    with shelve.open('users.db', 'r') as db:
+        # 1) Direct username lookup (fast hash lookup)
+        if identifier in db:
+            user = db[identifier]
+            user['username'] = identifier
+            return user
+
+        # 2) Scan values for matching email
+        for uname, udata in db.items():
+            if udata.get('email', '').lower() == identifier:
+                # inject the real username key into the dict
+                udata['username'] = uname
+                return udata
+
+    # not found
+    return None
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
+        # ← now reads from form.identifier, which can be either
+        identifier = form.identifier.data.strip().lower()
+        password   = form.password.data
 
-        try:
-            with shelve.open('users.db', 'c') as db:
-                if username in db:
-                    user = db[username]
-                    # 1) Verify password
-                    if check_password_hash(user['password'], password):
-                        # 2) Block suspended/breached accounts
-                        if user['status'] in ["Suspended", "Breached"]:
-                            flash(f"Your account is {user['status']}. Access denied.", "danger")
-                            return redirect(url_for('login'))
+        user = find_user(identifier)
+        if user and check_password_hash(user['password'], password):
+            if user['status'] in ["Suspended", "Breached"]:
+                flash(f"Your account is {user['status']}. Access denied.", "danger")
+                return redirect(url_for('login'))
 
-                        # 3) Credentials OK → stash for MFA
-                        session['username'] = username
-                        session['email']    = user['email']
-                        session['role']     = user['role']
+            session['username'] = user['username']
+            session['email']    = user['email']
+            session['role']     = user['role']
+            return redirect(url_for('mfa_verify'))
 
-                        # 4) Send them to the MFA page
-                        return redirect(url_for('mfa_verify'))
-                    else:
-                        flash('Invalid login credentials', 'danger')
-                else:
-                    flash('Invalid login credentials', 'danger')
-        except Exception as e:
-            flash(f'Error: {e}', 'danger')
+        flash('Invalid login credentials', 'danger')
 
     return render_template('login.html', form=form, hide_sidebar=True)
 
