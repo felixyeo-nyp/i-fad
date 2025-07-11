@@ -615,6 +615,10 @@ def breached():
     session.clear()
     return render_template("breached.html")
 
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('404.html'), 404
+
 # User loader callback for Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
@@ -703,7 +707,7 @@ def register():
                 flash('You are now registered and can log in', 'success')
                 return redirect(url_for('login'))
 
-    return render_template('register.html', form=form)
+    return render_template('register.html', form=form, hide_sidebar=True)
 @app.route('/register2', methods=['GET', 'POST'])
 @login_required
 @role_required('Admin')
@@ -767,7 +771,7 @@ def login():
         except Exception as e:
             flash(f'Error: {e}', 'danger')
 
-    return render_template('login.html', form=form)
+    return render_template('login.html', form=form, hide_sidebar=True)
 
 
 # send OTP (Login)
@@ -900,7 +904,8 @@ def mfa_verify():
         'mfa_verify.html',
         form=           form,
         expiry_timer=   expiry_timer,
-        resend_timer=   resend_timer
+        resend_timer=   resend_timer,
+        hide_sidebar=True
     )
 @app.route('/resend-mfa', methods=['POST'])
 def resend_mfa():
@@ -990,7 +995,7 @@ def forget_password():
 
         return redirect(url_for('mfa_verify2'))
 
-    return render_template('forget_password.html', form=form)
+    return render_template('forget_password.html', form=form, hide_sidebar=True)
 
 
 @app.route('/mfa-verify2', methods=['GET','POST'])
@@ -1064,7 +1069,8 @@ def mfa_verify2():
         'mfa_verify2.html',
         form=           form,
         expiry_timer=   expiry_timer,
-        resend_timer=   resend_timer
+        resend_timer=   resend_timer,
+        hide_sidebar=True
     )
 
 
@@ -2165,6 +2171,12 @@ def admin_feedbacks():
         feedbacks = [fb for fb in all_feedbacks if matches(fb)]
     else:
         feedbacks = all_feedbacks
+
+    feedbacks = sorted(
+        feedbacks,
+        key=lambda fb: fb.get_submitted_at(),
+        reverse=True
+    )
 
     form = DeleteForm()
     return render_template('admin_feedback.html',
