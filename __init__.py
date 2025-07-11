@@ -1921,13 +1921,17 @@ def delete_user(user_uuid):
 
             if not username_to_delete:
                 return "User not found.", 404
+            
+            if username_to_delete == session.get('username'):
+                return "You cannot delete your own account.", 403
 
-            # Remove scheduler jobs for the user
-            scheduler.remove_job(f"first_feeding_alert_{user_uuid}")
-            scheduler.remove_job(f"second_feeding_alert_{user_uuid}")
+            # Remove scheduler jobs for the user if any
+            if scheduler.get_job(f"first_feeding_alert_{user_uuid}") is not None:
+                print(f"Removing first feeding alert job for user {username_to_delete}")
+            if scheduler.get_job(f"second_feeding_alert_{user_uuid}") is not None:
+                print(f"Removing second feeding alert job for user {username_to_delete}")\
 
             del db[username_to_delete]
-            flash(f"User {username_to_delete} and associated jobs deleted.", "success")
 
     return redirect(url_for('retrieve_users'))
 

@@ -67,7 +67,7 @@
                     <a href="{{ url_for('update_user', user_uuid=user_data.uuid) }}" class="action-btn edit-btn">
                         <i class="fas fa-edit"></i> Edit
                     </a>
-                    <button class="action-btn delete-btn" onclick="deleteUser('{{ username }}', '{{ user_data.uuid}}')">
+                    <button class="action-btn delete-btn" onclick="deleteUser('{{ username }}', '{{ user_data.uuid }}')">
                         <i class="fas fa-trash-alt"></i> Delete
                     </button>
                 </div>
@@ -125,7 +125,7 @@
                 alert(`${username}'s account has been deleted.`);
                 location.reload();
             } else {
-                response.text().then(text => alert(`Error: ${text}`));
+                response.text().then(text => alert(`${text}`));
             }
         })
             .catch(error => alert(`Failed to delete the account: ${error}`));
