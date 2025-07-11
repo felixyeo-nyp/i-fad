@@ -12,7 +12,7 @@
             Admin Settings
         </h1>
 
-        <form method="POST" action="">
+        <form id="email-settings-form" method="POST">
             {{ form.csrf_token }}
 
             <div class="email-input-group">
@@ -361,22 +361,38 @@
         const saveBtn = document.querySelector('.email-submit-btn');
         const originalBtnHTML = saveBtn.innerHTML;
 
-        saveBtn.addEventListener('click', function () {
+        saveBtn.addEventListener('click', async function (e) {
+            const form = saveBtn.closest('form');
+            const formData = new FormData(form);
+
             saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             saveBtn.disabled = true;
 
-            // Simulate saving process
-            setTimeout(() => {
-                saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved Successfully!';
-                saveBtn.style.background = 'linear-gradient(45deg, #10b981, #047857)';
+            try {
+                const response = await fetch('/update/email', {
+                    method: 'POST',
+                    body: formData
+                });
 
-                // Reset after 3 seconds
-                setTimeout(() => {
-                    saveBtn.innerHTML = originalBtnHTML;
-                    saveBtn.disabled = false;
-                    saveBtn.style.background = '';
-                }, 3000);
-            }, 1500);
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved Successfully!';
+                    saveBtn.style.background = 'linear-gradient(45deg, #10b981, #047857)';
+                } else {
+                    throw new Error(result.message || 'Failed to save');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Save Failed';
+                saveBtn.style.background = 'linear-gradient(45deg, #ef4444, #dc2626)';
+            }
+
+            setTimeout(() => {
+                saveBtn.innerHTML = originalBtnHTML;
+                saveBtn.disabled = false;
+                saveBtn.style.background = '';
+            }, 3000);
         });
 
         document.querySelectorAll('.email-input-group').forEach(group => {

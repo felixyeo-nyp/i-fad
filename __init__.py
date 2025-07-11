@@ -1653,22 +1653,27 @@ def update_email_settings():
     setting = emailForm(request.form)
 
     if request.method == 'POST' and setting.validate():
-        with shelve_lock:
-            with shelve.open('settings.db', 'w') as db:
-                Email_dict = db.get('Email_Data', {})
-                j = Email_dict.get('Email_Info')
+        try:
+            with shelve_lock:
+                with shelve.open('settings.db', 'w') as db:
+                    Email_dict = db.get('Email_Data', {})
+                    j = Email_dict.get('Email_Info')
 
-                if j:
-                    j.set_sender_email(setting.sender_email.data)
-                    j.set_recipient_email(setting.recipient_email.data)
-                    j.set_APPPassword(setting.App_password.data)
-                    j.set_days(setting.days.data)
+                    if j:
+                        j.set_sender_email(setting.sender_email.data)
+                        j.set_recipient_email(setting.recipient_email.data)
+                        j.set_APPPassword(setting.App_password.data)
+                        j.set_days(setting.days.data)
+                        Email_dict['Email_Info'] = j
 
-                db['Email_Data'] = Email_dict
-                db['Confidence_Rate'] = setting.confidence.data
-                print("Confidence rate set to", setting.confidence.data)
+                    db['Email_Data'] = Email_dict
+                    db['Confidence_Rate'] = setting.confidence.data
+                    print("Confidence rate set to", setting.confidence.data)
 
-        return redirect(url_for('dashboard'))
+            return jsonify(success=True, message="Settings updated successfully"), 200
+        except Exception as e:
+            print("[ERROR] Failed to save email settings:", e)
+            return jsonify(success=False, message="Failed to save settings"), 500
 
     else:
         with shelve_lock:
