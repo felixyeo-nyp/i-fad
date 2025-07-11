@@ -1896,17 +1896,42 @@ def update_setting():
 
         return render_template('settings.html', form=setting)
 
-def send_feeding_complete_email(user_email, feed_time):
-    with app.app_context():
-        try:
-            msg = flask_mail.Message(subject="Feeding Complete",
-                          recipients=["testproject064@gmail.com"],
-                          body= f"The {feed_time} has been completed",
-                          )
-            mail.send(msg)
-            print(f"Email sent to {user_email} for {feed_time}.")
-        except Exception as e:
-            print(f"Error sending email: {e}")
+def send_feeding_complete_email(user_email: str, feed_time: str) -> bool:
+
+    app_name = current_app.config.get('APP_NAME', 'Your Farm')
+    year     = datetime.utcnow().year
+
+    # 1) Plain-text body
+    text_body = (
+        f"Hello,\n\n"
+        f"Your scheduled feeding at {feed_time} has completed successfully.\n\n"
+        f"Thank you,\n"
+        f"{app_name} Team"
+    )
+
+    # 2) Render HTML body from template
+    html_body = render_template(
+        'email/feeding_complete.html',
+        app_name=app_name,
+        feed_time=feed_time,
+        year=year
+    )
+
+    # 3) Build and send message
+    try:
+        mail.send_message = Message(
+            subject   = f"{app_name} | Feeding Complete",
+            sender    = current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients= [user_email],
+            body      = text_body,
+            html      = html_body
+        )
+
+        current_app.logger.info(f"[INFO] Feeding complete email sent to {user_email} for {feed_time}.")
+        return True
+    except Exception as e:
+        current_app.logger.error(f"[ERROR] Failed to send feeding-complete email to {user_email}: {e}")
+        return False
 
 def reschedule_feeding_alerts():
     db = shelve.open('settings.db', 'r')
@@ -2130,7 +2155,7 @@ def feedback():
         )
         # optional email notification
         try:
-            msg = Message(
+            mail.send_message(
                 subject="New Feedback",
                 sender=current_user.email,
                 recipients=[recipient_email],
@@ -2140,7 +2165,7 @@ def feedback():
                     f"Message:\n{form.message.data}"
                 )
             )
-            mail.send(msg)
+
         except Exception as e:
             app.logger.error(f"Feedback mail error: {e}")
 
