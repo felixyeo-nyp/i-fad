@@ -223,7 +223,7 @@ def validate_config_thread():
     global latest_valid_settings, latest_set_ip_settings
     print("Starting validation thread for settings and IP...")
 
-    fallback_setting = Settings('0830', '1800', 1, 100, 1, 60)
+    fallback_confidence_rate = 60
     fallback_ip = {
         "source": "192.168.0.65",
         "destination": "192.168.0.18",
@@ -250,14 +250,9 @@ def validate_config_thread():
             # Check settings.db
             with shelve_lock:
                 with shelve.open('settings.db', 'c') as settings_db:
-                    time_record = settings_db.get('Time_Record', {}).get('Time_Record_Info')
-                    if not time_record:
-                        if latest_valid_settings:
-                            settings_db['Time_Record'] = {'Time_Record_Info': latest_valid_settings}
-                            print("[VALIDATE] Restored missing settings from latest valid config.")
-                        else:
-                            settings_db['Time_Record'] = {'Time_Record_Info': fallback_setting}
-                            print("[VALIDATE] Fallback settings initialized.")
+                    if 'Confidence_Rate' not in settings_db:
+                        settings_db['Confidence_Rate'] = fallback_confidence_rate
+                        print("[VALIDATE] Fallback Confidence_Rate initialized.")
 
                     if 'Port' not in settings_db:
                         settings_db['Port'] = random.randint(50001, 65535)
@@ -303,14 +298,12 @@ def video_processing_loop():
         try:
             with shelve_lock:
                 with shelve.open('settings.db', 'r') as db:
-                    Time_Record_dict = db.get('Time_Record', {})
-                    setting = Time_Record_dict.get('Time_Record_Info')
+                    confidence = float(db.get('Confidence_Rate', 60)) / 100
         except Exception as e:
-            print(f"[ERROR] Failed to read from settings.db: {e}")
+            print(f"[ERROR] Failed to read confidence rate from settings.db: {e}")
             time.sleep(1)
             continue
-        
-        confidence = float(setting.get_confidence()) / 100
+
         with freshest_frame_lock:
             if freshest_frame is None:
                 time.sleep(0.1)
@@ -360,17 +353,15 @@ def feeding_scheduler_loop():
     feed_start_time = None
     total_count = 0
     last_check_index = -1
-
+    active_feeding_time_str = None
     port = server_isn = server_ack = source_ip = destination_ip = None
 
     while True:
-        try:
-            with shelve_lock:
-                with shelve.open('settings.db', 'r') as db:
-                    Time_Record_dict = db.get('Time_Record', {})
-                    setting = Time_Record_dict.get('Time_Record_Info')
-        except Exception as e:
-            print(f"[ERROR] Feeding loop failed to read settings: {e}")
+        user_data = get_active_feeding_user()
+        user_uuid = user_data.get("uuid")
+        config = user_data.get("config")
+
+        if not user_uuid or not config:
             time.sleep(1)
             continue
 
@@ -378,35 +369,28 @@ def feeding_scheduler_loop():
         now = datetime.now(tz)
 
         try:
-            first_timer = setting.get_first_timer()
-            second_timer = setting.get_second_timer()
+            first_timer = config.get("user_first_feed", "")
+            second_timer = config.get("user_second_feed", "")
+            interval = max(int(config.get("user_interval_seconds", 10)), 10)
+            duration = int(config.get("user_feeding_duration", 0))
+            pellet_threshold = (int(config.get("user_pellets", 0)) * 100) // 10
+            check_count = duration // interval
+
             scheduled1 = now.replace(hour=int(first_timer[:2]), minute=int(first_timer[2:]))
             scheduled2 = now.replace(hour=int(second_timer[:2]), minute=int(second_timer[2:]))
-        except Exception as e:
-            print(f"[ERROR] Failed to parse feeding times: {e}")
-            time.sleep(1)
-            continue
 
-        try:
-            interval = max(int(setting.get_interval_seconds()), 10)
-            duration = int(setting.get_seconds())
-            check_count = duration // interval
         except Exception as e:
-            print(f"[ERROR] Invalid interval or duration: {e}")
+            print(f"[ERROR] Invalid feeding config: {e}")
             time.sleep(1)
             continue
 
         with object_count_lock:
             current_count = object_count[1]
-        threshold = (int(setting.get_pellets()) * 100) // 10
 
         # Check if feeding should start
         if not feeding and (now == scheduled1 or now == scheduled2):
             print(f"[FEED TRIGGER] Starting feeding session at {now.strftime('%H:%M:%S')}")
-            if now == scheduled1:
-                active_feeding_time_str = first_timer
-            elif now == scheduled2:
-                active_feeding_time_str = second_timer
+            active_feeding_time_str = first_timer if now == scheduled1 else second_timer
             try:
                 with shelve_lock:
                     with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
@@ -428,11 +412,9 @@ def feeding_scheduler_loop():
         # If in feeding mode, manage interval checks
         if feeding and feed_start_time is not None:
             elapsed = int(time.time() - feed_start_time)
-            with object_count_lock:
-                    total_count += object_count[1]
             current_check_index = elapsed // interval
-
-            print(f"[DEBUG] Elapsed: {elapsed}s | Check {current_check_index}/{check_count} | Pellet count: {current_count} | Re-feed threshold: {threshold}")
+            with object_count_lock:
+                total_count += object_count[1]
 
             if current_check_index > last_check_index and current_check_index < check_count:
                 last_check_index = current_check_index
@@ -440,7 +422,7 @@ def feeding_scheduler_loop():
                 with object_count_lock:
                     current_count = object_count[1]
 
-                if current_count < threshold:
+                if current_count < pellet_threshold:
                     try:
                         print("[RE-FEED] Pellet low, continuing feed")
                         try:
@@ -597,7 +579,6 @@ mail = Mail(app)
 # Dictionaries #
 #j = datetime.datetime.now()
 # print(j)
-Time_Record_dict = {}
 Line_Chart_Data_dict = {}
 Email_dict = {}
 
@@ -674,30 +655,31 @@ def register():
         role = form.role.data
 
         # Check if the username or email already exists in the database
-        with shelve_lock:
-            with shelve.open('users.db', 'c') as db:
-                username_exists = username in db
-                email_exists = any(user_data['email'] == email for user_data in db.values())
+        with shelve.open('users.db', 'c') as db:
+            username_exists = username in db
+            email_exists = any(user_data['email'] == email for user_data in db.values())
 
-                if username_exists or email_exists:
-                    flash('Username or email already in use', 'danger')
-                else:
-                    user_uuid = str(uuid.uuid4())
-                    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-                    new_user = User(username, email, hashed_password, role, status="Active")
-                    db[username] = {
-                        'uuid': user_uuid,
-                        'username': new_user.username,
-                        'email': new_user.email,
-                        'password': new_user.password,
-                        'role': new_user.role,
-                        'status': new_user.status,
-                        'user_first_feed': "",
-                        'user_second_feed': "",
-                        'user_feeding_duration': 0
-                    }
-                    flash('You are now registered and can log in', 'success')
-                    return redirect(url_for('login'))
+            if username_exists or email_exists:
+                flash('Username or email already in use', 'danger')
+            else:
+                user_uuid = str(uuid.uuid4())
+                hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+                new_user = User(username, email, hashed_password, role, status="Active")
+                db[username] = {
+                    'uuid': user_uuid,
+                    'username': new_user.username,
+                    'email': new_user.email,
+                    'password': new_user.password,
+                    'role': new_user.role,
+                    'status': new_user.status,
+                    'user_first_feed': "",
+                    'user_second_feed': "",
+                    'user_feeding_duration': 0,
+                    'user_interval_seconds': 0,
+                    'user_pellets': 0
+                }
+                flash('You are now registered and can log in', 'success')
+                return redirect(url_for('login'))
 
     return render_template('register.html', form=form)
 
@@ -733,7 +715,9 @@ def register2():
                     'status': new_user.status,
                     'user_first_feed': "",
                     'user_second_feed': "",
-                    'user_feeding_duration': 0
+                    'user_feeding_duration': 0,
+                    'user_interval_seconds': 0,
+                    'user_pellets': 0
                 }
                 return redirect(url_for('retrieve_users'))
 
@@ -1333,40 +1317,41 @@ def get_pellet_data():
 
     return jsonify(response_data)
 
-@app.route('/dashboard', methods=['GET', 'POST'])
+@app.route('/dashboard', methods=['GET'])
 @login_required
 def dashboard():
-    edit_form = configurationForm(request.form)
-    time.sleep(0.5)
-    if request.method == 'POST':
-        source_ip = request.form.get('source_ip')
-        destination_ip = request.form.get('destination_ip')
+    user_settings = {}
+    latest_count = 0
+    pellet_data = {}
 
-        print(f"Source IP: {source_ip}, Destination IP: {destination_ip}")
-        start_syn_packet_thread("192.168.1.65", "192.168.1.18", port, 50000)
+    try:
+        with shelve_lock:
+            with shelve.open("users.db", "r") as user_db:
+                for user_data in user_db.values():
+                    if user_data.get("uuid") == session.get("uuid"):
+                        user_settings = {
+                            "first_timer": user_data.get("user_first_feed"),
+                            "second_timer": user_data.get("user_second_feed"),
+                            "duration_seconds": user_data.get("user_feeding_duration", 0),
+                            "interval_seconds": user_data.get("user_interval_seconds", 0),
+                            "pellets": user_data.get("user_pellets", 0)
+                        }
+                        break
 
-    db = shelve.open('settings.db', 'w')
-    Time_Record_dict = db.get('Time_Record',{})
-    db.close()
-    setting = Time_Record_dict.get('Time_Record_Info')
-    checking_interval = setting.get_interval_seconds()
-    id_array = []
-    for key in Time_Record_dict:
-        product = Time_Record_dict.get(key)
-        if key == "Time_Record_Info":
-            id_array.append(product)
-    # Fetch Pellet Data (You can directly use `get_pellet_data` or emulate its behavior)
-    print("Fetching pallet data")
-    response = get_pellet_data()
-    pellet_data = response.json # Convert the Flask Response to JSON
+        with shelve_lock:
+            with shelve.open('currentcount.db', 'c') as db2:
+                latest_count = db2.get('object_count', 0)
 
-    with shelve_lock:
-        with shelve.open('currentcount.db', 'c') as db2:
-            object_count = db2.get('object_count', 0)  # Get count dictionary, default to empty
-    latest_count = object_count  # Get latest count for label 1, default to 0 if not found
+        print("Fetching pellet data")
+        response = get_pellet_data()
+        pellet_data = response.json
 
-    return render_template('dashboard.html', count=len(id_array), id_array=id_array, edit=0, form=edit_form, latest_count=latest_count,
-                           pellet_labels=pellet_data['labels'], first_feed_left=pellet_data['first_feed_left'], second_feed_left=pellet_data['second_feed_left'],total_feed_count = pellet_data['total_feed_count'],checking_interval = checking_interval)
+    except Exception as e:
+        print(f"[ERROR] Failed to load dashboard data: {e}")
+
+    return render_template(
+        'dashboard.html', user_settings=user_settings, latest_count=latest_count, pellet_labels=pellet_data.get('labels', []), first_feed_left=pellet_data.get('first_feed_left', []),
+        second_feed_left=pellet_data.get('second_feed_left', []), total_feed_count=pellet_data.get('total_feed_count', []), checking_interval=user_settings.get("interval_seconds", 10))
 
 @app.route('/camera_view',methods=['GET','POST'])
 @login_required
@@ -1414,6 +1399,12 @@ def export_data():
 import re
 latest_valid_settings = None
 latest_set_ip_settings = None
+active_feeding_user_lock = threading.Lock()
+active_feeding_user = {
+    "uuid": None,
+    "email": None,
+    "config": None,
+}
 
 @app.route('/update', methods=['GET', 'POST'])
 @login_required
@@ -1440,9 +1431,6 @@ def update_setting():
                                         'source': ip_db.get("IP", {}).get("source"),
                                         'destination': ip_db.get("IP", {}).get("destination")
                                     }
-
-                                    Time_Record_dict = db.get('Time_Record', {})
-                                    db['Time_Record'] = Time_Record_dict
 
                             for key, value in config.items():
                                 if not value:
@@ -1490,60 +1478,56 @@ def update_setting():
                         return jsonify({"status": "error", "message": "Morning feed must be between 06:00–12:00, and evening feed must be between 12:00–24:00."}), 400
 
                     try:
-                        with shelve_lock:
-                            with shelve.open('settings.db', 'c') as db:
-                                Time_Record_dict = db.get('Time_Record', {})
-                                j = Time_Record_dict.get('Time_Record_Info')
-
-                                j.set_first_timer(data['first_timer'])
-                                j.set_second_timer(data['second_timer'])
-                                interval_minutes_str = str(data.get('interval_minutes', '')).strip()
-                                interval_minutes = int(interval_minutes_str) if interval_minutes_str.isdigit() else 0
-                                interval_seconds_str = str(data.get('interval_seconds', '')).strip()
-                                interval_seconds = int(interval_seconds_str) if interval_seconds_str.isdigit() else 0
-                                interval_sec = interval_minutes * 60 + interval_seconds
-                                j.set_interval_seconds(interval_sec)
-                                j.set_pellets(data['pellets'])
-                                minutes_str = str(data.get('minutes', '')).strip()
-                                minutes = int(minutes_str) if minutes_str.isdigit() else 0
-                                j.set_seconds(minutes * 60)
-
-                                db['Time_Record'] = Time_Record_dict
-
-                                config = {'Port': db.get('Port'), 'syn_ack_seq': db.get('syn_ack_seq'), 'syn_ack_ack': db.get('syn_ack_ack')}
+                        interval_minutes = int(str(data.get('interval_minutes', '0')).strip())
+                        interval_seconds = int(str(data.get('interval_seconds', '0')).strip())
+                        interval_sec = interval_minutes * 60 + interval_seconds
+                        duration_minutes = int(str(data.get('minutes', '0')).strip())
+                        print(f"Duration: {duration_minutes} minutes")
+                        duration_sec = duration_minutes * 60
+                        print(f"Duration in seconds: {duration_sec}")
+                        pellet_count = int(data.get("pellets", 0))
 
                         with shelve_lock:
-                            with shelve.open("IP.db", 'r') as ip_db:
-                                ip_data = ip_db.get("IP", {})
-                                config['source'] = ip_data.get("source")
-                                config['destination'] = ip_data.get("destination")
+                            with shelve.open("users.db", 'w') as user_db:
+                                for username, user_data in user_db.items():
+                                    if user_data.get("uuid") == session.get("uuid"):
+                                        user_data["user_first_feed"] = first_timer
+                                        user_data["user_second_feed"] = second_timer
+                                        user_data["user_feeding_duration"] = duration_sec
+                                        user_data["user_interval_seconds"] = interval_sec
+                                        print(f"Saved user feeding duration: {duration_sec} seconds")
+                                        user_data["user_pellets"] = pellet_count
+                                        user_db[username] = user_data
+                                        print(f"[USER FEED SETTINGS] Updated feed settings for user {username}")
+                                        break
+
+                        feeding_config = {
+                            "user_first_feed": first_timer,
+                            "user_second_feed": second_timer,
+                            "user_feeding_duration": duration_sec,
+                            "user_interval_seconds": interval_sec,
+                            "user_pellets": pellet_count,
+                        }
+                        print(f"[FEEDING CONFIG] Updated feeding config: {feeding_config}")
+                        set_active_feeding_user(session.get("uuid"), session.get('email'), feeding_config)
+
+                        with shelve_lock:
+                            with shelve.open("settings.db", 'r') as db, shelve.open("IP.db", 'r') as ip_db:
+                                config = {
+                                    'Port': db.get('Port'),
+                                    'syn_ack_seq': db.get('syn_ack_seq'),
+                                    'syn_ack_ack': db.get('syn_ack_ack'),
+                                    'source': ip_db.get("IP", {}).get("source"),
+                                    'destination': ip_db.get("IP", {}).get("destination")}
 
                         for key, value in config.items():
                             if not value:
                                 location = 'IP.db' if key in ['source', 'destination'] else 'settings'
                                 return jsonify({"status": "error", "message": f"Missing '{key}' in {location}."}), 400
-                            
-                        with shelve_lock:
-                            with shelve.open("users.db", 'w') as user_db:
-                                for username, user_data in user_db.items():
-                                    if user_data.get("uuid") == session.get("uuid"):
-                                        user_data["user_first_feed"] = data["first_timer"]
-                                        user_data["user_second_feed"] = data["second_timer"]
-                                        minutes_str = str(data.get('minutes', '')).strip()
-                                        user_data["user_feeding_duration"] = int(minutes_str) if minutes_str.isdigit() else 0
-                                        user_db[username] = user_data
-                                        print(f"[USER FEED SETTINGS] Updated feed settings for user {username}")
-                                        break
 
-                        try:
-                            global latest_valid_settings
-                            latest_valid_settings = j
-                            schedule_feeding_alerts(data['first_timer'], data['second_timer'], data['minutes'], session.get("uuid"))
-                            return jsonify({"status": "success", "message": "Feeding schedule updated."})
-
-                        except Exception as e:
-                            return jsonify({"status": "error", "message": f"Failed to update feeding schedule: {str(e)}"}), 500
-
+                        reschedule_feeding_alerts()
+                        return jsonify({"status": "success", "message": "Feeding schedule updated."})
+                    
                     except Exception as e:
                         return jsonify({"status": "error", "message": f"Auto feed setup failed: {e}"}), 500
 
@@ -1554,23 +1538,35 @@ def update_setting():
 
         # GET method – load current settings
         with shelve_lock:
-            with shelve.open('settings.db', 'r') as db:
-                Time_Record_dict = db.get('Time_Record', {})
-                j = Time_Record_dict.get('Time_Record_Info')
+            with shelve.open("users.db", 'r') as db:
+                for user_data in db.values():
+                    if user_data.get("uuid") == session.get("uuid"):
+                        setting.first_timer.data = user_data.get("user_first_feed", "")
+                        setting.second_timer.data = user_data.get("user_second_feed", "")
+                        setting.pellets.data = user_data.get("user_pellets", 0)
+                        duration_sec = user_data.get("user_feeding_duration", 0)
+                        print(f"Duration that retrieved: {duration_sec}")
+                        interval_sec = user_data.get("user_interval_seconds", 0)
 
-        setting.first_timer.data = j.get_first_timer()
-        setting.second_timer.data = j.get_second_timer()
-        setting.pellets.data = j.get_pellets()
-        setting.minutes.data = j.get_seconds() // 60
-
-        interval_seconds = j.get_interval_seconds()
-        setting.interval_minutes.data = interval_seconds // 60 if interval_seconds else None
-        setting.interval_seconds.data = interval_seconds % 60 if interval_seconds else None
+                        setting.minutes.data = duration_sec // 60
+                        setting.interval_minutes.data = interval_sec // 60
+                        setting.interval_seconds.data = interval_sec % 60
+                        break
 
         return render_template('settings.html', form=setting, mode=mode)
 
     except Exception as e:
         return jsonify({"status": "error", "message": f"Unexpected server error: {e}"}), 500
+    
+def set_active_feeding_user(user_uuid, user_email, feeding_config):
+    with active_feeding_user_lock:
+        active_feeding_user["uuid"] = user_uuid
+        active_feeding_user["email"] = user_email
+        active_feeding_user["config"] = feeding_config
+
+def get_active_feeding_user():
+    with active_feeding_user_lock:
+        return active_feeding_user.copy()
 
 def send_feeding_complete_email(user_email, feed_time):
     with app.app_context():
@@ -1586,151 +1582,69 @@ def send_feeding_complete_email(user_email, feed_time):
 
 def reschedule_feeding_alerts():
     try:
-        with shelve_lock:
-            with shelve.open('users.db', 'r') as user_db:
-                users = list(user_db.values())
+        active_user = get_active_feeding_user()
+        user_uuid = active_user.get("uuid")
+        user_email = active_user.get("email", "iatfadteam@gmail.com")
+        config = active_user.get("config")
 
-        for user in users:
-            user_uuid = user.get("uuid")
-            user_email = user.get("email", "iatfadteam@gmail.com")
-            first_timer = str(user.get("user_first_feed", "")).zfill(4)
-            second_timer = str(user.get("user_second_feed", "")).zfill(4)
-            duration_raw = user.get("user_feeding_duration", "")
+        print(f"[RESCHEDULE] Rescheduling alerts for user UUID: {user_uuid}")
+        print(f"[RESCHEDULE] Config: {config}")
 
-            # Skip if UUID is missing
-            if not user_uuid:
-                print("[RESCHEDULE] Skipping user with missing UUID.")
-                continue
+        if not user_uuid or not config:
+            print("[RESCHEDULE] No active feeding user. Skipping alert scheduling.")
+            return
 
-            # Skip if any value is missing or invalid
-            if not first_timer.strip() or not second_timer.strip() or not str(duration_raw).strip():
-                print(f"[RESCHEDULE] Skipping {user_email} due to missing feeding time or duration.")
-                continue
+        first_timer = str(config.get("user_first_feed", "")).zfill(4)
+        second_timer = str(config.get("user_second_feed", "")).zfill(4)
+        duration_raw = config.get("user_feeding_duration", "")
 
-            try:
-                feeding_duration_sec = int(duration_raw) * 60
-                if feeding_duration_sec <= 0:
-                    print(f"[RESCHEDULE] Skipping {user_email} due to zero feeding duration.")
-                    continue
-            except ValueError:
-                print(f"[RESCHEDULE] Skipping {user_email} due to invalid feeding duration format.")
-                continue
+        if not first_timer or not second_timer or not str(duration_raw).strip():
+            print(f"[RESCHEDULE] Missing timer or duration for {user_email}")
+            return
 
-            # Compute end times
-            first_end = (datetime(2000, 1, 1, int(first_timer[:2]), int(first_timer[2:])) +
-                         timedelta(seconds=feeding_duration_sec))
-            first_end_hour, first_end_minute = first_end.hour, first_end.minute
+        feeding_duration_sec = int(duration_raw)
+        if feeding_duration_sec <= 0:
+            print(f"[RESCHEDULE] Duration is zero or invalid for {user_email}")
+            return
 
-            second_end = (datetime(2000, 1, 1, int(second_timer[:2]), int(second_timer[2:])) +
-                          timedelta(seconds=feeding_duration_sec))
-            second_end_hour, second_end_minute = second_end.hour, second_end.minute
+        # Compute end times
+        first_end = (datetime(2000, 1, 1, int(first_timer[:2]), int(first_timer[2:]))) + timedelta(seconds=feeding_duration_sec)
+        second_end = (datetime(2000, 1, 1, int(second_timer[:2]), int(second_timer[2:]))) + timedelta(seconds=feeding_duration_sec)
 
-            print(f"[RESCHEDULE] {user_email} (UUID: {user_uuid}) → First alert at {first_end_hour:02d}:{first_end_minute:02d}, Second alert at {second_end_hour:02d}:{second_end_minute:02d}")
+        first_id = "first_feeding_alert"
+        second_id = "second_feeding_alert"
 
-            first_id = f"first_feeding_alert_{user_uuid}"
-            second_id = f"second_feeding_alert_{user_uuid}"
-
-            # First Feed Done Alert Email Sending Job
-            if scheduler.get_job(first_id):
-                scheduler.remove_job(first_id)
-            scheduler.add_job(
-                func=send_feeding_complete_email,
-                trigger='cron',
-                hour=first_end_hour,
-                minute=first_end_minute,
-                args=[user_email, "first feeding complete"],
-                id=first_id,
-                replace_existing=True,
-                misfire_grace_time=3600
-            )
-            print(f"[RESCHEDULE] Scheduled job {first_id} at {first_end_hour:02d}:{first_end_minute:02d}")
-
-            # Second Feed Done Alert Email Sending Job
-            if scheduler.get_job(second_id):
-                scheduler.remove_job(second_id)
-            scheduler.add_job(
-                func=send_feeding_complete_email,
-                trigger='cron',
-                hour=second_end_hour,
-                minute=second_end_minute,
-                args=[user_email, "second feeding complete"],
-                id=second_id,
-                replace_existing=True,
-                misfire_grace_time=3600
-            )
-            print(f"[RESCHEDULE] Scheduled job {second_id} at {second_end_hour:02d}:{second_end_minute:02d}")
-
-    except Exception as e:
-        print(f"[RESCHEDULE ERROR] {e}")
-
-def schedule_feeding_alerts(first_timer, second_timer, feeding_duration_minutes, user_uuid):
-    try:
-        with shelve_lock:
-            with shelve.open('users.db', 'w') as user_db:
-                matched_user = next((data for data in user_db.values() if data.get('uuid') == user_uuid), None)
-                if not matched_user:
-                    print(f"[SCHEDULE] No user found with UUID: {user_uuid}")
-                    return
-
-                matched_user["user_first_feed"] = first_timer
-                matched_user["user_second_feed"] = second_timer
-                matched_user["user_feeding_duration"] = int(feeding_duration_minutes)
-                for username, data in user_db.items():
-                    if data.get("uuid") == user_uuid:
-                        user_db[username] = matched_user
-                        break
-
-        user_email = matched_user.get("email", "iatfadteam@gmail.com")
-        feeding_duration_sec = int(feeding_duration_minutes) * 60
-
-        # Calculate feeding END times
-        first_hour = int(first_timer[:2])
-        first_minute = int(first_timer[2:])
-        first_end = (datetime(2000, 1, 1, first_hour, first_minute) + timedelta(seconds=feeding_duration_sec))
-        first_end_hour = first_end.hour
-        first_end_minute = first_end.minute
-
-        second_hour = int(second_timer[:2])
-        second_minute = int(second_timer[2:])
-        second_end = (datetime(2000, 1, 1, second_hour, second_minute) + timedelta(seconds=feeding_duration_sec))
-        second_end_hour = second_end.hour
-        second_end_minute = second_end.minute
-
-        first_id = f"first_feeding_alert_{user_uuid}"
-        second_id = f"second_feeding_alert_{user_uuid}"
-
-        # First Feed Done Alert Email Sending Job
+        # Remove any old global alert jobs
         if scheduler.get_job(first_id):
             scheduler.remove_job(first_id)
+        if scheduler.get_job(second_id):
+            scheduler.remove_job(second_id)
+
         scheduler.add_job(
             func=send_feeding_complete_email,
             trigger='cron',
-            hour=first_end_hour,
-            minute=first_end_minute,
+            hour=first_end.hour,
+            minute=first_end.minute,
             args=[user_email, "first feeding complete"],
             id=first_id,
             replace_existing=True,
             misfire_grace_time=3600
         )
-        print(f"[SCHEDULE] First Feed Alert Job {first_id} set to run daily at {first_end_hour:02d}:{first_end_minute:02d}")
-
-        # Second Feed Done Alert Email Sending Job
-        if scheduler.get_job(second_id):
-            scheduler.remove_job(second_id)
         scheduler.add_job(
             func=send_feeding_complete_email,
             trigger='cron',
-            hour=second_end_hour,
-            minute=second_end_minute,
+            hour=second_end.hour,
+            minute=second_end.minute,
             args=[user_email, "second feeding complete"],
             id=second_id,
             replace_existing=True,
             misfire_grace_time=3600
         )
-        print(f"[SCHEDULE] Second Feed Alert Job {second_id} set to run daily at {second_end_hour:02d}:{second_end_minute:02d}")
+
+        print(f"[RESCHEDULE] Email alerts scheduled at {first_end.strftime('%H:%M')} and {second_end.strftime('%H:%M')} for {user_email}")
 
     except Exception as e:
-        print(f"[SCHEDULE ERROR] {e}")
+        print(f"[RESCHEDULE ERROR] {e}")
 
 @app.route('/update/email', methods=['GET', 'POST'])
 @login_required
@@ -1739,42 +1653,36 @@ def update_email_settings():
     setting = emailForm(request.form)
 
     if request.method == 'POST' and setting.validate():
-        db = shelve.open('settings.db', 'w')
-        Email_dict = db['Email_Data']
+        with shelve_lock:
+            with shelve.open('settings.db', 'w') as db:
+                Email_dict = db.get('Email_Data', {})
+                j = Email_dict.get('Email_Info')
 
-        j = Email_dict.get('Email_Info')
-        j.set_sender_email(setting.sender_email.data)
-        j.set_recipient_email(setting.recipient_email.data)
-        j.set_APPPassword(setting.App_password.data)
-        j.set_days(setting.days.data)
+                if j:
+                    j.set_sender_email(setting.sender_email.data)
+                    j.set_recipient_email(setting.recipient_email.data)
+                    j.set_APPPassword(setting.App_password.data)
+                    j.set_days(setting.days.data)
 
-        db['Email_Data'] =Email_dict
-        Time_Record_dict = db['Time_Record']
-
-        p = Time_Record_dict.get('Time_Record_Info')
-        p.set_confidence(setting.confidence.data)
-
-        db['Time_Record'] = Time_Record_dict
-
-        db.close()
+                db['Email_Data'] = Email_dict
+                db['Confidence_Rate'] = setting.confidence.data
+                print("Confidence rate set to", setting.confidence.data)
 
         return redirect(url_for('dashboard'))
+
     else:
-        Email_dict = {}
-        db = shelve.open('settings.db', 'r')
-        Email_dict = db['Email_Data']
-        Time_Record_dict = db['Time_Record']
-        db.close()
+        with shelve_lock:
+            with shelve.open('settings.db', 'r') as db:
+                Email_dict = db.get('Email_Data', {})
+                j = Email_dict.get('Email_Info')
 
-        j = Email_dict.get('Email_Info')
-        setting.sender_email.data = j.get_sender_email()
-        setting.recipient_email.data = j.get_recipient_email()
-        setting.App_password.data = j.get_APPPassword()
-        setting.days.data = j.get_days()
+                setting.sender_email.data = j.get_sender_email()
+                setting.recipient_email.data = j.get_recipient_email()
+                setting.App_password.data = j.get_APPPassword()
+                setting.days.data = j.get_days()
 
-        p = Time_Record_dict.get('Time_Record_Info')
-        setting.confidence.data = p.get_confidence()
-        print("Confidence rate set to",setting.confidence.data)
+                setting.confidence.data = db.get('Confidence_Rate', 60)
+
         return render_template('email_settings.html', form=setting)
 
 @app.route('/clear_video_feed_access', methods=['POST'])
@@ -2031,22 +1939,20 @@ def set_ip():
         amcrest_username = setting.amcrest_username.data
         amcrest_password = setting.amcrest_password.data
 
-        db = shelve.open('settings.db', 'w')
-        port = db['Port']
-        db.close()
+        with shelve.open('settings.db', 'w') as settings_db, shelve.open('IP.db', 'n') as ip_db:
+            port = settings_db['Port']
 
-        start_syn_packet_thread(source_ip, destination_ip, port, 50000)
-        send_udp_packet(source_ip, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
+            start_syn_packet_thread(source_ip, destination_ip, port, 50000)
+            send_udp_packet(source_ip, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
 
-        with shelve_lock:
-            with shelve.open('IP.db', 'n') as db:
-                db["IP"] = {
-                    "source": source_ip,
-                    "destination": destination_ip,
-                    "camera_ip": camera_ip,
-                    "amcrest_username": amcrest_username,
-                    "amcrest_password": amcrest_password
-                }
+            ip_db["IP"] = {
+                "source": source_ip,
+                "destination": destination_ip,
+                "camera_ip": camera_ip,
+                "amcrest_username": amcrest_username,
+                "amcrest_password": amcrest_password
+            }
+
         latest_set_ip_settings = {
             "source": source_ip,
             "destination": destination_ip,
@@ -2147,23 +2053,11 @@ def initialize_databases():
     print("Creating new databases and initializing default values.")
     # settings.db
     with shelve.open('settings.db', 'c') as db:
-        setting = Settings('0830', '1800', 1, 100, 1, 60)
-        db['Time_Record'] = {'Time_Record_Info': setting}
         db['Generate_Status'] = False
-
         email_setup = Email('iatfadteam@gmail.com', 'iatfadteam@gmail.com', 'pmtu cilz uewx xqqi', 3)
         db['Email_Data'] = {'Email_Info': email_setup}
-
         db['Port'] = random.randint(50001, 65535)
-
-    # line_chart_data.db
-    with shelve.open('line_chart_data.db', 'c') as db:
-        today = datetime.today()
-        chart_data = {}
-        for i in range(7):
-            day = today - timedelta(days=i)
-            chart_data[day.strftime("%Y-%m-%d")] = Line_Chart_Data(day, 0)
-        db['Line_Chart_Data'] = chart_data
+        db['Confidence_Rate'] = 60 
 
 def update_existing_databases():
     print("Updating existing database values if needed.")
@@ -2178,15 +2072,6 @@ def update_existing_databases():
     with shelve.open('settings.db', 'w') as db:
         db['Port'] = random.randint(53100, 53199)
         db['last_ip_id'] = 7500
-
-    with shelve.open('line_chart_data.db', 'w') as db:
-        Line_Chart_Data_dict = db.get('Line_Chart_Data', {})
-        today = datetime.today()
-        current_date = (today + timedelta(days=1)).strftime("%Y-%m-%d")
-        if current_date not in Line_Chart_Data_dict:
-            Line_Chart_Data_dict[current_date] = Line_Chart_Data(current_date, 0)
-        db['Line_Chart_Data'] = Line_Chart_Data_dict
-
 
 def setup_mail():
     print("Configuring mail...")

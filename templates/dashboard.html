@@ -20,9 +20,7 @@
                 <div class="card-content">
                     <div class="card-label">Morning Feeding Time</div>
                     <div class="card-value">
-                        {% for id in id_array %}
-                        {{ id.get_first_timer() }} <span>hours</span>
-                        {% endfor %}
+                        {{ user_settings.first_timer if user_settings.first_timer else "N/A" }} <span>hours</span>
                     </div>
                 </div>
             </div>
@@ -37,9 +35,7 @@
                 <div class="card-content">
                     <div class="card-label">Evening Feeding Time</div>
                     <div class="card-value">
-                        {% for id in id_array %}
-                        {{ id.get_second_timer() }} <span>hours</span>
-                        {% endfor %}
+                        {{ user_settings.second_timer if user_settings.second_timer else "N/A" }} <span>hours</span>
                     </div>
                 </div>
             </div>
@@ -54,10 +50,7 @@
                 <div class="card-content">
                     <div class="card-label">Feeding Session Duration</div>
                     <div class="card-value">
-                        {% for id in id_array %}
-                        {{ id.get_seconds() // 60 }} <span>minutes</span> {{ id.get_seconds() % 60 }}
-                        <span>seconds</span>
-                        {% endfor %}
+                        {{ user_settings.duration_seconds // 60 }} <span>minutes</span> {{ user_settings.duration_seconds % 60 }} <span>seconds</span>
                     </div>
                 </div>
             </div>
@@ -73,16 +66,12 @@
                     <div class="card-label">Estimated Feed Amount</div>
                     <div class="card-value">
                         <div class="primary-info">
-                            {% for id in id_array %}
-                            {{ id.get_pellets() }} gram(s)
-                            <span> {{ (id.get_pellets() | float * 100) | int }} pellets</span>
-                            {% endfor %}
+                            {{ "%.2f"|format(user_settings.pellets | float) }} gram(s)
+                            <span>{{ (user_settings.pellets | float * 100) | int }} pellets</span>
                         </div>
                         <div class="secondary-info" style="display:none;">
-                            {% for id in id_array %}
-                            {{ (id.get_pellets() | float * 100) | int }} pellets
-                            <span> {{ id.get_pellets() }} gram(s)</span>
-                            {% endfor %}
+                            {{ (user_settings.pellets | float * 100) | int }} pellets
+                            <span>{{ "%.2f"|format(user_settings.pellets | float) }} gram(s)</span>
                         </div>
                     </div>
                 </div>
@@ -99,12 +88,12 @@
                     <div class="card-label">Current Feed Remaining</div>
                     <div class="card-value">
                         <div class="primary-info">
-                            {{ (latest_count / 100) | round(2) }} gram(s)
-                            <span> {{ latest_count }} pellets left</span>
+                            {{ "%.2f"|format(latest_count / 100) }} gram(s)
+                            <span>{{ latest_count }} pellets left</span>
                         </div>
                         <div class="secondary-info" style="display:none;">
                             {{ latest_count }} pellets left
-                            <span> {{ (latest_count / 100) | round(2) }} gram(s)</span>
+                            <span>{{ "%.2f"|format(latest_count / 100) }} gram(s)</span>
                         </div>
                     </div>
                 </div>
@@ -120,10 +109,7 @@
                 <div class="card-content">
                     <div class="card-label">Feeding Interval</div>
                     <div class="card-value">
-                        {% for id in id_array %}
-                        {{ id.get_interval_seconds()//60}} <span>minutes</span> {{ id.get_interval_seconds() % 60}}
-                        <span>seconds</span>
-                        {% endfor %}
+                        {{ user_settings.interval_seconds // 60 }} <span>minutes</span> {{ user_settings.interval_seconds % 60 }} <span>seconds</span>
                     </div>
                 </div>
             </div>
@@ -143,25 +129,27 @@
                 <div class="timeline-label tick" style="left: 75%;">18:00</div>
                 <div class="timeline-label end">24:00</div>
 
-                {% set time_morning = id_array[0].get_first_timer()|int %}
-                {% set hours_morning = (time_morning // 100) %}
-                {% set minutes_morning = (time_morning % 100) %}
-                {% set decimal_hours_morning = hours_morning + (minutes_morning / 60) %}
+                {% if user_settings.first_timer %}
+                    {% set time_morning = user_settings.first_timer | int %}
+                    {% set hours_morning = (time_morning // 100) %}
+                    {% set minutes_morning = (time_morning % 100) %}
+                    {% set decimal_hours_morning = hours_morning + (minutes_morning / 60) %}
+                    <div class="timeline-pin morning" style="left: {{ ((decimal_hours_morning / 24) * 100) }}%;">
+                        <div class="pin-label">Morning Feed ({{ user_settings.first_timer }}H)</div>
+                        <i class="fas fa-sun"></i>
+                    </div>
+                {% endif %}
 
-                <div class="timeline-pin morning" style="left: {{ ((decimal_hours_morning / 24) * 100) }}%;">
-                    <div class="pin-label">Morning Feed ({{ id_array[0].get_first_timer() }}H)</div>
-                    <i class="fas fa-sun"></i>
-                </div>
-
-                {% set time_evening = id_array[0].get_second_timer()|int %}
-                {% set hours_evening = (time_evening // 100) %}
-                {% set minutes_evening = (time_evening % 100) %}
-                {% set decimal_hours_evening = hours_evening + (minutes_evening / 60) %}
-
-                <div class="timeline-pin evening" style="left: {{ (decimal_hours_evening / 24) * 100 }}%;">
-                    <div class="pin-label">Evening Feed ({{ id_array[0].get_second_timer() }}H)</div>
-                    <i class="fas fa-moon"></i>
-                </div>
+                {% if user_settings.second_timer %}
+                    {% set time_evening = user_settings.second_timer | int %}
+                    {% set hours_evening = (time_evening // 100) %}
+                    {% set minutes_evening = (time_evening % 100) %}
+                    {% set decimal_hours_evening = hours_evening + (minutes_evening / 60) %}
+                    <div class="timeline-pin evening" style="left: {{ (decimal_hours_evening / 24) * 100 }}%;">
+                        <div class="pin-label">Evening Feed ({{ user_settings.second_timer }}H)</div>
+                        <i class="fas fa-moon"></i>
+                    </div>
+                {% endif %}
             </div>
 
             <div class="combined-feed-stats-card">
@@ -172,8 +160,8 @@
                     <div class="text-wrapper">
                         <div class="stat-label">Total Check Count:</div>
                         <div class="stat-value">
-                            {% set total_duration = id_array[0].get_seconds() %}
-                            {% set interval = id_array[0].get_interval_seconds() %}
+                            {% set total_duration = user_settings.duration_seconds %}
+                            {% set interval = user_settings.interval_seconds %}
                             {% set total_check_count = (total_duration / interval) if interval > 0 else 0 %}
                             {{ total_check_count|int if total_check_count > 0 else "N/A" }}
                         </div>
