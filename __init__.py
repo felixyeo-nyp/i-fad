@@ -173,37 +173,6 @@ model = load_model(model_path, num_classes=2)
 model.to(device)
 model.eval()
 
-def check_feeding_time():
-    global feeding, feeding_timer, showing_timer, line_chart_timer
-    db = shelve.open('settings.db', 'w')
-    Time_Record_dict = db['Time_Record']
-    db.close()
-
-    setting = Time_Record_dict.get('Time_Record_Info')
-
-    hours = setting.get_first_timer()[:2]
-    minutes = setting.get_first_timer()[2:]
-    hours1 = setting.get_second_timer()[:2]
-    minutes1 = setting.get_second_timer()[2:]
-
-    first_feeding_time = int(hours)
-    first_feeding_time_min = int(minutes)
-    second_feeding_time = int(hours1)
-    second_feeding_time_min = int(minutes1)
-    while not stop_event.is_set():
-        current_time = datetime.now()
-        # Check if it's time for feeding (at the exact second)
-        if (current_time.hour == first_feeding_time or current_time.hour == second_feeding_time) and \
-           (current_time.minute == first_feeding_time_min or current_time.minute == second_feeding_time_min) and \
-           current_time.second == 0:
-            feeding = True
-            feeding_timer = None
-            showing_timer = None
-            line_chart_timer = time.time()
-        else:
-            feeding = False  # If it's not time for feeding, set feeding to False
-        time.sleep(1)  # Check every second
-
 def capture_frames():
     while not stop_event.is_set():
         try:
@@ -975,32 +944,6 @@ def update_settings(new_settings):
     with shelve.open('settings.db', 'c') as db:
         db['settings'] = new_settings
         app.logger.debug(f"Settings updated in database: {new_settings}")
-
-def encode_time(timer_id, start_hour, start_minute, end_hour, end_minute):
-    # Create a base packet with the given timer ID
-    packet = bytearray([0x4C, 0x8A, 0x01, 0x01, timer_id, 0x00, 0x00,0xEE]) #timer_id was in the wrong byte position
-
-    # Encode start and end times in BCD format
-    start_hour_bcd = (start_hour // 10 << 4) | (start_hour % 10)
-    start_minute_bcd = (start_minute // 10 << 4) | (start_minute % 10)
-    end_hour_bcd = (end_hour // 10 << 4) | (end_hour % 10)
-    end_minute_bcd = (end_minute // 10 << 4) | (end_minute % 10)
-
-    # Append times to the packet
-    packet.append(start_hour_bcd)
-    packet.append(start_minute_bcd)
-    packet.append(end_hour_bcd)
-    packet.append(end_minute_bcd)
-
-    # Add additional static values (e.g., 0x01)
-    packet.extend([0x01])
-
-    # Add padding (0xFF and 0x00)
-    packet.extend([0xFF] * 5)
-    packet.extend([0x00] * 2)
-
-    # Return the packet as a hexadecimal string
-    return packet.hex()
 
 from scapy.all import *
 
