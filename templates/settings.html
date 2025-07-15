@@ -728,6 +728,9 @@
                 <span>${message}</span>
             </div>
         `;
+        setTimeout(() => {
+            manualFeedMessageContainer.innerHTML = '';
+        }, 5000);
     }
 
     function startManualFeedTimer() {
@@ -807,6 +810,9 @@
             <span>${message}</span>
         </div>
     `;
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
 }
 </script>
 {% endblock %}

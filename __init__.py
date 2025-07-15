@@ -1954,42 +1954,62 @@ def delete_user(user_uuid):
 
     return redirect(url_for('retrieve_users'))
 
-@app.route('/set_ip', methods=['GET','POST'])
+@app.route('/set_ip', methods=['GET', 'POST'])
 @login_required
 @role_required('Admin')
 def set_ip():
     global latest_set_ip_settings
     setting = ipForm(request.form)
-    if request.method == 'POST' and setting.validate():
-        source_ip = setting.source_ip.data
-        destination_ip = setting.destination_ip.data
-        camera_ip = setting.camera_ip.data
-        amcrest_username = setting.amcrest_username.data
-        amcrest_password = setting.amcrest_password.data
 
-        with shelve.open('settings.db', 'w') as settings_db, shelve.open('IP.db', 'n') as ip_db:
-            port = settings_db['Port']
+    if request.method == 'POST':
+        if setting.validate():
+            try:
+                source_ip = setting.source_ip.data
+                destination_ip = setting.destination_ip.data
+                camera_ip = setting.camera_ip.data
+                amcrest_username = setting.amcrest_username.data
+                amcrest_password = setting.amcrest_password.data
 
-            start_syn_packet_thread(source_ip, destination_ip, port, 50000)
-            send_udp_packet(source_ip, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
+                try:
+                    with shelve.open('settings.db', 'w') as settings_db, shelve.open('IP.db', 'n') as ip_db:
+                        port = settings_db.get('Port')
+                        if not port:
+                            return jsonify(success=False, message="Port setting not found in DB."), 400
 
-            ip_db["IP"] = {
-                "source": source_ip,
-                "destination": destination_ip,
-                "camera_ip": camera_ip,
-                "amcrest_username": amcrest_username,
-                "amcrest_password": amcrest_password
-            }
+                        # Begin packet operations
+                        start_syn_packet_thread(source_ip, destination_ip, port, 50000)
+                        send_udp_packet(source_ip, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
 
-        latest_set_ip_settings = {
-            "source": source_ip,
-            "destination": destination_ip,
-            "camera_ip": camera_ip,
-            "amcrest_username": amcrest_username,
-            "amcrest_password": amcrest_password
-        }
+                        ip_db["IP"] = {
+                            "source": source_ip,
+                            "destination": destination_ip,
+                            "camera_ip": camera_ip,
+                            "amcrest_username": amcrest_username,
+                            "amcrest_password": amcrest_password
+                        }
 
-        return redirect(url_for('update_setting', mode="auto"))
+                    latest_set_ip_settings = {
+                        "source": source_ip,
+                        "destination": destination_ip,
+                        "camera_ip": camera_ip,
+                        "amcrest_username": amcrest_username,
+                        "amcrest_password": amcrest_password
+                    }
+
+                    return jsonify(success=True, redirect_url=url_for('update_setting', mode="auto"))
+
+                except Exception as db_err:
+                    print(f"[DB ERROR] {db_err}")
+                    return jsonify(success=False, message="Database operation failed."), 500
+
+            except Exception as ex:
+                print(f"[PROCESS ERROR] {ex}")
+                return jsonify(success=False, message="Unexpected error occurred."), 500
+
+        else:
+            # Collect form validation errors
+            errors = {field: error for field, error in setting.errors.items()}
+            return jsonify(success=False, message="Validation failed.", errors=errors), 400
 
     return render_template('setIP.html', form=setting)
 

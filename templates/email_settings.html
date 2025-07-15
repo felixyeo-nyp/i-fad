@@ -84,6 +84,9 @@
                 <i class="fas fa-save"></i>
                 Save Settings
             </button>
+
+            <div id="adminSettingsMessageContainer" class="full-width" style="margin-top: 20px;"></div>
+
         </form>
     </div>
 </div>
@@ -303,6 +306,18 @@
         transform: translateY(0);
     }
 
+    .info-badge.success {
+        background-color: #065f46;
+        color: #d1fae5;
+        border-left-color: #10b981;
+    }
+
+    .info-badge.warning {
+        background-color: #7f1d1d;
+        color: #fee2e2;
+        border-left-color: #f87171;
+    }
+
     .email-submit-btn {
         width: 100%;
         padding: 16px 0;
@@ -361,6 +376,16 @@
         const saveBtn = document.querySelector('.email-submit-btn');
         const originalBtnHTML = saveBtn.innerHTML;
 
+        function showAdminSettingsMessage(message, status) {
+            const container = document.getElementById('adminSettingsMessageContainer');
+            container.innerHTML = `
+                <div class="info-badge active ${status === 'success' ? 'success' : 'warning'}">
+                    <i class="fas ${status === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+
         saveBtn.addEventListener('click', async function (e) {
             const form = saveBtn.closest('form');
             const formData = new FormData(form);
@@ -379,13 +404,16 @@
                 if (response.ok && result.success) {
                     saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved Successfully!';
                     saveBtn.style.background = 'linear-gradient(45deg, #10b981, #047857)';
+                    showAdminSettingsMessage('Settings saved successfully.', 'success');
                 } else {
+                    showAdminSettingsMessage(result.message || 'Failed to save settings.', 'warning');
                     throw new Error(result.message || 'Failed to save');
                 }
             } catch (error) {
                 console.error('Save error:', error);
                 saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Save Failed';
                 saveBtn.style.background = 'linear-gradient(45deg, #ef4444, #dc2626)';
+                showAdminSettingsMessage('Save failed. Please check your input or try again.', 'warning');
             }
 
             setTimeout(() => {
