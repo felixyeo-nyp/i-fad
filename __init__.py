@@ -337,10 +337,6 @@ def video_processing_loop():
         except Exception as e:
             print(f"[ERROR] Failed to write to currentcount.db: {e}")
 
-        for box, label, score in bounding_boxes:
-            cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
-            cv2.putText(frame, f'Pellet: {score:.2f}', (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
         with frame_data_lock:
             frame_data['object_count'] = temp_object_count
             frame_data['bounding_boxes'] = bounding_boxes
@@ -544,7 +540,7 @@ def generate_frames():
                 for box, label, score in frame_data['bounding_boxes']:
                     cv2.rectangle(frame_to_use, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
                     cv2.putText(frame_to_use, f'{class_labels[label]}: {score:.2f}', (box[0], box[1] - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                                cv2.FONT_HERSHEY_SIMPLEX, 1.4, (0, 255, 0), 2)
 
         ret, jpeg = cv2.imencode('.jpg', frame_to_use)
         if ret:
