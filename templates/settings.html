@@ -734,23 +734,51 @@
     }
 
     function startManualFeedTimer() {
-        feedStartTime = Date.now();
-        manualFeedTimer.style.display = 'inline-block';
-        localStorage.setItem('manualFeedStartTime', feedStartTime);
+        if (manualFeedInterval !== null) {
+            clearInterval(manualFeedInterval);
+            manualFeedInterval = null;
+        }
 
+        feedStartTime = Date.now();
+        localStorage.setItem('manualFeedStartTime', feedStartTime);
+        localStorage.setItem('manualFeedActive', 'true');
+
+        manualFeedTimer.style.display = 'inline-block';
         manualFeedInterval = setInterval(updateManualFeedTimer, 1000);
         updateManualFeedTimer();
     }
 
     function stopManualFeedTimer() {
+        if (manualFeedInterval === null || localStorage.getItem('manualFeedActive') !== 'true') {
+            return;
+        }
+
         clearInterval(manualFeedInterval);
-        manualFeedInterval = null;
+         manualFeedInterval = null;
+        const endTime = Date.now();
+        const startTime = parseInt(localStorage.getItem('manualFeedStartTime'), 10);
+        
+        if (!startTime || isNaN(startTime) || startTime > endTime || endTime - startTime > 24 * 60 * 60 * 1000) {
+            showManualFeedMessage("Invalid timer session. Duration not recorded.", "warning");
+            manualFeedTimer.querySelector('strong').textContent = '00:00';
+        } else {
+            const totalMs = endTime - startTime;
+            const totalSeconds = Math.floor(totalMs / 1000);
+            const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+
+            manualFeedTimer.querySelector('strong').textContent = `${minutes}:${seconds}`;
+            showManualFeedMessage(`Manual feed lasted ${minutes}:${seconds}`, 'info');
+        }
+
         feedStartTime = null;
         localStorage.removeItem('manualFeedStartTime');
-        manualFeedTimer.querySelector('strong').textContent = '00:00';
+        localStorage.removeItem('manualFeedActive');
     }
 
     function updateManualFeedTimer() {
+        if (!feedStartTime) return;
+
         const elapsedMs = Date.now() - feedStartTime;
         const totalSeconds = Math.floor(elapsedMs / 1000);
         const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
@@ -760,11 +788,21 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         const storedStartTime = localStorage.getItem('manualFeedStartTime');
-        if (storedStartTime) {
-            feedStartTime = parseInt(storedStartTime);
-            manualFeedTimer.style.display = 'inline-block';
-            manualFeedInterval = setInterval(updateManualFeedTimer, 1000);
-            updateManualFeedTimer();
+        const isActive = localStorage.getItem('manualFeedActive') === 'true';
+        if (storedStartTime && isActive) {
+            const parsed = parseInt(storedStartTime, 10);
+            const now = Date.now();
+
+            if (!isNaN(parsed) && parsed > 0 && parsed <= now && now - parsed <= 24 * 60 * 60 * 1000) {
+                feedStartTime = parsed;
+                manualFeedTimer.style.display = 'inline-block';
+                manualFeedInterval = setInterval(updateManualFeedTimer, 1000);
+                updateManualFeedTimer();
+            } else {
+                localStorage.removeItem('manualFeedStartTime');
+                localStorage.removeItem('manualFeedActive');
+                manualFeedTimer.querySelector('strong').textContent = '00:00';
+            }
         }
     });
 
