@@ -1568,15 +1568,34 @@ def get_active_feeding_user():
     with active_feeding_user_lock:
         return active_feeding_user.copy()
 
-def send_feeding_complete_email(user_email, feed_time):
+def send_feeding_complete_email(user_email, feed_time_str, session_type):
     with app.app_context():
         try:
-            msg = flask_mail.Message(subject="Feeding Complete",
-                          recipients=[user_email],
-                          body= f"The {feed_time} has been completed",
-                          )
+            with shelve_lock:
+                with shelve.open('settings.db', 'r') as db:
+                    Email_dict = db.get('Email_Data', {})
+                    email_info = Email_dict.get('Email_Info')
+                    support_email = email_info.get_sender_email() if email_info else "iatfadteam@gmail.com"
+
+            msg = flask_mail.Message(
+                subject="Feeding Complete",
+                recipients=[user_email]
+            )
+
+            msg.body = f"The {session_type} feeding session at {feed_time_str} has been completed."
+
+
+            msg.html = render_template(
+                'email/feeding_complete.html',
+                feed_time=feed_time_str,
+                session_type=session_type.capitalize(),
+                year=datetime.now().year,
+                support_email=support_email
+            )
+
             mail.send(msg)
-            print(f"Email sent to {user_email} for {feed_time}.")
+            print(f"Email sent to {user_email} for {session_type} feeding at {feed_time_str}.")
+
         except Exception as e:
             print(f"Error sending email: {e}")
 
@@ -1625,7 +1644,7 @@ def reschedule_feeding_alerts():
             trigger='cron',
             hour=first_end.hour,
             minute=first_end.minute,
-            args=[user_email, "first feeding complete"],
+            args=[user_email, first_timer, "Morning"],
             id=first_id,
             replace_existing=True,
             misfire_grace_time=3600
@@ -1635,7 +1654,7 @@ def reschedule_feeding_alerts():
             trigger='cron',
             hour=second_end.hour,
             minute=second_end.minute,
-            args=[user_email, "second feeding complete"],
+            args=[user_email, second_timer, "Evening"],
             id=second_id,
             replace_existing=True,
             misfire_grace_time=3600
