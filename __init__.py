@@ -255,7 +255,7 @@ def validate_config_thread():
                         print("[VALIDATE] Fallback Confidence_Rate initialized.")
 
                     if 'Port' not in settings_db:
-                        settings_db['Port'] = random.randint(50001, 65535)
+                        settings_db['Port'] = 53101
                         print("[VALIDATE] Missing Port generated.")
 
                     if 'Generate_Status' not in settings_db:
@@ -1427,15 +1427,14 @@ def update_setting():
                     manual_feed_action = data.get("manual_feed_action")
                     if manual_form and manual_feed_action in ["start", "stop"]:
                         try:
-                            with shelve_lock:
-                                with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
-                                    config = {
-                                        'Port': db.get('Port'),
-                                        'syn_ack_seq': db.get('syn_ack_seq'),
-                                        'syn_ack_ack': db.get('syn_ack_ack'),
-                                        'source': ip_db.get("IP", {}).get("source"),
-                                        'destination': ip_db.get("IP", {}).get("destination")
-                                    }
+                            with shelve.open("settings.db", 'c') as db, shelve.open("IP.db", 'r') as ip_db:
+                                config = {
+                                    'Port': db.get('Port'),
+                                    'syn_ack_seq': db.get('syn_ack_seq'),
+                                    'syn_ack_ack': db.get('syn_ack_ack'),
+                                    'source': ip_db.get("IP", {}).get("source"),
+                                    'destination': ip_db.get("IP", {}).get("destination")
+                                }
 
                             for key, value in config.items():
                                 if not value:
@@ -1492,19 +1491,18 @@ def update_setting():
                         print(f"Duration in seconds: {duration_sec}")
                         pellet_count = int(data.get("pellets", 0))
 
-                        with shelve_lock:
-                            with shelve.open("users.db", 'w') as user_db:
-                                for username, user_data in user_db.items():
-                                    if user_data.get("uuid") == session.get("uuid"):
-                                        user_data["user_first_feed"] = first_timer
-                                        user_data["user_second_feed"] = second_timer
-                                        user_data["user_feeding_duration"] = duration_sec
-                                        user_data["user_interval_seconds"] = interval_sec
-                                        print(f"Saved user feeding duration: {duration_sec} seconds")
-                                        user_data["user_pellets"] = pellet_count
-                                        user_db[username] = user_data
-                                        print(f"[USER FEED SETTINGS] Updated feed settings for user {username}")
-                                        break
+                        with shelve.open("users.db", 'w') as user_db:
+                            for username, user_data in user_db.items():
+                                if user_data.get("uuid") == session.get("uuid"):
+                                    user_data["user_first_feed"] = first_timer
+                                    user_data["user_second_feed"] = second_timer
+                                    user_data["user_feeding_duration"] = duration_sec
+                                    user_data["user_interval_seconds"] = interval_sec
+                                    print(f"Saved user feeding duration: {duration_sec} seconds")
+                                    user_data["user_pellets"] = pellet_count
+                                    user_db[username] = user_data
+                                    print(f"[USER FEED SETTINGS] Updated feed settings for user {username}")
+                                    break
 
                         feeding_config = {
                             "user_first_feed": first_timer,
@@ -1516,14 +1514,13 @@ def update_setting():
                         print(f"[FEEDING CONFIG] Updated feeding config: {feeding_config}")
                         set_active_feeding_user(session.get("uuid"), session.get('email'), feeding_config)
 
-                        with shelve_lock:
-                            with shelve.open("settings.db", 'r') as db, shelve.open("IP.db", 'r') as ip_db:
-                                config = {
-                                    'Port': db.get('Port'),
-                                    'syn_ack_seq': db.get('syn_ack_seq'),
-                                    'syn_ack_ack': db.get('syn_ack_ack'),
-                                    'source': ip_db.get("IP", {}).get("source"),
-                                    'destination': ip_db.get("IP", {}).get("destination")}
+                        with shelve.open("settings.db", 'r') as db, shelve.open("IP.db", 'r') as ip_db:
+                            config = {
+                                'Port': db.get('Port'),
+                                'syn_ack_seq': db.get('syn_ack_seq'),
+                                'syn_ack_ack': db.get('syn_ack_ack'),
+                                'source': ip_db.get("IP", {}).get("source"),
+                                'destination': ip_db.get("IP", {}).get("destination")}
 
                         for key, value in config.items():
                             if not value:
@@ -1542,21 +1539,20 @@ def update_setting():
             return render_template('settings.html', form=setting, mode=mode)
 
         # GET method – load current settings
-        with shelve_lock:
-            with shelve.open("users.db", 'r') as db:
-                for user_data in db.values():
-                    if user_data.get("uuid") == session.get("uuid"):
-                        setting.first_timer.data = user_data.get("user_first_feed", "")
-                        setting.second_timer.data = user_data.get("user_second_feed", "")
-                        setting.pellets.data = user_data.get("user_pellets", 0)
-                        duration_sec = user_data.get("user_feeding_duration", 0)
-                        print(f"Duration that retrieved: {duration_sec}")
-                        interval_sec = user_data.get("user_interval_seconds", 0)
+        with shelve.open("users.db", 'r') as db:
+            for user_data in db.values():
+                if user_data.get("uuid") == session.get("uuid"):
+                    setting.first_timer.data = user_data.get("user_first_feed", "")
+                    setting.second_timer.data = user_data.get("user_second_feed", "")
+                    setting.pellets.data = user_data.get("user_pellets", 0)
+                    duration_sec = user_data.get("user_feeding_duration", 0)
+                    print(f"Duration that retrieved: {duration_sec}")
+                    interval_sec = user_data.get("user_interval_seconds", 0)
 
-                        setting.minutes.data = duration_sec // 60
-                        setting.interval_minutes.data = interval_sec // 60
-                        setting.interval_seconds.data = interval_sec % 60
-                        break
+                    setting.minutes.data = duration_sec // 60
+                    setting.interval_minutes.data = interval_sec // 60
+                    setting.interval_seconds.data = interval_sec % 60
+                    break
 
         return render_template('settings.html', form=setting, mode=mode)
 
@@ -2126,8 +2122,11 @@ def initialize_databases():
         db['Generate_Status'] = False
         email_setup = Email('iatfadteam@gmail.com', 'iatfadteam@gmail.com', 'pmtu cilz uewx xqqi', 3)
         db['Email_Data'] = {'Email_Info': email_setup}
-        db['Port'] = random.randint(50001, 65535)
+        db['Port'] = 53101
+        db['last_ip_id'] = 7500
         db['Confidence_Rate'] = 60 
+        db['syn_ack_seq'] = None
+        db['syn_ack_ack'] = None    
 
 def update_existing_databases():
     print("Updating existing database values if needed.")
@@ -2140,7 +2139,7 @@ def update_existing_databases():
                 db[key] = user_data
 
     with shelve.open('settings.db', 'w') as db:
-        db['Port'] = random.randint(53100, 53199)
+        db['Port'] = 53101
         db['last_ip_id'] = 7500
 
 def setup_mail():
