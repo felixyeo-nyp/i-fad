@@ -110,11 +110,74 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="deleteUserModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h4><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h4>
+        </div>
+        <div class="modal-body">
+            <p class="modal-message">Are you sure you want to delete <strong id="deleteUsername">admin_user</strong>? <br>This action is irreversible and will permanently remove all associated data.</p>
+            <p id="deleteModalSuccess" class="modal-success"></p>
+            <p id="deleteModalError" class="modal-error"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+            <button id="confirmDeleteBtn" class="modal-btn modal-btn-danger">Delete</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    let deleteUsername = '';
+    let deleteUUID = '';
+
     function deleteUser(username, user_uuid) {
-    const confirmation = confirm(`Are you sure you want to delete the account for ${username}? This action is irreversible.`);
-    if (confirmation) {
-        fetch(`/delete/${user_uuid}`, {
+        deleteUsername = username;
+        deleteUUID = user_uuid;
+        document.getElementById('deleteUsername').textContent = username;
+        document.getElementById('deleteModalError').style.display = 'none';
+        document.getElementById('deleteModalError').textContent = '';
+        document.getElementById('deleteUserModal').style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteUserModal').style.display = 'none';
+    }
+
+    function showDeleteModalError(message) {
+        const errorEl = document.getElementById('deleteModalError');
+        errorEl.textContent = message;
+        errorEl.style.display = 'block';
+
+        const successEl = document.getElementById('deleteModalSuccess');
+        successEl.style.display = 'none';
+
+        const btn = document.getElementById('confirmDeleteBtn');
+        btn.classList.add('shake');
+        setTimeout(() => btn.classList.remove('shake'), 400);
+    }
+
+    function showDeleteModalSuccess(message) {
+        const successEl = document.getElementById('deleteModalSuccess');
+        successEl.textContent = message;
+        successEl.style.display = 'block';
+
+        const errorEl = document.getElementById('deleteModalError');
+        errorEl.style.display = 'none';
+
+        const btn = document.getElementById('confirmDeleteBtn');
+        btn.innerHTML = '<i class="fas fa-check"></i> Deleted!';
+        btn.classList.add('modal-btn-success');
+        btn.disabled = true;
+    }
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+        const btn = this;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        btn.disabled = true;
+
+        fetch(`/delete/${deleteUUID}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -122,13 +185,33 @@
         })
         .then(response => {
             if (response.ok) {
-                alert(`${username}'s account has been deleted.`);
-                location.reload();
+                showDeleteModalSuccess(`User ${deleteUsername} deleted successfully.`);
+                setTimeout(() => location.reload(), 2000);  // delay to show success
             } else {
-                response.text().then(text => alert(`${text}`));
+                return response.text().then(text => {
+                    showDeleteModalError(text || 'An unknown error occurred while deleting.');
+                    btn.innerHTML = 'Delete';
+                    btn.disabled = false;
+                });
             }
         })
-            .catch(error => alert(`Failed to delete the account: ${error}`));
+        .catch(error => {
+            showDeleteModalError(`Failed to delete the account: ${error.message || error}`);
+            btn.innerHTML = 'Delete';
+            btn.disabled = false;
+        });
+    });
+
+    function showDeleteModalError(message) {
+        const errorEl = document.getElementById('deleteModalError');
+        errorEl.textContent = message;
+        errorEl.style.display = 'block';
+    }
+
+    window.onclick = function (event) {
+        const modal = document.getElementById('deleteUserModal');
+        if (event.target == modal) {
+            closeDeleteModal();
         }
     }
 
@@ -527,6 +610,153 @@
         text-decoration: none;
     }
 
+    /* Modal styles */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--modal-bg);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(5px);
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        border: 1px solid rgba(129, 140, 248, 0.2);
+        animation: slideInBottom 0.4s ease-out;
+    }
+
+    .modal-header {
+        padding: 10px 15px;
+        background: linear-gradient(90deg, #ef4444, #dc3545);
+        color: white;
+        position: relative;
+    }
+
+    .modal-header h4 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .modal-header h4 i {
+        font-size: 1.8rem;
+        margin-bottom: 2px;
+    }
+
+    .modal-body {
+        padding: 30px 25px;
+    }
+
+    .modal-message {
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 10px;
+        color: var(--text-primary);
+    }
+
+    .modal-message strong {
+        color: #f8fafc;
+        background: rgba(239, 68, 68, 0.15);
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+
+    .modal-error {
+        color: #fca5a5;
+        font-weight: 600;
+        background: rgba(239, 68, 68, 0.15);
+        padding: 15px;
+        border-radius: 10px;
+        margin: 20px 0;
+        border-left: 4px solid #ef4444;
+        display: none;
+    }
+
+    .modal-success {
+        color: #bbf7d0;
+        font-weight: 600;
+        background: rgba(16, 185, 129, 0.15);
+        padding: 15px;
+        border-radius: 10px;
+        margin: 20px 0;
+        border-left: 4px solid #10b981;
+        display: none;
+    }
+    
+    .modal-btn-success {
+        background: linear-gradient(to right, #10b981, #34d399);
+        color: white;
+    }
+
+    .shake {
+        animation: shake 0.4s;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    .modal-footer {
+        padding: 20px 25px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        background: rgba(30, 41, 59, 0.7);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .modal-btn {
+        padding: 12px 10px;
+        border-radius: 10px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+        min-width: 100px;
+    }
+
+    .modal-btn-cancel {
+        background: var(--cancel);
+        color: var(--text-primary);
+    }
+
+    .modal-btn-cancel:hover {
+        background: #94a3b8;
+        transform: translateY(-2px);
+    }
+
+    .modal-btn-danger {
+        background: linear-gradient(45deg, #ef4444, #dc3545);
+        color: white;
+    }
+
+    .modal-btn-danger:hover {
+        background: linear-gradient(45deg, #dc3545, #c53030);
+        transform: translateY(-2px);
+    }
+
     /* Pagination */
     .pagination {
         display: flex;
@@ -610,6 +840,10 @@
         .dashboard-title {
             font-size: 2.2rem;
         }
+
+        .modal-content {
+            max-width: 90%;
+        }
     }
 
     @media (max-width: 480px) {
@@ -624,6 +858,14 @@
         .user-name h3,
         .user-email span {
             max-width: 200px;
+        }
+
+        .modal-footer {
+            flex-direction: column;
+        }
+        
+        .modal-btn {
+            width: 100%;
         }
     }
 </style>
