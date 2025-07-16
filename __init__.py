@@ -9,7 +9,7 @@ from sympy import false
 from wtforms import Form, StringField, RadioField, SelectField, TextAreaField, validators, ValidationError, PasswordField
 import sys
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
+from flask_login import LoginManager, UserMixin, current_user, login_user, login_required, logout_user
 import shelve, re
 from flask_wtf import FlaskForm
 from wtforms.validators import email
@@ -588,6 +588,9 @@ class User(UserMixin):
         self.role = role
         self.status = status
 
+    def get_id(self):
+        return str(self.username)
+
 def role_required(role):
     def decorator(f):
         @wraps(f)
@@ -614,12 +617,18 @@ def breached():
 @login_manager.user_loader
 def load_user(user_id):
     try:
-        username = session['username']
+        user_id = user_id.decode() if isinstance(user_id, bytes) else user_id
+
         with shelve.open('users.db') as db:
             user_data = db.get(user_id)
-            user = db[username]['username']
             if user_data:
-                return User(user_data['username'], user_data['email'], user_data['password'], user_data['role'], user_data.get('status', 'Active'))
+                return User(
+                    user_data['username'],
+                    user_data['email'],
+                    user_data['password'],
+                    user_data['role'],
+                    user_data.get('status', 'Active')
+                )
     except Exception as e:
         app.logger.error(f"Error loading user {user_id}: {e}")
     return None
@@ -1885,7 +1894,7 @@ def update_user(user_uuid):
 
     try:
         with shelve_lock:
-            with shelve.open('users.db', 'w') as db:
+            with shelve.open('users.db', writeback=True) as db:
                 # Find the user by UUID
                 for uname, data in db.items():
                     if data.get('uuid') == user_uuid:
@@ -1897,15 +1906,32 @@ def update_user(user_uuid):
                     flash("User not found.", "danger")
                     return redirect(url_for('retrieve_users'))
 
-                if form.validate_on_submit():  # Handle form submission
-                    valid_roles = {'Guest', 'Admin'}
-                    valid_statuses = {'Active', 'Suspended'}
+                if form.validate_on_submit():
+                    new_username = request.form.get('username', '').strip()
 
+                    # Validate new username
+                    if not new_username:
+                        flash('Username cannot be empty.', 'danger')
+                        return redirect(request.url)
+                    if new_username != username and new_username in db:
+                        flash('Username already exists.', 'danger')
+                        return redirect(request.url)
+
+                    # Update user data
                     user_data['email'] = form.email.data
-                    user_data['role'] = form.role.data if form.role.data in valid_roles else user_data['role']
-                    user_data['status'] = form.status.data if form.status.data in valid_statuses else user_data['status']
+                    user_data['role'] = form.role.data if form.role.data in {'Admin', 'Guest'} else user_data['role']
+                    user_data['status'] = form.status.data if form.status.data in {'Active', 'Suspended'} else user_data['status']
 
-                    db[username] = user_data
+                    if new_username != username:
+                        db[new_username] = user_data
+                        del db[username]
+
+                        # Refresh session if the user being updated is the currently logged-in user
+                        if current_user.username == username:
+                            session.clear()
+                    else:
+                        db[username] = user_data
+
                     flash('User details updated successfully.', 'success')
                     return redirect(url_for('retrieve_users'))
 

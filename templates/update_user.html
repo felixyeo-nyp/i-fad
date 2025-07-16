@@ -330,11 +330,21 @@
         <div class="user-form-container">
             <div class="user-form-header">
                 <i class="fas fa-user-edit"></i>
-                <h1>Edit User: <span style="color: var(--highlight);">{{ username }}</span></h1>
+                <h1>Edit User</span></h1>
             </div>
             
             <form method="post" action="{{ url_for('update_user', user_uuid=user_data.uuid) }}">
                 {{ form.hidden_tag() }}
+
+                <!-- Username Field -->
+                <div class="user-input-group">
+                    <label for="username">Username</label>
+                    <div class="user-input-with-icon">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="username" name="username" class="user-form-control"
+                            value="{{ username }}" placeholder="Username">
+                    </div>
+                </div>
 
                 <!-- Email Field -->
                 <div class="user-input-group">
