@@ -431,8 +431,11 @@ def feeding_scheduler_loop():
                                     source_ip = ip_data.get('source')
                                     destination_ip = ip_data.get('destination')
                             print("[RE-FEED] Pellet low, continuing feed")
-                            start_send_manual_feed(port, server_isn, int(server_ack)+1, source_ip, destination_ip)
-                            print("[RE-FEED] Feed continued successfully")
+                            success = start_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                            if success:
+                                print("[RE-FEED] Feed continued successfully")
+                            else:
+                                print("[RE-FEED ERROR] Failed to continue feed")
                         except Exception as e:
                             print(f"[ERROR] Failed to continue feed: {e}")
                         print("[RE-FEED] Feed continued successfully")
@@ -451,8 +454,11 @@ def feeding_scheduler_loop():
                                     source_ip = ip_data.get('source')
                                     destination_ip = ip_data.get('destination')
                             print("[RE-FEED] Pellet level sufficient. Stopping feed.")
-                            stop_send_manual_feed(port, server_isn, int(server_ack), source_ip, destination_ip)
-                            print("[RE-FEED] Feed stopped successfully")
+                            success = stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                            if success:
+                                print("[RE-FEED] Feed stopped successfully")
+                            else:
+                                print("[RE-FEED ERROR] Failed to stop feed")
                         except Exception as e:
                             print(f"[ERROR] Failed to stop feed early: {e}")
                         print("[RE-FEED] Feed stopped successfully")
@@ -472,7 +478,11 @@ def feeding_scheduler_loop():
                                 ip_data = ip_db.get('IP', {})
                                 source_ip = ip_data.get('source')
                                 destination_ip = ip_data.get('destination')
-                        stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                        success = stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                        if success:
+                            print("[FEED-END] Feed stopped successfully")
+                        else:
+                            print("[FEED-END ERROR] Failed to stop feed")
                     except Exception as e:
                         print(f"[ERROR] Failed to stop final feed: {e}")
                 except Exception as e:
@@ -1173,11 +1183,12 @@ def start_send_manual_feed(source_port, server_isn, server_ack, source_ip, desti
         )
         if success:
             print(f"[DEBUG] Start feed packet sent successfully on attempt {attempt}")
-            break
+            return True
         else:
             print(f"[WARNING] Start Manual feed packet not sent (attempt {attempt})")
     else:
         print("[ERROR] Failed to send Start Manual feed packet after 5 attempts")
+        return False
 
 def stop_send_manual_feed(source_port, server_isn, server_ack, source_ip, destination_ip):
     print(f"[DEBUG] --> stop_send_manual_feed() triggered at {datetime.now().strftime('%H:%M:%S')}")
@@ -1195,11 +1206,12 @@ def stop_send_manual_feed(source_port, server_isn, server_ack, source_ip, destin
         )
         if success:
             print(f"[DEBUG] Stop feed packet sent successfully on attempt {attempt}")
-            break
+            return True
         else:
             print(f"[WARNING] Stop Manual feed packet not sent (attempt {attempt})")
     else:
         print("[ERROR] Failed to send Stop Manual feed packet after 5 attempts")
+        return False
 
 # Route to update the interval setting
 @app.route('/update_interval', methods=['POST'])
@@ -1464,12 +1476,17 @@ def update_setting():
                             destination_ip = config['destination']
 
                             if manual_feed_action == "start":
-                                start_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-                                return jsonify({"status": "success", "message": "Manual feeding started."})
+                                success = start_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                                if success:
+                                    return jsonify({"status": "success", "message": "Manual feeding started."})
+                                else:
+                                    return jsonify({"status": "error", "message": "Failed to start manual feeding."}), 500
                             else:
-                                stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-                                return jsonify({"status": "success", "message": "Manual feeding stopped."})
-
+                                success = stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                                if success:
+                                    return jsonify({"status": "success", "message": "Manual feeding stopped."})
+                                else:
+                                    return jsonify({"status": "error", "message": "Failed to stop manual feeding."}), 500
                         except Exception as e:
                             return jsonify({"status": "error", "message": f"Manual feed error: {e}"}), 500
 
