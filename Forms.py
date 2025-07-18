@@ -28,7 +28,7 @@ class configurationForm(FlaskForm):
 
     pellets = IntegerField("", validators=[
         DataRequired(),
-        NumberRange(min=100, max=1000, message="Pellets must be between 100 and 1000 grams.")
+        NumberRange(min=1, max=1000, message="Pellets must be between 1 and 1000 grams.")
     ])
     minutes = IntegerField("", validators=[
         Optional(),
@@ -124,4 +124,7 @@ class FeedbackForm(FlaskForm):
 class ipForm(FlaskForm):
     source_ip = StringField("Source IP", validators=[DataRequired(), IPAddress()])
     destination_ip = StringField("Destination IP", validators=[DataRequired(), IPAddress()])
+    camera_ip = StringField('Camera IP', validators=[DataRequired(), IPAddress()])
+    amcrest_username = StringField('Amcrest Username', validators=[DataRequired()])
+    amcrest_password = PasswordField('Amcrest Password', validators=[DataRequired()])
 

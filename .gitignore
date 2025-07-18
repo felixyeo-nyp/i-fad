@@ -3,4 +3,11 @@ flask_stderr.log
 flask_stdout.log
 
 .venv
-__pycache__
+__pycache__/
+*.pth
+.env
+*.db
+*.db.*
+*.bak
+*.dat
+*.dir
