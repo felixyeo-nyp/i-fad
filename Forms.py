@@ -106,7 +106,7 @@ class forgetpassword(FlaskForm):
     email = EmailField("Email", validators=[DataRequired(), Email(), Length(max=150)])
 
 class LoginForm(FlaskForm):
-    username = StringField("Username", validators=[DataRequired(), Length(min=4, max=25)])
+    identifier = StringField("Username Or Email", validators=[DataRequired(), Length(min=4, max=25)])
     password = PasswordField("Password", validators=[DataRequired(), Length(min=8, max=80)])
 
 class emailForm(FlaskForm):
@@ -127,4 +127,9 @@ class ipForm(FlaskForm):
     camera_ip = StringField('Camera IP', validators=[DataRequired(), IPAddress()])
     amcrest_username = StringField('Amcrest Username', validators=[DataRequired()])
     amcrest_password = PasswordField('Amcrest Password', validators=[DataRequired()])
+
+class DeleteForm(FlaskForm):
+    """Empty form, just for CSRF protection on deletes."""
+    pass
+
 

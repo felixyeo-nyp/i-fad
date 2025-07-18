@@ -1,7 +1,6 @@
-
+import shelve
 from datetime import datetime
-
-
+from zoneinfo import ZoneInfo
 
 class Settings:
     def __init__(self, first_timer='', second_timer='', interval_seconds=0, pellets=0, seconds=0, confidence=0.0):
@@ -130,3 +129,100 @@ class Line_Chart_Data_Pellets():
 
     def get_pellets(self):
         return self.__pellets
+
+SHELVE_PATH    = 'feedback.db'
+_COUNTER_KEY   = 'counter'
+
+
+class Feedback:
+    def __init__(
+        self,
+        fb_id: int = 0,
+        user_name: str = '',
+        user_email: str = '',
+        message: str = '',
+        submitted_at: datetime = None
+    ):
+        self.__id = fb_id
+        self.__user_name = user_name
+        self.__user_email = user_email
+        self.__message = message
+        # default to Singapore time (UTC+8)
+        sg_tz = ZoneInfo('Asia/Singapore')
+        self.__submitted_at = submitted_at or datetime.now(sg_tz)
+
+    # Getter methods
+    def get_id(self) -> int:
+        return self.__id
+
+    def get_user_name(self) -> str:
+        return self.__user_name
+
+    def get_user_email(self) -> str:
+        return self.__user_email
+
+    def get_message(self) -> str:
+        return self.__message
+
+    def get_submitted_at(self) -> datetime:
+        return self.__submitted_at
+
+    # Setter methods
+    def set_user_name(self, name: str):
+        self.__user_name = name
+
+    def set_user_email(self, email: str):
+        self.__user_email = email
+
+    def set_message(self, msg: str):
+        self.__message = msg
+
+    def set_submitted_at(self, dt: datetime):
+        self.__submitted_at = dt
+
+
+class FeedbackStore:
+    def __init__(self, path: str = SHELVE_PATH):
+        self.path = path
+        # Ensure database exists and counter is initialized
+        with shelve.open(self.path, writeback=True) as db:
+            if _COUNTER_KEY not in db:
+                db[_COUNTER_KEY] = 0
+
+    def _open(self, writeback: bool = False):
+        return shelve.open(self.path, writeback=writeback)
+
+    def add(self, user_name: str, user_email: str, message: str) -> Feedback:
+        with self._open(writeback=True) as db:
+            next_id = db.get(_COUNTER_KEY, 0) + 1
+            db[_COUNTER_KEY] = next_id
+
+            fb = Feedback(
+                fb_id=next_id,
+                user_name=user_name,
+                user_email=user_email,
+                message=message
+            )
+            db[str(next_id)] = fb
+        return fb
+
+    def list_all(self) -> list[Feedback]:
+        with self._open() as db:
+            entries = [db[k] for k in db if k != _COUNTER_KEY]
+        entries.sort(
+            key=lambda e: (e.get_user_email(), e.get_submitted_at()),
+            reverse=True
+        )
+        return entries
+
+    def get(self, fb_id: int) -> Feedback | None:
+        with self._open() as db:
+            return db.get(str(fb_id))
+
+    def delete(self, fb_id: int) -> bool:
+        with self._open(writeback=True) as db:
+            key = str(fb_id)
+            if key in db:
+                del db[key]
+                return True
+        return False

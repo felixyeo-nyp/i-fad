@@ -1,140 +1,198 @@
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Your Page Title</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-    <style>
-        /* Custom CSS for sidebar */
-        .sidebar {
-            height: 100%;
-            width: 0;
-            position: fixed;
-            z-index: 1;
-            top: 0;
-            left: 0;
-            background-color: #f0f0f0; /* Light gray background */
-            overflow-x: hidden;
-            transition: 0.5s;
-            padding-top: 60px;
-        }
+{# templates/_navbar.html #}
 
-        .sidebar a {
-            padding: 10px 15px;
-            text-decoration: none;
-            font-size: 18px;
-            color: #000; /* Black text */
-            display: block;
-            transition: 0.3s;
-        }
+<!-- required CSS libraries -->
+<link
+  rel="stylesheet"
+  href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
+/>
+<link
+  href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap"
+  rel="stylesheet"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  integrity="sha512-pZM7QbaxfMZ+gihEPN0YC79YC69lO2QJFiO4VVsaG1hCdb4tTfRNsqTUp4CShz5qM+YH0ZzwEtJwOu9gQHo+PQ=="
+  crossorigin="anonymous"
+  referrerpolicy="no-referrer"
+/>
 
-        .sidebar a:hover {
-            color: #555; /* Darker shade of gray on hover */
-        }
+<style>
+  body {
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    background: #f4f7fa;
+    overflow-x: hidden;
+  }
 
-        .sidebar .closebtn {
-            position: absolute;
-            top: 0;
-            right: 25px;
-            font-size: 36px;
-            color: #000; /* Black close button */
-        }
+  /* Sidebar */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: 0; height: 100%;
+    background: #2c3e50;
+    color: #ecf0f1;
+    padding-top: 60px;
+    overflow-x: hidden;
+    transition: width 0.4s ease;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+    z-index: 1000;
+  }
+  .sidebar.open {
+    width: clamp(205px, 20vw, 240px);
+  }
+  .sidebar .closebtn {
+    position: absolute;
+    top: 12px;
+    right: 20px;
+    font-size: 30px;
+    cursor: pointer;
+    color: #ecf0f1;
+  }
+  .sidebar a {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: #ecf0f1;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.3s, color 0.3s;
+  }
+  .sidebar a i {
+    width: 25px;
+    text-align: center;
+    margin-right: 12px;
+    font-size: 18px;
+  }
+  .sidebar a:hover {
+    background: #34495e;
+    color: #fff;
+  }
+  .sidebar a.active {
+    background: #477AF1;
+    color: #fff;
+    border-radius:5px;
+  }
 
+  /* Hamburger button */
+  .openbtn {
+    position: fixed;
+    top: 15px; left: 15px;
+    width: 40px; height: 40px;
+    background: transparent;
+    border: none;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1100;
+  }
+  .openbtn i {
+    font-size: 24px;
+    color: #fff;
+    transition: background 0.3s, -webkit-text-fill-color 0.3s;
+  }
+  .openbtn:hover i {
+    background: linear-gradient(45deg, #00C6FF, #8E2DE2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .openbtn.hidden {
+    display: none;
+  }
 
-        .openbtn {
-            font-size: 20px;
-            cursor: pointer;
-            background-color: transparent;
-            color: #FFFFFF; /* White text for the button */
-            padding: 10px 15px;
-            border: none;
-            position: fixed;
-            z-index: 2;
-            top: 10px;
-            left: 10px;
-        }
+  /* Main content shift */
+  .main-content {
+    margin-left: 0;
+    transition: margin-left 0.4s ease;
+  }
+  .main-content.shifted {
+    margin-left: clamp(180px, 20vw, 240px);
+  }
+</style>
 
-        .openbtn:hover {
-            color: #E8E8E8; /* lighter shade of gray on hover */
-        }
+{# Only show the sidebar and hamburger if logged in #}
+{% if current_user.is_authenticated %}
+  <!-- Hamburger button -->
+  <button class="openbtn" onclick="toggleNav()">
+    <i class="fas fa-bars"></i>
+  </button>
 
-        /* Content styling */
-        .main-content {
-            transition: margin-left .5s;
-            padding: 20px;
-            margin-left: 0;
-        }
-        a.active {
-            font-weight: bold;      /* Example: bold the text */
-            color: #FFFF;         /* Change the color to highlight */
-            background-color: #7292A9;
-        }
+  <!-- Sidebar -->
+  <nav id="mySidebar" class="sidebar">
+    <span class="closebtn" onclick="toggleNav()">&times;</span>
 
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .sidebar {
-                padding-top: 60px;
-            }
-            .sidebar a {
-                font-size: 16px; /* Decrease font size on smaller screens */
-
-            }
-            .openbtn {
-                font-size: 16px; /* Decrease font size of menu button */
-
-            }
-        }
-    </style>
-</head>
-<body>
-
-<!-- Sidebar -->
-<div id="mySidebar" class="sidebar">
-    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-    {% if current_user.is_authenticated %}
-        {% if current_user.role == 'Admin' %}  <!-- Assuming 'role' field exists -->
-            <a class="{% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">Dashboard</a>
-            <a class="{% if request.path == '/update' %}active{% endif %}" href="/update">Feeding Settings</a>
-            <a class="{% if request.path == '/camera_view' %}active{% endif %}" href="/camera_view">Camera View</a>
-            <a class="{% if request.path == '/feedback' or request.path.startswith('/feedback') %}active{% endif %}" href="{{ url_for('feedback') }}">Feedback</a>
-            <a class="{% if request.path == '/retrieve' %}active{% endif %}" href="/retrieve">Manage Users</a>
-            <a class="{% if request.path == '/update/email' %}active{% endif %}" href="/update/email">Admin Settings</a>
-            <a class="{% if request.path == '/set_ip' %}active{% endif %}" href="/set_ip">Set_IP</a>
-        {% else %}
-            <a class="{% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">Dashboard</a>
-            <a class="{% if request.path == '/update' %}active{% endif %}" href="/update">Feeding Settings</a>
-            <a class="{% if request.path == '/camera_view' %}active{% endif %}" href="/camera_view">Camera View</a>
-            <a class="{% if request.path == '/feedback' or request.path.startswith('/feedback') %}active{% endif %}" href="{{ url_for('feedback') }}">Feedback</a>
-
-        {% endif %}
+    {% if current_user.role == 'Admin' %}
+      <a href="/dashboard"
+         class="{% if request.path == '/dashboard' %}active{% endif %}">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a href="/update"
+         class="{% if request.path == '/update' %}active{% endif %}">
+        <i class="fas fa-cogs"></i> Feeding Settings
+      </a>
+      <a href="/camera_view"
+         class="{% if request.path == '/camera_view' %}active{% endif %}">
+        <i class="fas fa-camera"></i> Camera View
+      </a>
+      <a href="{{ url_for('feedback') }}"
+         class="{% if request.path.startswith('/feedback') %}active{% endif %}">
+        <i class="fas fa-comments"></i> Feedback
+      </a>
+      <a href="{{ url_for('admin_feedbacks') }}"
+         class="{% if request.path.startswith('/admin/feedbacks') %}active{% endif %}">
+        <i class="fas fa-comments"></i> Manage Feedback
+      </a>
+      <a href="/retrieve"
+         class="{% if request.path == '/retrieve' %}active{% endif %}">
+        <i class="fas fa-users"></i> Manage Users
+      </a>
+      <a href="/update/email"
+         class="{% if request.path == '/update/email' %}active{% endif %}">
+        <i class="fas fa-user-cog"></i> Admin Settings
+      </a>
+      <a href="/set_ip"
+         class="{% if request.path == '/set_ip' %}active{% endif %}">
+        <i class="fas fa-network-wired"></i> Set IP
+      </a>
     {% else %}
-        <a href="{{ url_for('login') }}">Login</a>
+      <a href="/dashboard"
+         class="{% if request.path == '/dashboard' %}active{% endif %}">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a href="/update"
+         class="{% if request.path == '/update' %}active{% endif %}">
+        <i class="fas fa-cogs"></i> Feeding Settings
+      </a>
+      <a href="/camera_view"
+         class="{% if request.path == '/camera_view' %}active{% endif %}">
+        <i class="fas fa-camera"></i> Camera View
+      </a>
+      <a href="{{ url_for('feedback') }}"
+         class="{% if request.path.startswith('/feedback') %}active{% endif %}">
+        <i class="fas fa-comments"></i> Feedback
+      </a>
     {% endif %}
-</div>
+  </nav>
+{% endif %}
 
-
-<!-- Page content -->
+<!-- Main content wrapper -->
 <div id="main" class="main-content">
-    <button class="openbtn" onclick="openNav()">&#9776;</button>
+  {% block content %}{% endblock %}
 </div>
 
-<!-- jQuery and Bootstrap JavaScript -->
+<!-- required JS libraries -->
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 
-<!-- Script to open and close the sidebar -->
 <script>
-function openNav() {
-    document.getElementById("mySidebar").style.width = "250px";
-    document.getElementById("main").style.marginLeft = "250px";
-    document.querySelector('.openbtn').style.display = 'none';
-}
-
-function closeNav() {
-    document.getElementById("mySidebar").style.width = "0";
-    document.getElementById("main").style.marginLeft = "0";
-    document.querySelector('.openbtn').style.display = 'block';
-}
-
-
+  function toggleNav() {
+    const sb = document.getElementById('mySidebar');
+    const main = document.getElementById('main');
+    const btn = document.querySelector('.openbtn');
+    sb.classList.toggle('open');
+    main.classList.toggle('shifted');
+    btn.classList.toggle('hidden', sb.classList.contains('open'));
+  }
 </script>
-</body>

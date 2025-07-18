@@ -63,7 +63,8 @@
 </head>
 <body>
 
-    {% block navbar %}
+    {# only render navbars if hide_sidebar is not true #}
+    {% if not hide_sidebar %}
     <div class="navbar-container">
         <!-- First Navbar (on the left) -->
         {% include 'includes/_navbar.html' %}
@@ -73,7 +74,7 @@
             {% include 'includes/_navbar2.html' %}
         </div>
     </div>
-    {% endblock %}
+    {% endif %}
 <div class="container-fluid">
 
     {% block content %}

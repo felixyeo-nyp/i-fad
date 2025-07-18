@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>MFA Verification</title>
+    <style>
+      body {{
+        background-color: #f4f6f8;
+        font-family: sans-serif;
+        color: #333;
+        margin: 0;
+        padding: 20px;
+      }}
+      .container {{
+        max-width: 480px;
+        margin: auto;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
+      }}
+      .header {{
+        background: linear-gradient(90deg, #4a90e2, #8e44ad);
+        color: #fff;
+        padding: 16px;
+        text-align: center;
+      }}
+      .header h2 {{
+        margin: 0;
+        font-size: 20px;
+      }}
+      .content {{
+        padding: 24px;
+      }}
+      .content p {{
+        line-height: 1.5;
+        margin-bottom: 16px;
+      }}
+      .code-box {{
+        display: block;
+        margin: 20px auto;
+        padding: 16px;
+        font-size: 24px;
+        letter-spacing: 4px;
+        background: #f1f1f1;
+        border-radius: 4px;
+        text-align: center;
+        width: 200px;
+        font-weight: bold;
+      }}
+      .footer {{
+        font-size: 12px;
+        color: #777;
+        padding: 16px;
+        text-align: center;
+      }}
+      .footer a {{
+        color: #4a90e2;
+        text-decoration: none;
+      }}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h2>MFA Verification</h2>
+      </div>
+      <div class="content">
+        <p>Hello,</p>
+        <p>
+          Use the one-time code below to complete your login. It will expire in
+          <strong>{expires}</strong> seconds.
+        </p>
+        <span class="code-box">{code}</span>
+        <p>
+          If you didn’t request this, please ignore this email. No further action is needed.
+        </p>
+      </div>
+      <div class="footer">
+        &copy; {year} I@FAD. All rights reserved.<br>
+        Need help? <a href="mailto:support@yourdomain.com">Contact Support</a>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,141 +1,232 @@
+{# templates/mfa_verify.html #}
 {% extends "base.html" %}
 {% block title %}MFA Verification{% endblock %}
 
+{% block head %}
+  {{ super() }}
+  <!-- Font Awesome for the key icon -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    integrity="sha512-pZM7QbaxfMZ+gihEPN0YC79YC69lO2QJFiO4VVsaG1hCdb4tTfRNsqTUp4CShz5qM+YH0ZzwEtJwOu9gQHo+PQ=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+{% endblock %}
+
 {% block content %}
-{% from "includes/_formHelper.html" import render_field %}
+<style>
+  /* Reset & background */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: url("{{ url_for('static', filename='wall5.jpg') }}") center/cover no-repeat;
+    z-index: -1; opacity: 0; transform: scale(1.05);
+    animation: bgZoomFade 1.5s ease-out forwards;
+  }
+  @keyframes bgZoomFade { to { opacity: 1; transform: scale(1); } }
 
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            color: black;
-            background-image: url("{{ url_for('static', filename='wall4.jpg') }}");
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size 18px;
-        }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #000; height: 100vh;
+    display: flex; justify-content: center; align-items: center;
+    padding: 20px; overflow: hidden; position: relative;
+  }
 
-        .form-container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 40px;
-            background-color: rgba(255, 255, 255);
-            border-radius: 15px;
-            box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.1);
+  .container { max-width: 600px; width: 100%; z-index: 1; }
+  .form-container {
+    background: #fff; border-radius: 20px; padding: 40px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2); border: 1px solid #e0e0e0;
+    animation: fadeIn 0.8s ease-out;
+  }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
 
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+  .form-container h2 {
+    font-size: 28px; font-weight: 700; text-align: center;
+    color: #333; margin-bottom: 20px; letter-spacing: 1px;
+  }
+  .form-container p {
+    font-size: 16px; color: #555; text-align: center;
+    margin-bottom: 30px;
+  }
 
-        .form-container h2 {
-            font-size: 30px;
-            font-weight: bold;
-            text-align: center;
-            color: black;
-            margin-bottom: 20px;
-        }
+  .otp-expiry {
+    font-size: 14px; color: #555; text-align: center;
+    margin-bottom: 20px;
+  }
 
-        .form-container input {
-            width: 100%;
-            height: 45px;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 25px;
-            border: none;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            font-size: 16px;
-        }
+  .alert { padding: 12px; margin-bottom: 20px; border-radius: 8px; text-align: center; font-weight: 500; }
+  .alert-success { background: #e8f5e9; color: #2e7d32; }
+  .alert-error   { background: #ffebee; color: #c62828; }
 
-        .input-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
+  .input-with-icon { position: relative; margin-bottom: 20px; }
+  .input-with-icon .fa-icon {
+    position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+    color: #555; font-size: 20px; pointer-events: none;
+  }
+  .input-with-icon .form-control {
+    width: 100%; padding: 14px 18px 14px 60px; height: 60px;
+    border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;
+    font-size: 18px; color: #333; transition: box-shadow .2s, border-color .2s;
+  }
+  .input-with-icon .form-control:focus {
+    background: #fff; box-shadow: 0 0 0 3px rgba(52,152,219,0.2);
+    border-color: #3498db; outline: none;
+  }
 
-        .input-group label {
-            font-size: 16px;
-            font-weight: bold;
-            color: black;
-            text-align: right;
-        }
+  .save-btn {
+    width: 100%; padding: 16px 0; border: none; border-radius: 8px;
+    background: linear-gradient(45deg,#3498db,#8e44ad);
+    color: #fff; font-size: 18px; font-weight: 600; cursor: pointer;
+    transition: opacity .2s;
+  }
+  .save-btn:hover { opacity: 0.9; }
 
-        .input-group .input-group-text {
-            background-color: transparent;
-            border: none;
-            color: black;
-            height: 45px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+  .resend-section {
+    text-align: center; margin-top: 20px; font-size: 16px; color: #555;
+  }
+  .resend-link {
+    color: #3498db; text-decoration: none; font-weight: 600; cursor: pointer;
+    margin-left: 4px;
+  }
+  .resend-link.disabled {
+    color: #aaa; pointer-events: none;
+  }
+  #resend-timer {
+    font-weight: bold; margin-left: 6px; display: inline-block;
+  }
 
-        #code{
-            border-radius: 25px;
-            border: solid 2px;
-            background-color: rgba(255, 255, 255, 0.2);
-            color: black;
-            font-size: 16px;
-        }
+  @media (max-width: 576px) {
+    .form-container { padding: 30px 20px; }
+    .form-container h2 { font-size: 24px; }
+    .input-with-icon .form-control {
+      height: 50px; padding: 10px 12px 10px 44px; font-size: 16px;
+    }
+    .input-with-icon .fa-icon { left: 18px; font-size: 16px; }
+    .save-btn { font-size: 16px; padding: 12px 0; }
+  }
+</style>
 
-        .save-btn {
-            background-color: #E8E8E8;
-            color: #0153FF;
-            border: none;
-            padding: 10px 0;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 25px;
-            display: block;
-            margin-top: 30px;
-            width: 100px;
-            text-align: center;
+<div class="container">
+  <div class="form-container">
+    <h2>MFA Verification</h2>
+    <p>Please enter the 6-digit authentication code sent to your email.</p>
 
-        }
-
-        .save-btn:hover {
-            background-color: #89CFF0;
-        }
-
-        @media (max-width: 767px) {
-            .form-group label {
-                text-align: left;
-                width: 100%;
-                margin-bottom: 5px;
-            }
-        }
-    </style>
-
-    <div class="form-container">
-        <h2>MFA Verification</h2>
-        <p>Please enter the 6-digit authentication code sent to your email.</p>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div>
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">
-                            {{ message }}
-                        </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        {% endwith %}
-
-        <form method="POST" action="{{ url_for('mfa_verify') }}">
-            {{ form.hidden_tag() }}
-            <div class="form-group">
-                {{ form.code.label(class="form-label") }}
-                {{ form.code(class="form-control", placeholder="Enter 6-digit code") }}
-                {% if form.code.errors %}
-                    <div class="text-danger">{{ form.code.errors[0] }}</div>
-                {% endif %}
-            </div>
-            <button type="submit" class="save-btn">Verify</button>
-        </form>
+    <div class="otp-expiry">
+      Code expires in <span id="otp-timer">{{ expiry_timer }}</span>s
     </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('mfa_verify') }}">
+      {{ form.hidden_tag() }}
+      <div class="input-with-icon">
+        <i class="fas fa-key fa-icon"></i>
+        {{ form.code(class="form-control", placeholder="Enter 6-digit code") }}
+      </div>
+      {% if form.code.errors %}
+        <div class="alert alert-error">{{ form.code.errors[0] }}</div>
+      {% endif %}
+      <button type="submit" class="save-btn">Verify</button>
+    </form>
+
+    <div class="resend-section">
+      <span>Didn't receive a code?</span>
+      <a href="#" id="resend-link" class="resend-link disabled">Resend</a>
+      <span id="resend-timer">({{ resend_timer }}s)</span>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  let otpSec    = {{ expiry_timer }};
+  let resendSec = {{ resend_timer }};
+
+  const otpTimerEl    = document.getElementById('otp-timer');
+  const resendLink    = document.getElementById('resend-link');
+  const resendTimerEl = document.getElementById('resend-timer');
+
+  // OTP expiry countdown
+  if (otpTimerEl) {
+    otpTimerEl.textContent = otpSec < 10 ? '0'+otpSec : otpSec;
+    const otpInterval = setInterval(() => {
+      otpSec--;
+      if (otpSec <= 0) {
+        clearInterval(otpInterval);
+        otpTimerEl.textContent = '00';
+      } else {
+        otpTimerEl.textContent = otpSec < 10 ? '0'+otpSec : otpSec;
+      }
+    }, 1000);
+  }
+
+  // Resend countdown helper
+  function startResendCountdown() {
+    resendLink.classList.add('disabled');
+    resendTimerEl.style.display = 'inline';
+    let sec = resendSec;
+    resendTimerEl.textContent = `(${sec}s)`;
+    const id = setInterval(() => {
+      sec--;
+      if (sec <= 0) {
+        clearInterval(id);
+        resendLink.classList.remove('disabled');
+        resendTimerEl.style.display = 'none';
+      } else {
+        resendTimerEl.textContent = `(${sec}s)`;
+      }
+    }, 1000);
+  }
+
+  // Start initial resend countdown if needed
+  if (resendSec > 0) {
+    startResendCountdown();
+  } else {
+    resendLink.classList.remove('disabled');
+    resendTimerEl.style.display = 'none';
+  }
+
+  // Resend button handler
+  resendLink.addEventListener('click', e => {
+    e.preventDefault();
+    if (resendLink.classList.contains('disabled')) return;
+
+    // reset timers
+    otpSec    = 60;
+    resendSec = 5;
+    if (otpTimerEl) otpTimerEl.textContent = otpSec < 10 ? '0'+otpSec : otpSec;
+    startResendCountdown();
+
+    fetch("{{ url_for('resend_mfa') }}", {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token() }}',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(res => {
+      if (res.status === 204) return;
+      if (res.status === 429) {
+        return res.json().then(data => {
+          alert(`Please wait ${data.retry_after}s before trying again.`);
+        });
+      }
+      alert('Unable to resend code right now. Please try again later.');
+    })
+    .catch(err => {
+      console.error('Fetch error:', err);
+      alert('Network error, try again.');
+    });
+  });
+});
+</script>
 {% endblock %}

@@ -1,215 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Your Page Title</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-    <style>
-        body {
-            color: white;
-            font-family: 'Arial', sans-serif;
-            background-color: transparent;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profile Page</title>
 
-        .navbar-light {
-            background-color: transparent;
-            border-bottom: 1px solid #ddd;
-        }
+  <style>
+    /* ——— Container ——— */
+    .profile-widget {
+      /* make it stick to top/right */
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
 
-        .navbar-light .navbar-brand {
-            font-weight: bold;
-            color: white;
-        }
+      font-family: Arial, sans-serif;
+    }
 
-        .navbar-light .nav-link {
-            color: white;
-        }
+    /* ——— Avatar button ——— */
+    .profile-avatar {
+      position: relative;         /* relative to the fixed widget */
+      width: 40px;
+      height: 40px;
+      overflow: visible;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+      border-radius: 50%;
+    }
 
-        .navbar-light .nav-link:hover {
-            color: white;
-        }
+    .profile-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 50%;
+    }
 
-        .navbar-text {
-            margin-right: auto;
-        }
+    /* ——— Tooltip (hidden by default) ——— */
+    .profile-tooltip {
+      opacity: 0;
+      visibility: hidden;
+      position: absolute;
+      top: 50%;
+      right: 100%;
+      transform: translateY(-50%);
+      margin-right: 8px;
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      font-size: 0.85em;
+      transition: opacity 0.2s, visibility 0.2s;
+      z-index: 100;
+    }
 
-        /* Prevent link style changes on hover, focus, and active states */
-.nav-item a,
-.dropdown-item {
-    color: white; /* Maintain consistent color */
-    text-decoration: none; /* Remove underline */
-}
+    /* ——— On hover: show tooltip + highlight avatar ——— */
+    .profile-avatar:hover {
+      box-shadow: 0 0 8px rgba(52, 152, 219, 0.8);
+      background: #eee;
+    }
+    .profile-avatar:hover .profile-tooltip {
+      opacity: 1;
+      visibility: visible;
+    }
 
-.nav-item a:hover,
-.nav-item a:focus,
-.nav-item a.active,
-.dropdown-item:hover,
-.dropdown-item:focus,
-.dropdown-item.active {
-    color: white; /* No change in color */
-    text-decoration: none; /* Ensure no underlines appear */
-    font-weight: normal; /* Maintain consistent font weight */
-}
+    /* ——— Dropdown card ——— */
+    .profile-menu {
+      display: none;
+      position: absolute;
+      top: 60px;
+      right: 0;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      min-width: 200px;
+    }
+    .profile-widget.open .profile-menu {
+      display: block;
+    }
 
-/* Optional: Adjust dropdown-menu background and text */
-.dropdown-menu {
-    background-color: transparent; /* Transparent background for dropdown */
-    border: none; /* Remove border for cleaner look */
-}
+    /* ——— Card header ——— */
+    .profile-info {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+    }
+    .profile-menu-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      margin-right: 8px;
+      object-fit: cover;
+    }
+    .profile-menu-text .name {
+      font-weight: bold;
+      color: #333;
+    }
+    .profile-menu-text .email {
+      font-size: 0.85em;
+      color: #666;
+      white-space: nowrap;
+    }
 
-.dropdown-item:hover,
-.dropdown-item:focus {
-    background-color: transparent; /* Prevent background highlight on hover */
-}
-
-
-        .navbar-nav {
-            margin-left: auto;
-        }
-        .dropdown-menu{
-        color: white;
-        background-color: transparent;
-        border: none;
-        }
-.modal {
-  display: none; /* Hidden by default */
-  position: fixed; /* Stay in place */
-  z-index: 1; /* Sit on top */
-  padding-top: 100px; /* Location of the box */
-  left: 0;
-  top: 0;
-  width: 100%; /* Full width */
-  height: 100%; /* Full height */
-  overflow: auto; /* Enable scroll if needed */
-  background-color: rgb(255,255,0); /* Fallback color */
-  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-}
-
-/* Modal Content */
-.modal-content {
-  position: relative;
-  background-color: #fefefe;
-  margin: auto;
-  padding: 0;
-  border: 1px solid #888;
-  width: 80%;
-  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
-  -webkit-animation-name: animatetop;
-  -webkit-animation-duration: 0.4s;
-  animation-name: animatetop;
-  animation-duration: 0.4s
-}
-
-/* Add Animation */
-@-webkit-keyframes animatetop {
-  from {top:-300px; opacity:0}
-  to {top:0; opacity:1}
-}
-
-@keyframes animatetop {
-  from {top:-300px; opacity:0}
-  to {top:0; opacity:1}
-}
-
-/* The Close Button */
-.close {
-  color: white;
-  float: right;
-  font-size: 28px;
-  font-weight: bold;
-}
-
-.close:hover,
-.close:focus {
-  color: #000;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.modal-header {
-  padding: 2px 16px;
-  background-color: #5cb85c;
-  color: white;
-}
-
-.modal-body {padding: 2px 16px;}
-
-.modal-footer {
-  padding: 2px 16px;
-  background-color: #5cb85c;
-  color: white;
-}
-    </style>
+    /* ——— Action links ——— */
+    .profile-menu-item {
+      display: block;
+      padding: 10px 12px;
+      color: #333;
+      text-decoration: none;
+      transition: background 0.2s;
+      border-radius: 8px;
+    }
+    .profile-menu-item:hover {
+      background: #f5f5f5;
+      text-decoration:none;
+    }
+  </style>
 </head>
 
 <body>
-    <nav class="navbar">
-        <div class="container-fluid">
-            {% if current_user.is_authenticated %}
-                <!-- Display for logged-in users -->
-                <ul class="navbar-nav">  <!-- Right-aligned -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            Welcome, {{ current_user.username }}
-                        </a>
-                        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                            <a class="dropdown-item {% if request.path == '/changed_password' %}active{% endif %}" href="/changed_password">Change Password</a>
-                            <a class="dropdown-item {% if request.path == '/logout' %}active{% endif %}" href="/logout" id="logoutbtn" onclick="confirmLogout(event, '{{ url_for('logout') }}')" >Logout</a>
-                        </div>
-                    </li>
-                </ul>
-            {% else %}
-                <!-- Display for logged-out users -->
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/login' %}active{% endif %}" href="#"></a>
-                    </li>
-                </ul>
-            {% endif %}
-        </div>
-    </nav>
-    <!--
-    <div id="logoutModal" class="modal fade" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirm Logout</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to log out?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button id="confirmLogoutBtn" type="button" class="btn btn-danger">Logout</button>
-            </div>
-        </div>
+  {% if current_user.is_authenticated %}
+  <div class="profile-widget">
+    <!-- Avatar + tooltip -->
+    <div class="profile-avatar">
+      <img
+        src="{{ url_for('static', filename='profile.jpg') }}"
+        alt="Profile"
+      />
+      <div class="profile-tooltip">{{ current_user.username }}</div>
     </div>
+
+    <!-- Dropdown card -->
+    <div class="profile-menu">
+      <div class="profile-info">
+        <img
+          src="{{ url_for('static', filename='profile.jpg') }}"
+          class="profile-menu-avatar"
+          alt="Your avatar"
+        />
+        <div class="profile-menu-text">
+          <div class="name">{{ current_user.username }}</div>
+          <div class="email">{{ current_user.email }}</div>
+        </div>
+      </div>
+      <a href="{{ url_for('change_password') }}" class="profile-menu-item">
+        Change Password
+      </a>
+      <a
+        href="{{ url_for('logout') }}"
+        class="profile-menu-item"
+        onclick="confirmLogout(event, '{{ url_for('logout') }}')"
+      >
+        Logout
+      </a>
     </div>
--->
-    <!-- Load jQuery first, then Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  </div>
+  {% endif %}
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-         $('#navbarDropdown').dropdown();
-            const username = "{{ current_user.username }}"; // Django/Flask template variable
-            const welcomeText = document.querySelector(".navbar-text");
-            if (welcomeText) {
-                welcomeText.textContent = `Welcome, ${username}`;
-            }
-        });
+  <script>
+    // Toggle dropdown on avatar click
+    document
+      .querySelector('.profile-widget .profile-avatar')
+      ?.addEventListener('click', function(e) {
+        e.stopPropagation();
+        this.closest('.profile-widget').classList.toggle('open');
+      });
 
-                function confirmLogout(event, logoutUrl) {
-            event.preventDefault(); // Prevent default link behavior
-       	    if (confirm("Are you sure you want to log out?")) {
-              window.location.href = logoutUrl; // Redirect if confirmed
-           }
-        }
+    // Close dropdown when clicking outside
+    document.addEventListener('click', () => {
+      document
+        .querySelectorAll('.profile-widget.open')
+        .forEach(el => el.classList.remove('open'));
+    });
 
-
-
-    </script>
+    function confirmLogout(e, url) {
+      e.preventDefault();
+      if (confirm('Are you sure you want to log out?')) {
+        window.location.href = url;
+      }
+    }
+  </script>
 </body>
+</html>
