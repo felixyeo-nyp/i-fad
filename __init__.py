@@ -1160,30 +1160,46 @@ def send_RST_packet(source_port, server_isn, server_ack, source_ip, destination_
 def start_send_manual_feed(source_port, server_isn, server_ack, source_ip, destination_ip):
     print(f"[DEBUG] --> start_send_manual_feed() triggered at {datetime.now().strftime('%H:%M:%S')}")
     encoded_data = "ccdda10100010001a448"
-    success = send_tcp_packet(
-        encoded_byte=encoded_data,
-        source_port=source_port,
-        server_isn=server_isn,
-        server_ack=server_ack,
-        source_ip=source_ip,
-        dest_ip=destination_ip
-    )
-    if not success:
-        print("Start Manual feed packet not found")
+    
+    max_retries = 5
+    for attempt in range(1, max_retries + 1):
+        success = send_tcp_packet(
+            encoded_byte=encoded_data,
+            source_port=source_port,
+            server_isn=server_isn,
+            server_ack=server_ack,
+            source_ip=source_ip,
+            dest_ip=destination_ip
+        )
+        if success:
+            print(f"[DEBUG] Start feed packet sent successfully on attempt {attempt}")
+            break
+        else:
+            print(f"[WARNING] Start Manual feed packet not sent (attempt {attempt})")
+    else:
+        print("[ERROR] Failed to send Start Manual feed packet after 5 attempts")
 
 def stop_send_manual_feed(source_port, server_isn, server_ack, source_ip, destination_ip):
     print(f"[DEBUG] --> stop_send_manual_feed() triggered at {datetime.now().strftime('%H:%M:%S')}")
     encoded_data = "ccdda10100000001a346"
-    success = send_tcp_packet(
-        encoded_byte=encoded_data,
-        source_port=source_port,
-        server_isn=server_isn,
-        server_ack=server_ack,
-        source_ip=source_ip,
-        dest_ip=destination_ip
-    )
-    if not success:
-        print("Stop manual feed packet not found")
+    
+    max_retries = 5
+    for attempt in range(1, max_retries + 1):
+        success = send_tcp_packet(
+            encoded_byte=encoded_data,
+            source_port=source_port,
+            server_isn=server_isn,
+            server_ack=server_ack,
+            source_ip=source_ip,
+            dest_ip=destination_ip
+        )
+        if success:
+            print(f"[DEBUG] Stop feed packet sent successfully on attempt {attempt}")
+            break
+        else:
+            print(f"[WARNING] Stop Manual feed packet not sent (attempt {attempt})")
+    else:
+        print("[ERROR] Failed to send Stop Manual feed packet after 5 attempts")
 
 # Route to update the interval setting
 @app.route('/update_interval', methods=['POST'])
