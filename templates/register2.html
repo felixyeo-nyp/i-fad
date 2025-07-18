@@ -3,6 +3,8 @@
 
 {% block head %}
   {{ super() }}
+  <!-- ensure proper scaling on all devices -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <!-- Font Awesome for icons -->
   <link
     rel="stylesheet"
@@ -38,12 +40,16 @@
     height: 100vh;
     display: flex; justify-content: center; align-items: center;
     padding: 20px;
-    position: relative; overflow: scroll;
+    position: relative; overflow: hidden;
   }
 
-  /* Outer wrapper */
+  /* Outer wrapper scrolls if too tall */
   .container {
-    max-width: 500px; width: 100%; z-index: 1; ;
+    max-width: 500px;
+    width: 100%;
+    max-height: 100vh;
+    overflow-y: auto;
+    z-index: 1;
   }
 
   /* White card */
@@ -72,10 +78,8 @@
     transition: background 1s ease-out both;
   }
   .return-btn:hover {
-  background:linear-gradient(45deg,#3498db,#8e44ad);
-
-  text-decoration:none;
-
+    background: linear-gradient(45deg,#3498db,#8e44ad);
+    text-decoration: none;
   }
 
   /* Title */
@@ -93,15 +97,13 @@
   /* Inputs */
   .input-with-icon { position:relative; margin-bottom:20px; }
   .input-with-icon .fa-icon {
-  position: absolute;
-  left: 20px;
-  bottom: 18px;    /* instead of top:50% + transform */
-  color: #555;
-  font-size: 18px;
-  pointer-events: none;
-  transform: none;
-}
-
+    position: absolute;
+    left: 20px;
+    bottom: 18px;
+    color: #555;
+    font-size: 18px;
+    pointer-events: none;
+  }
   .input-with-icon .form-control {
     width:100%; padding:10px 14px 10px 50px; height:50px;
     border:1px solid #ddd; border-radius:8px; background:#f9f9f9;
@@ -111,7 +113,6 @@
     outline:none; background:#fff;
     box-shadow:0 0 0 3px rgba(52,152,219,0.2); border-color:#3498db;
   }
-  /* **new**: gray out disabled fields */
   .input-with-icon .form-control:disabled {
     background: #e9ecef;
     color: #888;
@@ -120,28 +121,34 @@
 
   /* Role toggles */
   .role-title { font-size:16px; font-weight:600; margin-bottom:8px; color:#333; }
-  .role-group { display:flex; gap:10px; margin-bottom:20px; width: 100%;}
-  .role-group input[type="radio"] { position:absolute; opacity:0; pointer-events:none; }
+  .role-group {
+    display:flex;
+    gap:10px;
+    margin-bottom:20px;
+    width:100%;
+  }
+  .role-group input[type="radio"] {
+    position:absolute; opacity:0; pointer-events:none;
+  }
   .role-group label {
     display:flex; align-items:center; gap:6px;
     padding:8px 20px; border:1px solid #ccc; border-radius:8px;
     background:#f0f0f0; color:#333; cursor:pointer;
-    transition:background .2s, border-color .2s, color .2s; flex:1; justify-content:center;
+    transition:background .2s, border-color .2s, color .2s;
+    flex:1; justify-content:center;
   }
   .role-group label:has(input:checked) {
     background:#3498db; border-color:#3498db; color:#fff;
   }
 
-   .role-group input[type="radio"] { position:absolute; opacity:0; pointer-events:none; }
-
   /* Password requirements */
   .req {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 4px;
-      background:#fafafa; border:1px solid #e0e0e0;
-      border-radius:8px; padding:15px; margin-bottom:20px;
-    }
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+    background:#fafafa; border:1px solid #e0e0e0;
+    border-radius:8px; padding:15px; margin-bottom:20px;
+  }
   .req-label {
     display:inline-flex; align-items:center; gap:8px;
     font-size:14px; color:#333; margin-bottom:8px;
@@ -149,7 +156,6 @@
   .req input[type="checkbox"] {
     width:18px; height:18px; border:2px solid #ccc;
     border-radius:4px; appearance:none; position:relative;
-    margin-bottom:6px;
   }
   .req input:checked {
     background:#3498db; border-color:#3498db;
@@ -168,16 +174,66 @@
   }
   .save-btn:hover { opacity:0.9; }
 
-  @media (max-width:576px) {
-    .container { padding:0; }
-    .form-container { padding:50px 20px 20px; }
-    .form-container h2 { font-size:26px; }
-    .input-with-icon .form-control {
-      height:45px; padding:8px 10px 8px 34px;
+  /* extra-small mobile adjustments */
+  @media (max-width: 576px) and (max-height: 640px) {
+    .form-container {
+      padding: 30px 15px 15px;
     }
-    .input-with-icon .fa-icon { left:15px; font-size:14px; }
-    .role-group label { padding:8px 14px; font-size:14px; }
-    .save-btn { font-size:15px; padding:10px 0; }
+    .form-container h2 {
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+    .input-with-icon {
+      margin-bottom: 12px;
+    }
+    .input-with-icon .form-control {
+      height: 45px;
+      padding: 8px 10px 8px 34px;
+    }
+    .input-with-icon .fa-icon {
+      left: 15px;
+      font-size: 14px;
+    }
+    .role-group label {
+      padding: 8px 14px;
+      font-size: 14px;
+    }
+    .req {
+      padding: 10px;
+      gap: 2px;
+    }
+    .req-label {
+      font-size: 13px;
+    }
+    .return-btn {
+      top: 12px;
+      left: 12px;
+      width: 30px;
+      height: 30px;
+    }
+    .save-btn {
+      font-size: 14px;
+      padding: 10px 0;
+    }
+  }
+
+  /* —— new slim-role & checkbox layout overrides —— */
+  /* make Role pills more compact */
+  .role-group {
+    gap: 6px;
+  }
+  .role-group label {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+  /* single-column password rules on phones */
+  @media (max-width: 576px) {
+    .req {
+      grid-template-columns: 1fr;
+    }
+    .req-label {
+      font-size: 13px;
+    }
   }
 </style>
 
