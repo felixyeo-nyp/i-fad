@@ -2,59 +2,227 @@
 {% block title %}Camera View{% endblock %}
 
 {% block content %}
-<h1 style="text-align: center; margin-top: 20px; font-size: 32px; font-weight: bold;">VIDEO FEED</h1>
-<hr style="border: none; border-top: 2px solid #ddd; margin-bottom: 20px;">
+<div class="feeding-view-container">
+    <h1 class="feeding-view-title">FEEDING LIVE VIEW</h1>
 
-<div class="video-feed-container">
-<img src="{{ url_for('video_feed') }}" class="full-screen-video" alt="Video Feed">
-    <!-- <img class="full-screen-video" src="{{ camera_url }}" alt="Live Feed"> -->
+    <!-- Video Feed -->
+    <div id="video-frame-wrapper" class="video-frame-wrapper">
+        <img id="videoFeed" src="{{ url_for('video_feed') }}" class="full-screen-video" alt="Video Feed"
+            onerror="handleFeedError()">
+    </div>
+
+    <!-- Fallback Error Card with Refresh Button inside -->
+    <div id="fallback-card" class="fallback-card" style="display: none;">
+        <div class="fallback-message">
+            <i class="fas fa-exclamation-triangle warning-icon"></i>
+            <p><strong>Camera signal not found.</strong></p>
+            <p>Check your connection and try again.</p>
+
+            <!-- Themed Refresh Button with FA icon -->
+            <div class="refresh-live-btn-wrapper">
+                <button class="refresh-live-btn" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i> Refresh View
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
-<br>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    integrity="sha512-dyZ88n1C6Up2uqS4h/K3UENRZ1tLZcBzM8Bx7pRz0XsBjoBJKy+qeC6VY8zZ/OD6FuhD1FJb2j4a2Dq2sG84Jg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
 <style>
-/* Reset default margins and paddings */
-body, html {
-    height: auto;
-    width:auto;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    background-color: #2f3136;
-    color: #ffffff;
-    font-family: 'Arial', sans-serif;
-    overflow: hidden;
-}
+    :root {
+        --primary-gradient: linear-gradient(45deg, #3498db, #8e44ad);
+        --dark-bg: #0f172a;
+        --card-bg: #1e293b;
+        --highlight: #818cf8;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+    }
 
-/* Header and Footer styles */
-.header, .footer {
-    flex: 0 0 auto; /* Take as much space as needed, but not more */
-    text-align: center;
-    background-color: #333; /* Or any other color you prefer */
-    color: white;
-    padding: 10px 0; /* Adjust the padding as needed */
-}
+    html,
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: var(--dark-bg);
+        color: var(--text-primary);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-/* Video Feed container */
-.video-feed-container {
-    flex: 1; /* Fill the remaining vertical space */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: black; /* Clean background color */
-}
+    @keyframes slideInUp {
+        from {
+            transform: translateY(10px);
+            opacity: 0;
+        }
 
-/* Video Feed styles */
-.full-screen-video {
-    max-width: 90%; /* Ensure the video does not exceed its original size */
-    max-height: 90%; /* Ensure the video does not exceed its original size */
-    width: 80%;
-    height: 80%;
-    object-fit: contain; /* Ensures the video fits inside its container without distortion */
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
 
-}
+    .feeding-view-container {
+        text-align: center;
+        margin: 30px auto;
+        padding: 20px;
+        max-width: 1620px;
+        border-radius: 16px;
+        background-color: var(--card-bg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        animation: slideInUp 0.5s ease-out both;
+    }
+
+    .feeding-view-title {
+        font-size: 3rem;
+        font-weight: 800;
+        margin-bottom: 30px;
+        line-height: 1;
+        color: #f8fafc;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .video-frame-wrapper {
+        width: 100%;
+        height: 75vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: black;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .full-screen-video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .fallback-card {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 75vh;
+        border-radius: 12px;
+        background-color: #1e293b;
+        border: 2px dashed #ff4d4f;
+        padding: 20px;
+    }
+
+    .fallback-message {
+        color: #ffbaba;
+        text-align: center;
+        font-size: 1.2rem;
+    }
+
+    .fallback-message i {
+        font-size: 2rem;
+    }
+
+    .warning-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+
+    .refresh-live-btn-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .refresh-live-btn {
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+        padding: 12px 25px;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .refresh-live-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    }
+
+    .refresh-live-btn:active {
+        transform: translateY(1px);
+    }
 </style>
+
 <script>
-        window.addEventListener('beforeunload', () => {
+    let lastImageData = null;
+    const videoFeed = document.getElementById("videoFeed");
+    const fallback = document.getElementById("fallback-card");
+    const videoWrapper = document.getElementById("video-frame-wrapper");
+
+    function handleFeedError() {
+        const videoWrapper = document.getElementById("video-frame-wrapper");
+        const fallback = document.getElementById("fallback-card");
+        videoWrapper.style.display = "none";
+        fallback.style.display = "flex";
+    }
+
+    function checkVideoFeed() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = videoFeed.naturalWidth || videoFeed.width;
+        canvas.height = videoFeed.naturalHeight || videoFeed.height;
+
+        if (canvas.width === 0 || canvas.height === 0) {
+            // Video not loaded properly yet, try again shortly
+            setTimeout(checkVideoFeed, 1000);
+            return;
+        }
+
+        ctx.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+        if (lastImageData) {
+            // Calculate pixel difference between frames
+            let diff = 0;
+            for (let i = 0; i < data.length; i++) {
+                diff += Math.abs(data[i] - lastImageData[i]);
+            }
+            // Threshold for "no change" or black frame (tune 1000 as needed)
+            if (diff < 1000) {
+                videoWrapper.style.display = "none";
+                fallback.style.display = "flex";
+                return;
+            }
+        }
+
+        // Frames differ enough, show video and hide fallback
+        videoWrapper.style.display = "block";
+        fallback.style.display = "none";
+
+        lastImageData = data;
+
+        setTimeout(checkVideoFeed, 1000);
+    }
+
+    videoFeed.onload = () => {
+        lastImageData = null;
+        videoWrapper.style.display = "block";
+        fallback.style.display = "none";
+        setTimeout(checkVideoFeed, 1000);
+    };
+
+    if (videoFeed.complete && videoFeed.naturalHeight !== 0) {
+        videoFeed.onload();
+    }
+
+    window.addEventListener('beforeunload', () => {
         navigator.sendBeacon('/clear_video_feed_access');
     });
 </script>

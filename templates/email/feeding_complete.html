@@ -1,82 +1,94 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>{{ app_name }} • Feeding Complete</title>
-    <style>
-      body {
-        background-color: #f4f6f8;
-        font-family: sans-serif;
-        color: #333;
-        margin: 0;
-        padding: 20px;
-      }
-      .container {
-        max-width: 480px;
-        margin: auto;
-        background: #fff;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
-      }
-      .header {
-        background: linear-gradient(90deg, #4a90e2, #8e44ad);
-        color: #fff;
-        padding: 16px;
-        text-align: center;
-      }
-      .header h2 {
-        margin: 0;
-        font-size: 20px;
-      }
-      .content {
-        padding: 24px;
-      }
-      .content p {
-        line-height: 1.5;
-        margin-bottom: 16px;
-      }
-      .highlight {
-        display: block;
-        margin: 20px auto;
-        padding: 16px;
-        font-size: 18px;
-        background: #f1f1f1;
-        border-radius: 4px;
-        text-align: center;
-        width: fit-content;
-        font-weight: bold;
-      }
-      .footer {
-        font-size: 12px;
-        color: #777;
-        padding: 16px;
-        text-align: center;
-      }
-      .footer a {
-        color: #4a90e2;
-        text-decoration: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <h2>{{ app_name }} • Feeding Complete</h2>
-      </div>
-      <div class="content">
-        <p>Hello,</p>
-        <p>
-          We wanted to let you know that your scheduled feeding at
-          <strong>{{ feed_time }}</strong> has completed successfully.
-        </p>
-        <span class="highlight">{{ feed_time }}</span>
-        <p>If you have any questions, just reply to this email.</p>
-      </div>
-      <div class="footer">
-        &copy; {{ year }} {{ app_name }}. All rights reserved.<br>
-        Need help? <a href="mailto:support@{{ request.host }}">Contact Support</a>
-      </div>
+<head>
+  <meta charset="UTF-8">
+  <title>Feeding Complete Notification</title>
+  <style>
+    body {
+      background-color: #f4f6f8;
+      font-family: sans-serif;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: auto;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .header {
+      background: linear-gradient(90deg, #27ae60, #2ecc71);
+      color: #fff;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .content {
+      padding: 24px;
+    }
+
+    .content p {
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .highlight-box {
+      background: #f1f1f1;
+      padding: 16px;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 20px;
+      color: #2c3e50;
+      margin: 20px 0;
+      line-height: 1.4;
+    }
+
+    .footer {
+      font-size: 12px;
+      color: #777;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .footer a {
+      color: #27ae60;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>🐟 Feeding Complete</h2>
     </div>
-  </body>
+    <div class="content">
+      <p>Hi!</p>
+      <p>
+        The <strong>{{ session_type }} feeding session</strong> at <strong>{{ feed_time }}</strong> has just been completed successfully.
+      </p>
+      <div class="highlight-box">
+        Feeding Time: {{ feed_time }}<br>
+        Session: {{ session_type }}
+      </div>
+      <p>
+        Thank you for using our system! If you have questions or need help, we're here for you.
+      </p>
+    </div>
+    <div class="footer">
+      &copy; {{ year }} I@FAD. All rights reserved.<br>
+      Need help? <a href="mailto:{{ support_email }}">Contact Support</a>
+    </div>
+  </div>
+</body>
 </html>
