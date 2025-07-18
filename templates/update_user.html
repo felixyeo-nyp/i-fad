@@ -419,42 +419,64 @@
     </div>
     
     <script>
-        // Function to handle radio option selection
         function selectOption(element, groupName) {
-            // Remove active class from all options in the same group
             const container = element.parentElement;
             container.querySelectorAll('.radio-option').forEach(opt => {
                 opt.classList.remove('active');
             });
             
-            // Add active class to the selected option
             element.classList.add('active');
             
-            // Check the radio input
             const radioInput = element.querySelector('input[type="radio"]');
             radioInput.checked = true;
         }
         
-        // Form submission handling
-        document.querySelector('form').addEventListener('submit', function(e) {
+        document.querySelector('form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
             const submitBtn = document.querySelector('.user-submit-btn');
             const originalBtnHTML = submitBtn.innerHTML;
-            
+
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             submitBtn.disabled = true;
-            
-            // Simulate saving process
-            setTimeout(() => {
-                submitBtn.innerHTML = '<i class="fas fa-check"></i> Saved Successfully!';
-                submitBtn.style.background = 'linear-gradient(45deg, #10b981, #047857)';
-                
-                // Reset after 3 seconds
-                setTimeout(() => {
+
+            const form = e.target;
+            const formData = new FormData(form);
+
+            const payload = {
+                username: formData.get('username'),
+                email: formData.get('email'),
+                role: formData.get('role'),
+                status: formData.get('status')
+            };
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    submitBtn.innerHTML = '<i class="fas fa-check"></i> Saved Successfully!';
+                    submitBtn.style.background = 'linear-gradient(45deg, #10b981, #047857)';
+                } else {
+                    alert(data.message || "Something went wrong.");
                     submitBtn.innerHTML = originalBtnHTML;
-                    submitBtn.disabled = false;
-                    submitBtn.style.background = '';
-                }, 3000);
-            }, 1500);
+                }
+            } catch (err) {
+                alert('Failed to update user. Please try again.');
+            }
+
+            setTimeout(() => {
+                submitBtn.innerHTML = originalBtnHTML;
+                submitBtn.disabled = false;
+                submitBtn.style.background = '';
+            }, 3000);
         });
     </script>
 </body>

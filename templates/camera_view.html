@@ -7,11 +7,8 @@
 
     <!-- Video Feed -->
     <div id="video-frame-wrapper" class="video-frame-wrapper">
-        <!-- Actual Feeding View img tag -->
-        <img id="videoFeed" src="{{ url_for('video_feed') }}" class="full-screen-video" alt="Video Feed" onerror="handleFeedError()">
-
-        <!-- Placeholder Feeding View img Tag -->
-        <!-- <img id="videoFeed" src="../static/testLiveFeedImage.png" class="full-screen-video" alt="Dummy Video Feed" onerror="handleFeedError()"> -->
+        <img id="videoFeed" src="{{ url_for('video_feed') }}" class="full-screen-video" alt="Video Feed"
+            onerror="handleFeedError()">
     </div>
 
     <!-- Fallback Error Card with Refresh Button inside -->
@@ -183,26 +180,26 @@
         canvas.height = videoFeed.naturalHeight || videoFeed.height;
 
         if (canvas.width === 0 || canvas.height === 0) {
-        // Video not loaded properly yet, try again shortly
-        setTimeout(checkVideoFeed, 1000);
-        return;
+            // Video not loaded properly yet, try again shortly
+            setTimeout(checkVideoFeed, 1000);
+            return;
         }
 
         ctx.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
         const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 
         if (lastImageData) {
-        // Calculate pixel difference between frames
-        let diff = 0;
-        for (let i = 0; i < data.length; i++) {
-            diff += Math.abs(data[i] - lastImageData[i]);
-        }
-        // Threshold for "no change" or black frame (tune 1000 as needed)
-        if (diff < 1000) {
-            videoWrapper.style.display = "none";
-            fallback.style.display = "flex";
-            return;
-        }
+            // Calculate pixel difference between frames
+            let diff = 0;
+            for (let i = 0; i < data.length; i++) {
+                diff += Math.abs(data[i] - lastImageData[i]);
+            }
+            // Threshold for "no change" or black frame (tune 1000 as needed)
+            if (diff < 1000) {
+                videoWrapper.style.display = "none";
+                fallback.style.display = "flex";
+                return;
+            }
         }
 
         // Frames differ enough, show video and hide fallback

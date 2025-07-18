@@ -1904,60 +1904,52 @@ def update_user(user_uuid):
     user_data = None
     username = None
 
-    try:
-        with shelve_lock:
-            with shelve.open('users.db', writeback=True) as db:
-                # Find the user by UUID
-                for uname, data in db.items():
-                    if data.get('uuid') == user_uuid:
-                        user_data = data
-                        username = uname
-                        break
+    with shelve_lock:
+        with shelve.open('users.db', writeback=True) as db:
+            for uname, data in db.items():
+                if data.get('uuid') == user_uuid:
+                    user_data = data
+                    username = uname
+                    break
 
-                if not user_data:
-                    flash("User not found.", "danger")
-                    return redirect(url_for('retrieve_users'))
+            if not user_data:
+                if request.is_json:
+                    return jsonify({'message': 'User not found.'}), 404
+                flash("User not found.", "danger")
+                return redirect(url_for('retrieve_users'))
 
-                if form.validate_on_submit():
-                    new_username = request.form.get('username', '').strip()
+            # Handle JSON POST from fetch()
+            if request.method == 'POST' and request.is_json:
+                json_data = request.get_json()
 
-                    # Validate new username
-                    if not new_username:
-                        flash('Username cannot be empty.', 'danger')
-                        return redirect(request.url)
-                    if new_username != username and new_username in db:
-                        flash('Username already exists.', 'danger')
-                        return redirect(request.url)
+                new_username = json_data.get('username', '').strip()
+                new_email = json_data.get('email', '').strip()
+                new_role = json_data.get('role')
+                new_status = json_data.get('status')
 
-                    # Update user data
-                    user_data['email'] = form.email.data
-                    user_data['role'] = form.role.data if form.role.data in {'Admin', 'Guest'} else user_data['role']
-                    user_data['status'] = form.status.data if form.status.data in {'Active', 'Suspended'} else user_data['status']
+                if not new_username:
+                    return jsonify({'message': 'Username cannot be empty.'}), 400
+                if new_username != username and new_username in db:
+                    return jsonify({'message': 'Username already exists.'}), 400
 
-                    if new_username != username:
-                        db[new_username] = user_data
-                        del db[username]
+                user_data['email'] = new_email
+                user_data['role'] = new_role if new_role in {'Admin', 'Guest'} else user_data['role']
+                user_data['status'] = new_status if new_status in {'Active', 'Suspended'} else user_data['status']
 
-                        # Refresh session if the user being updated is the currently logged-in user
-                        if current_user.username == username:
-                            session.clear()
-                    else:
-                        db[username] = user_data
+                if new_username != username:
+                    db[new_username] = user_data
+                    del db[username]
+                    if current_user.username == username:
+                        session.clear()
+                else:
+                    db[username] = user_data
 
-                    flash('User details updated successfully.', 'success')
-                    return redirect(url_for('retrieve_users'))
+                return jsonify({'message': 'User details updated successfully.'}), 200
 
-                # Pre-fill form on GET
-                form.email.data = user_data.get('email', '')
-                form.role.data = user_data.get('role', '')
-                form.status.data = user_data.get('status', '')
-
-    except Exception as e:
-        app.logger.error(f"Error updating user UUID '{user_uuid}': {str(e)}")
-        flash('An error occurred while updating the user. Please try again later.', 'danger')
-        return redirect(url_for('retrieve_users'))
-
-    return render_template('update_user.html', form=form, username=username, user_data=user_data)
+            form.email.data = user_data.get('email', '')
+            form.role.data = user_data.get('role', '')
+            form.status.data = user_data.get('status', '')
+            return render_template('update_user.html', form=form, user_data=user_data, username=username)
 
 # Delete (Remove User)
 @app.route('/delete/<user_uuid>', methods=['POST'])

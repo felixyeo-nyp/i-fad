@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="dashboard-container">
-    <!-- Header with animated gradient -->
+    <!-- Header -->
     <div class="dashboard-header">
         <h1 class="dashboard-title">USER MANAGEMENT</h1>
         <div class="dashboard-subtitle">Manage all user accounts</div>
@@ -336,7 +336,7 @@
         font-size: 16px;
         flex-grow: 1;
         outline: none;
-        min-width: 120px; /* Prevents input from becoming too narrow */
+        min-width: 120px;
     }
 
     .search-btn {
@@ -349,7 +349,7 @@
         font-weight: 600;
         font-size: 16px;
         transition: all 0.3s ease;
-        white-space: nowrap; /* Prevents text wrapping */
+        white-space: nowrap;
     }
 
     .search-btn:hover {
@@ -365,12 +365,12 @@
         font-weight: 600;
         display: flex;
         align-items: center;
-        justify-content: center; /* Center content horizontally */
+        justify-content: center;
         gap: 10px;
         transition: all 0.3s ease;
         font-size: 16px;
-        text-align: center; /* Center text */
-        min-width: 180px; /* Prevent button from becoming too narrow */
+        text-align: center;
+        min-width: 180px;
     }
 
     .add-user-btn:hover {
@@ -471,17 +471,17 @@
         font-size: 22px;
         font-weight: 700;
         color: var(--text-primary);
-        white-space: nowrap; /* Prevent wrapping */
+        white-space: nowrap;
         overflow: hidden;
-        text-overflow: ellipsis; /* Truncate with ellipsis */
-        max-width: 100%; /* Ensure it doesn't overflow */
+        text-overflow: ellipsis;
+        max-width: 100%;
     }
 
     .icon-username,
     .icon-email {
         margin-right: 8px;
         color: var(--text-secondary);
-        flex-shrink: 0; /* Prevent icons from shrinking */
+        flex-shrink: 0;
     }
 
     .user-name,
@@ -500,10 +500,10 @@
     .user-email span {
         font-size: 14px;
         color: var(--text-secondary);
-        white-space: nowrap; /* Prevent wrapping */
+        white-space: nowrap;
         overflow: hidden;
-        text-overflow: ellipsis; /* Truncate with ellipsis */
-        max-width: 100%; /* Ensure it doesn't overflow */
+        text-overflow: ellipsis;
+        max-width: 100%;
     }
 
     .user-details {

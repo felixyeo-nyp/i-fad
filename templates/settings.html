@@ -337,9 +337,7 @@
     #toggleMode:hover,
     #toggleModeBack:hover {
         color: #a5b4fc;
-        /* lighter highlight */
         transform: scale(1.03);
-        /* subtle zoom effect */
         text-decoration: none;
     }
 
@@ -768,7 +766,7 @@
             const seconds = String(totalSeconds % 60).padStart(2, '0');
 
             manualFeedTimer.querySelector('strong').textContent = `${minutes}:${seconds}`;
-            showManualFeedMessage(`Manual feed lasted ${minutes}:${seconds}`, 'info');
+            showManualFeedMessage(`Manual feed lasted ${minutes}:${seconds}`, 'success');
         }
 
         feedStartTime = null;
