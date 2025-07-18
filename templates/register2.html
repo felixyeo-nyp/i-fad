@@ -58,7 +58,6 @@
     background: #fff;
     border-radius: 20px;
     padding: 60px 40px 40px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     border: 1px solid #e0e0e0;
     animation: fadeIn 0.8s ease-out;
   }
@@ -221,10 +220,13 @@
   /* make Role pills more compact */
   .role-group {
     gap: 6px;
+    flex-wrap:wrap;
   }
   .role-group label {
     padding: 6px 12px;
     font-size: 14px;
+    flex: 0 0 100%;
+    margin-bottom: 10px;
   }
   /* single-column password rules on phones */
   @media (max-width: 576px) {
