@@ -796,31 +796,33 @@ def send_mfa_code():
     session['last_resend_at'] = now.isoformat()
     current_app.logger.debug(f"[DEBUG] Login MFA code is: {code}")
 
-    # 2) build plain-text and HTML bodies
+    # 2) build plain-text body
     text_body = (
-        f"{current_app.config.get('APP_NAME','Your App')} MFA Verification\n\n"
+        "I@FAD MFA Verification\n\n"
         f"Your 6-digit code is: {code}\n"
-        f"It expires in 60 seconds.\n\n"
+        "It expires in 60 seconds.\n\n"
         "If you didn’t request this, ignore this email."
     )
 
-    html_body = render_template(
-        'email/login_mfa.html',
-        app_name=current_app.config.get('APP_NAME', 'Your App'),
-        code=code,
-        expires=60,
-        year=now.year
-    )
-
-    # 3) send via Flask-Mail’s send_message helper
-    try:
-        mail.send_message(
-            subject    = current_app.config.get('MFA_SUBJECT', 'Your MFA Code'),
-            sender     = current_app.config['MAIL_DEFAULT_SENDER'],
-            recipients = [ session.get('email') ],
-            body       = text_body,
-            html       = html_body
+    # 3) load & format static HTML
+    html_path = current_app.root_path + '/templates/email/login_mfa.html'
+    with open(html_path, 'r') as f:
+        html_body = f.read().format(
+            code=code,
+            expires=60,
+            year=now.year
         )
+
+    # 4) construct Message and send
+    try:
+        msg = flask_mail.Message(
+            subject="I@FAD Code",
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients=[ session.get('email') ],
+            body=text_body,
+            html=html_body
+        )
+        mail.send(msg)
         return True
 
     except Exception as e:
@@ -951,27 +953,27 @@ def send_reset_mfa_code():
     current_app.logger.debug(f"[DEBUG] Reset MFA code is: {code}")
 
     text_body = (
-        f"{current_app.config.get('APP_NAME','Your App')} Password Reset MFA\n\n"
+        "I@FAD Password Reset Verification\n\n"
         f"Your 6-digit code is: {code}\n"
-        f"It expires in 60 seconds.\n\n"
+        "It expires in 60 seconds.\n\n"
         "If you didn’t request this, ignore this email."
     )
     html_body = render_template(
         'email/reset_mfa.html',
-        app_name=current_app.config.get('APP_NAME','Your App'),
         code=code,
         expires=60,
         year=now.year
     )
 
     try:
-        mail.send_message(
-            subject    = current_app.config.get('MFA_SUBJECT','Your MFA Code'),
-            sender     = current_app.config['MAIL_DEFAULT_SENDER'],
-            recipients = [ session.get('email') ],
-            body       = text_body,
-            html       = html_body
+        msg = flask_mail.Message(
+            subject="I@FAD Password Reset Code",
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients=[session.get('email')],
+            body=text_body,
+            html=html_body
         )
+        mail.send(msg)
         return True
     except Exception as e:
         current_app.logger.error(f"[ERROR] Failed to send reset-MFA email: {e}")
@@ -2134,55 +2136,108 @@ def video_feed():
         print(f"Error: {e}")
         return "Error generating video feed"
 
+def send_feedback_notification(name, user_email, message, sent_time=None):
+    """
+    Send a notification email to the I@FAD team with the user’s feedback,
+    timestamped in Singapore time.
+    """
+    sg_tz = ZoneInfo("Asia/Singapore")
+    now = sent_time or datetime.now(sg_tz)
 
+    # Plain-text body
+    text_body = (
+        "I@FAD New Feedback Received\n\n"
+        f"From: {name} <{user_email}>\n\n"
+        "Message:\n"
+        f"{message}\n\n"
+        f"Sent at {now.isoformat()}"
+    )
+
+    # HTML body
+    html_body = render_template(
+        'email/feedback.html',
+        name=name,
+        email=user_email,
+        message=message,
+        sent_at=now.strftime('%Y-%m-%d %H:%M'),
+        year=now.year
+    )
+
+    msg = flask_mail.Message(
+        subject="I@FAD – New Feedback",
+        sender=current_app.config['MAIL_DEFAULT_SENDER'],
+        recipients=["iatfadteam@gmail.com"],
+        body=text_body,
+        html=html_body
+    )
+    mail.send(msg)
+
+def send_feedback_confirmation(user_name, user_email, message, sent_time=None):
+    """
+    Send a copy of the user’s feedback back to them as confirmation.
+    """
+    sg_tz = ZoneInfo("Asia/Singapore")
+    now = sent_time or datetime.now(sg_tz)
+
+    # Plain-text fallback
+    text_body = (
+        "I@FAD Feedback Confirmation\n\n"
+        f"Hello {user_name},\n\n"
+        "Thanks for your feedback! Here’s what we received:\n\n"
+        f"{message}\n\n"
+        f"Submitted at {now.strftime('%Y-%m-%d %H:%M')}\n\n"
+        "We’ll review it and get back to you if needed."
+    )
+
+    # HTML version
+    html_body = render_template(
+        'email/feedback_confirm.html',
+        name=user_name,
+        message=message,
+        sent_at=now.strftime('%Y-%m-%d %H:%M'),
+        year=now.year
+    )
+
+    msg = flask_mail.Message(
+        subject="I@FAD – We Received Your Feedback",
+        sender=current_app.config['MAIL_DEFAULT_SENDER'],
+        recipients=[user_email],
+        body=text_body,
+        html=html_body
+    )
+    mail.send(msg)
 
 @app.route('/feedback', methods=['GET', 'POST'])
 @login_required
 def feedback():
     form = FeedbackForm()
     if form.validate_on_submit():
-        try:
-            db = shelve.open('settings.db', 'r')
-            Email_dict = db.get('Email_Data', {})
-            recipient_email = "iatfadteam@gmail.com"  # Default fallback
-
-            if 'Email_Info' in Email_dict:
-                email_info = Email_dict['Email_Info']
-                if hasattr(email_info, 'get_recipient_email'):
-                    configured_email = email_info.get_recipient_email()
-                    if configured_email:
-                        recipient_email = configured_email
-            db.close()
-        except Exception as e:
-            recipient_email = "iatfadteam@gmail.com"
-            app.logger.warning(f"Could not retrieve recipient email, using fallback: {e}")
-
-        # save to shelve via store_Feedback
+        # 1) store feedback
         store_Feedback.add(
             user_name=current_user.username,
             user_email=current_user.email,
             message=form.message.data
         )
-        # optional email notification
-        try:
-            mail.send_message(
-                subject="New Feedback",
-                sender=current_user.email,
-                recipients=[recipient_email],
-                body=(
-                    f"Name: {current_user.username}\n"
-                    f"Email: {current_user.email}\n\n"
-                    f"Message:\n{form.message.data}"
-                )
-            )
 
-        except Exception as e:
-            app.logger.error(f"Feedback mail error: {e}")
+        # 2) notify the team
+        send_feedback_notification(
+            name=current_user.username,
+            user_email=current_user.email,
+            message=form.message.data
+        )
 
-        flash('Your feedback has been sent successfully!', 'success')
+        # 3) send confirmation to the user
+        send_feedback_confirmation(
+            user_name=current_user.username,
+            user_email=current_user.email,
+            message=form.message.data
+        )
+
+        flash('Your feedback has been sent successfully—and a copy has been emailed to you.', 'success')
         return redirect(url_for('feedback'))
 
     return render_template('feedback.html', form=form)
+
 
 
 @app.route('/admin/feedbacks')
