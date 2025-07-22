@@ -1,18 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %}</title>
     <!-- Bootstrap 5.1.3 CSS -->
-    <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-IdHw+FLOnRBRdN5zPjCYCz2kYEb1fHZgXUcStc9VK/TNifwCBWEYUNykQsckXyUUQXFh1m3b5qgGXH61ENQVhQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+        integrity="sha512-IdHw+FLOnRBRdN5zPjCYCz2kYEb1fHZgXUcStc9VK/TNifwCBWEYUNykQsckXyUUQXFh1m3b5qgGXH61ENQVhQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- CSS Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
-<style>
+    <style>
         * {
-            text-decoration: none; /* Remove underline */
+            text-decoration: none;
+            /* Remove underline */
             font-family: "Arial";
             font-size: 17px;
         }
@@ -40,29 +45,34 @@
         /* Flexbox container for two navbars */
         .navbar-container {
             display: flex;
-            justify-content: space-between; /* Ensures items are spaced apart, one to the left and one to the right */
+            justify-content: space-between;
+            /* Ensures items are spaced apart, one to the left and one to the right */
             width: 0;
-            z-index: 999; /* Ensures it is above other content */
-
+            z-index: 999;
+            /* Ensures it is above other content */
+            margin-bottom: 40px;
         }
 
         /* Right-aligned navbar */
         .second-navbar {
-    margin-left: auto; /* Align this navbar to the right */
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 1000; /* Ensures it is above other content */
-}
-    .second-navbar .navbar-nav {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-}
+            margin-left: auto;
+            /* Align this navbar to the right */
+            position: absolute;
+            top: 0;
+            right: 0;
+            z-index: 1000;
+            /* Ensures it is above other content */
+        }
+
+        .second-navbar .navbar-nav {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
     </style>
 </head>
-<body>
 
+<body>
     {# only render navbars if hide_sidebar is not true #}
     {% if not hide_sidebar %}
     <div class="navbar-container">
@@ -75,17 +85,21 @@
         </div>
     </div>
     {% endif %}
-<div class="container-fluid">
+    <div class="container-fluid">
+        {% block content %}
+        {% endblock %}
+    </div>
 
-    {% block content %}
-    {% endblock %}
-</div>
-{% block scripts %}
+    {% block scripts %}
     <!-- Popper 2.10.2, Bootstrap 5.1.3 JavaScript -->
-    <script crossorigin="anonymous" integrity="sha384-7+zCNj/IqJ95wo16oMtfsKbZ9ccEh31eOz1HGyDuCQ6wgnyJNSYdrPa03rtR1zdB" src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
-    <script crossorigin="anonymous" integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13" src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"></script>
+    <script crossorigin="anonymous" integrity="sha384-7+zCNj/IqJ95wo16oMtfsKbZ9ccEh31eOz1HGyDuCQ6wgnyJNSYdrPa03rtR1zdB"
+        src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+    <script crossorigin="anonymous" integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13"
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"></script>
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha384-KyZXEAg3QhqLMpG8r+Knujsl5+5hb7x1FbQQBx78v2DhcXvKUOog46qT0R4mF5Ed" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+        integrity="sha384-KyZXEAg3QhqLMpG8r+Knujsl5+5hb7x1FbQQBx78v2DhcXvKUOog46qT0R4mF5Ed"
+        crossorigin="anonymous"></script>
     <script>
         $(document).ready(function () {
             // Check if jQuery is loaded
@@ -109,6 +123,7 @@
             });
         });
     </script>
-{% endblock %}
+    {% endblock %}
 </body>
+
 </html>
