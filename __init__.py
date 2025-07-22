@@ -2190,10 +2190,9 @@ def admin_feedbacks():
 @role_required('Admin')
 def delete_feedback(fb_id):
     if store_Feedback.delete(fb_id):
-        flash(f"Feedback #{fb_id} has been deleted successfully.", "success")
+        return jsonify({'success': True, 'message': f'Feedback deleted successfully.'}), 200
     else:
-        flash("Could not find that feedback.", "warning")
-    return redirect(url_for('admin_feedbacks'))
+        return jsonify({'success': False, 'message': 'Could not find that feedback.'}), 404
 
 @app.route('/changed_password', methods=['GET', 'POST'])
 @login_required
