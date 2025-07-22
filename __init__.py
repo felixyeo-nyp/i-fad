@@ -816,6 +816,7 @@ from datetime import datetime, timezone
 def send_mfa_code():
     # 1) generate code & timestamps
     code = str(secrets.randbelow(900_000) + 100_000)
+    print("The MFA Code: ",code)
     now = datetime.now(timezone.utc)
     session['mfa_code']       = code
     session['mfa_sent_at']    = now.isoformat()
@@ -974,6 +975,7 @@ def send_reset_mfa_code():
     Generate/store a 6-digit code for password-reset MFA and email it.
     """
     code = str(secrets.randbelow(900_000) + 100_000)
+    print("The MFA Code: ", code)
     now = datetime.now(timezone.utc)
 
     session['reset_mfa_code']       = code
@@ -1627,9 +1629,9 @@ def dashboard():
                         }
                         break
 
-        with shelve_lock:
-            with shelve.open('currentcount.db', 'c') as db2:
-                latest_count = db2.get('object_count', 0)
+
+        with shelve.open('currentcount.db', 'c') as db2:
+            latest_count = db2.get('object_count', 0)
 
         print("Fetching pellet data")
         response = get_pellet_data()
@@ -2569,7 +2571,7 @@ def start_threads():
     validate_thread.start()
     reschedule_feeding_alerts()
 
-    return [capture_thread, video_thread, feeding_thread]
+    return [capture_thread, video_thread, feeding_thread, validate_thread]
 
 
 def cleanup_on_exit():
