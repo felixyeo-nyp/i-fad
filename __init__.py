@@ -1645,7 +1645,6 @@ def dashboard():
 @app.route('/camera_view',methods=['GET','POST'])
 @login_required
 def camera_view():
-    session['access_video_feed'] = True
     return render_template('camera_view.html')
 
 @app.route('/export_data', methods=['POST'])
@@ -2020,7 +2019,7 @@ def video_feed():
 
 def send_feedback_notification(name, user_email, message, sent_time=None):
     """
-    Send a notification email to the I@FAD team with the user’s feedback,
+    Send a notification email to the I@FAD team with the user's feedback,
     timestamped in Singapore time.
     """
     sg_tz = ZoneInfo("Asia/Singapore")
@@ -2064,7 +2063,7 @@ def send_feedback_notification(name, user_email, message, sent_time=None):
     msg = flask_mail.Message(
         subject="I@FAD – New Feedback",
         sender=recipient_email,
-        recipients=recipient_email,
+        recipients=[recipient_email],
         body=text_body,
         html=html_body
     )
@@ -2097,10 +2096,10 @@ def send_feedback_confirmation(user_name, user_email, message, sent_time=None):
     text_body = (
         "I@FAD Feedback Confirmation\n\n"
         f"Hello {user_name},\n\n"
-        "Thanks for your feedback! Here’s what we received:\n\n"
+        "Thanks for your feedback! Here's what we received:\n\n"
         f"{message}\n\n"
         f"Submitted at {now.strftime('%Y-%m-%d %H:%M')}\n\n"
-        "We’ll review it and get back to you if needed."
+        "We'll review it and get back to you if needed."
     )
 
     # HTML version
