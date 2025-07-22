@@ -699,15 +699,15 @@ def register():
     form = RegisterForm()  # Create an instance of RegisterForm
 
     if form.validate_on_submit():
-        username = form.username.data
-        email = form.email.data
+        username = form.username.data.strip()
+        email = form.email.data.strip().lower()
         password = form.password.data
         role = form.role.data
 
         # Check if the username or email already exists in the database
         with shelve.open('users.db', 'c') as db:
             username_exists = username in db
-            email_exists = any(user_data['email'] == email for user_data in db.values())
+            email_exists = any(user_data['email'].lower() == email for user_data in db.values())
 
             if username_exists or email_exists:
                 flash('Username or email already in use', 'danger')
@@ -732,6 +732,7 @@ def register():
                 return redirect(url_for('login'))
 
     return render_template('register.html', form=form, hide_sidebar=True)
+
 @app.route('/register2', methods=['GET', 'POST'])
 @login_required
 @role_required('Admin')
@@ -739,15 +740,15 @@ def register2():
     form = RegisterForm()  # Create an instance of RegisterForm
 
     if form.validate_on_submit():
-        username = form.username.data
-        email = form.email.data
+        username = form.username.data.strip()
+        email = form.email.data.strip().lower()
         password = form.password.data
         role = form.role.data
 
         # Check if the username or email already exists in the database
         with shelve.open('users.db', 'c') as db:
             username_exists = username in db
-            email_exists = any(user_data['email'] == email for user_data in db.values())
+            email_exists = any(user_data['email'].lower() == email for user_data in db.values())
 
             if username_exists or email_exists:
                     flash('Username or email already in use', 'danger')
@@ -773,25 +774,22 @@ def register2():
     return render_template('register2.html', form=form)
 
 def find_user(identifier: str):
-
     identifier = identifier.strip().lower()
     with shelve.open('users.db', 'r') as db:
-        # 1) Direct username lookup (fast hash lookup)
-        if identifier in db:
-            user = db[identifier]
-            user['username'] = identifier
-            return user
+        # 1) Username matching
+        for uname in db:
+            if uname.lower() == identifier:
+                user = db[uname]
+                user['username'] = uname
+                return user
 
-        # 2) Scan values for matching email
+        # 2) Email matching
         for uname, udata in db.items():
             if udata.get('email', '').lower() == identifier:
-                # inject the real username key into the dict
                 udata['username'] = uname
                 return udata
 
-    # not found
     return None
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -2390,7 +2388,6 @@ def delete_user(user_uuid):
 
 @app.route('/set_ip', methods=['GET', 'POST'])
 @login_required
-@role_required('Admin')
 def set_ip():
     global latest_set_ip_settings
     setting = ipForm(request.form)
