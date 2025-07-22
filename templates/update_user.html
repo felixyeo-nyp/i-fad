@@ -465,6 +465,9 @@
                 if (response.ok) {
                     submitBtn.innerHTML = '<i class="fas fa-check"></i> Saved Successfully!';
                     submitBtn.style.background = 'linear-gradient(45deg, #10b981, #047857)';
+                    setTimeout(() => {
+                        window.location.href = '/retrieve';
+                    }, 1500);
                 } else {
                     alert(data.message || "Something went wrong.");
                     submitBtn.innerHTML = originalBtnHTML;

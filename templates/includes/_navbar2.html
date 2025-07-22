@@ -152,7 +152,6 @@
       <a
         href="{{ url_for('logout') }}"
         class="profile-menu-item"
-        onclick="confirmLogout(event, '{{ url_for('logout') }}')"
       >
         Logout
       </a>
@@ -175,13 +174,6 @@
         .querySelectorAll('.profile-widget.open')
         .forEach(el => el.classList.remove('open'));
     });
-
-    function confirmLogout(e, url) {
-      e.preventDefault();
-      if (confirm('Are you sure you want to log out?')) {
-        window.location.href = url;
-      }
-    }
   </script>
 </body>
 </html>
