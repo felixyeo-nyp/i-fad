@@ -655,27 +655,14 @@ def load_user(user_id):
 def index():
     return redirect(url_for('logout'))
 
-
-# Function to open shelve safely
-def open_shelve(filename, mode='c'):
-    try:
-        shelf = shelve.open(filename, mode)
-        return shelf
-    except Exception as e:
-        print(f"Error opening shelve: {e}")
-        return None
-
-# Routes for Registration and Login using shelve
 def seed_admin_account():
     with shelve.open('users.db', 'c') as db:
-        # 1. Check if any existing user already has the Admin role
         has_admin = False
         for key, user_data in db.items():
             if user_data.get('role') == 'Admin':
                 has_admin = True
                 break
 
-        # 2. If no Admin found, create your static account
         if not has_admin:
             hashed = generate_password_hash('Password1!', method='pbkdf2:sha256')
             admin = User(
@@ -685,13 +672,19 @@ def seed_admin_account():
                 role='Admin'
             )
             db['admin'] = {
+                'uuid': str(uuid.uuid4()),
                 'username': admin.username,
-                'email':    admin.email,
+                'email': admin.email.lower(),
                 'password': admin.password,
-                'role':     admin.role,
-                'status':   admin.status
+                'role': admin.role,
+                'status': admin.status,
+                'user_first_feed': "",
+                'user_second_feed': "",
+                'user_feeding_duration': 0,
+                'user_interval_seconds': 0,
+                'user_pellets': 0
             }
-
+            print("Admin account seeded successfully.")
 
 seed_admin_account()
 @app.route('/register', methods=['GET', 'POST'])
