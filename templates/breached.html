@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>403 – Unauthorized Access</title>
+  <script src="https://kit.fontawesome.com/48c37b3e43.js" crossorigin="anonymous"></script>
+  <style>
+    /* Sea-Style Color Palette */
+    :root {
+      --deep-sea: #023047;
+      --ocean:    #219ebc;
+      --seafoam: #8ecae6;
+      --sand:     #ffb703;
+      --text-light: #fafafa;
+    }
+
+    /* Reset & Full-Page Layout */
+    * {
+      margin: 0; padding: 0; box-sizing: border-box;
+    }
+    body {
+      position: relative;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+      color: var(--text-light);
+      background: linear-gradient(to bottom, var(--deep-sea), var(--ocean));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    /* Bubble Overlay */
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      /* three radial gradients as static “bubbles” */
+      background:
+        radial-gradient(circle at 20% 25%, rgba(255,255,255,0.1) 1%, transparent 10%),
+        radial-gradient(circle at 75% 40%, rgba(255,255,255,0.1) 1%, transparent 10%),
+        radial-gradient(circle at 50% 80%, rgba(255,255,255,0.1) 1%, transparent 10%);
+      pointer-events: none;
+    }
+
+    /* Central Card */
+    .card {
+      position: relative;
+      z-index: 1;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid var(--seafoam);
+      border-radius: 12px;
+      padding: 40px 30px;
+      max-width: 380px;
+      width: 90%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    /* Fish Icon */
+    .card i {
+      font-size: 80px;
+      color: var(--seafoam);
+      margin-bottom: 20px;
+    }
+
+    /* Headings */
+    .card h1 {
+      font-size: 64px;
+      margin-bottom: 8px;
+      letter-spacing: 2px;
+    }
+    .card h3 {
+      font-size: 20px;
+      margin-bottom: 6px;
+      font-weight: 400;
+    }
+    .card h4 {
+      font-size: 15px;
+      margin-bottom: 14px;
+      font-weight: 300;
+    }
+
+    /* Countdown */
+    #countdown {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+
+.btn-login {
+  display: inline-block;
+  text-decoration: none;
+  background: linear-gradient(45deg, #3498db, #8e44ad);
+  color: #fff;
+  padding: 12px 28px;
+  border-radius: 6px;
+  font-weight: bold;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.btn-login:hover {
+    opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- fish icon → sea style -->
+    <i class="fa-solid fa-fish"></i>
+
+    <h1>403</h1>
+    <h3>Restricted Area</h3>
+    <h4>Your account has been suspended.</h4>
+    <h4>If this was a mistake, please log in with correct credentials.</h4>
+
+    <div id="countdown"></div>
+    <a href="/login" class="btn-login">Go to Login</a>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // Prevent Back Navigation
+      history.pushState(null, "", location.href);
+      window.onpopstate = () => history.pushState(null, "", location.href);
+
+      // Countdown & Redirect
+      const redirectUrl = "/login";
+      let seconds = 10;
+      const countdownEl = document.getElementById("countdown");
+      const timer = setInterval(() => {
+        countdownEl.textContent = `Redirecting in ${seconds--}s...`;
+        if (seconds < 0) {
+          clearInterval(timer);
+          location.href = redirectUrl;
+        }
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

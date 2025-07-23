@@ -222,8 +222,10 @@
         videoFeed.onload();
     }
 
+    // Clear video feed access when the page is unloaded, sends a GET request just like a beacon but as an image fetch
     window.addEventListener('beforeunload', () => {
-        navigator.sendBeacon('/clear_video_feed_access');
-    });
+    const img = new Image();
+    img.src = '/clear_video_feed_access?' + Date.now(); // prevent cache
+    }); 
 </script>
 {% endblock %}

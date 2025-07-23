@@ -1,6 +1,7 @@
 # Flask-related imports #
 import flask_mail
-from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, send_file, session
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, send_file, session, \
+    current_app
 import socket
 import struct
 from scapy.all import *
@@ -9,16 +10,16 @@ from sympy import false
 from wtforms import Form, StringField, RadioField, SelectField, TextAreaField, validators, ValidationError, PasswordField
 import sys
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import LoginManager, UserMixin, current_user, login_user, login_required, logout_user
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user,current_user
 import shelve, re
-from flask_wtf import FlaskForm
+from flask_wtf import FlaskForm, CSRFProtect
 from wtforms.validators import email
 import win32serviceutil
 import win32service
 import win32event
 import servicemanager
 import subprocess
-from Forms import configurationForm, emailForm, LoginForm, RegisterForm,updatepasswordForm, MFAForm, FeedbackForm,updateemailrole, forgetpassword , ipForm
+from Forms import configurationForm, emailForm, LoginForm, RegisterForm,updatepasswordForm, MFAForm, FeedbackForm, updateemailrole, forgetpassword , ipForm, DeleteForm
 from flask_mail import Mail, Message
 import random
 import secrets
@@ -80,19 +81,35 @@ class FreshestFrame(threading.Thread):
     def stop(self, timeout=None):
         self.is_running = False
         self.join(timeout=timeout)
-        self.capture.release()
+        if self.capture:
+            self.capture.release()
 
     def run(self):
-        counter = 0
         while self.is_running:
-            (rv, img) = self.capture.read()
-            assert rv
-            counter += 1
-            with self.condition:
-                self.frame = img if rv else None
-                self.condition.notify_all()
-            if self.callback:
-                self.callback(img)
+            try:
+                rv, img = self.capture.read()
+                if not rv or img is None:
+                    if not self.is_running:
+                        break
+                    time.sleep(0.1)
+                    continue
+
+                with self.condition:
+                    self.frame = img
+                    self.pellets_num += 1
+                    self.condition.notify_all()
+
+                if self.callback:
+                    try:
+                        self.callback(img)
+                    except Exception as cb_err:
+                        print(f"[ERROR] Callback failed: {cb_err}")
+
+            except Exception as e:
+                if not self.is_running:
+                    break  # Stop logging if shutting down
+                print(f"[ERROR] Unexpected error in FreshestFrame thread: {e}")
+                time.sleep(0.5)
 
     def read(self, wait=True, sequence_number=None, timeout=None):
         with self.condition:
@@ -233,64 +250,63 @@ def validate_config_thread():
     }
     fallback_email = Email('iatfadteam@gmail.com', 'iatfadteam@gmail.com', 'pmtu cilz uewx xqqi', 3)
 
-    while not stop_event.is_set():
-        try:
-            # Check IP.db
-            ip_config_updated = False
-            with shelve_lock:
-                with shelve.open('IP.db', 'c') as ip_db:
-                    ip_data = ip_db.get("IP", {})
-                    required_keys = ["source", "destination", "camera_ip", "amcrest_username", "amcrest_password"]
+    try:
+        # Check IP.db
+        ip_config_updated = False
+        with shelve_lock:
+            with shelve.open('IP.db', 'c') as ip_db:
+                ip_data = ip_db.get("IP", {})
+                required_keys = ["source", "destination", "camera_ip", "amcrest_username", "amcrest_password"]
 
-                    if not all(k in ip_data and ip_data[k] for k in required_keys):
-                        ip_db["IP"] = latest_set_ip_settings if latest_set_ip_settings else fallback_ip
-                        ip_config_updated = True
-                        print("[VALIDATE] Fallback IP configuration written.")
+                if not all(k in ip_data and ip_data[k] for k in required_keys):
+                    ip_db["IP"] = latest_set_ip_settings if latest_set_ip_settings else fallback_ip
+                    ip_config_updated = True
+                    print("[VALIDATE] Fallback IP configuration written.")
 
-            # Check settings.db
-            with shelve_lock:
-                with shelve.open('settings.db', 'c') as settings_db:
-                    if 'Confidence_Rate' not in settings_db:
-                        settings_db['Confidence_Rate'] = fallback_confidence_rate
-                        print("[VALIDATE] Fallback Confidence_Rate initialized.")
+        # Check settings.db
+        with shelve_lock:
+            with shelve.open('settings.db', 'c') as settings_db:
+                if 'Confidence_Rate' not in settings_db:
+                    settings_db['Confidence_Rate'] = fallback_confidence_rate
+                    print("[VALIDATE] Fallback Confidence_Rate initialized.")
 
-                    if 'Port' not in settings_db:
-                        settings_db['Port'] = 53101
-                        print("[VALIDATE] Missing Port generated.")
+                if 'Port' not in settings_db:
+                    settings_db['Port'] = 53101
+                    print("[VALIDATE] Missing Port generated.")
 
-                    if 'Generate_Status' not in settings_db:
-                        settings_db['Generate_Status'] = False
-                        print("[VALIDATE] Generate_Status set to False.")
+                if 'Generate_Status' not in settings_db:
+                    settings_db['Generate_Status'] = False
+                    print("[VALIDATE] Generate_Status set to False.")
 
-                    if 'Email_Data' not in settings_db:
-                        settings_db['Email_Data'] = {'Email_Info': fallback_email}
-                        print("[VALIDATE] Fallback Email_Data written.")
+                if 'Email_Data' not in settings_db:
+                    settings_db['Email_Data'] = {'Email_Info': fallback_email}
+                    print("[VALIDATE] Fallback Email_Data written.")
 
-                    if ip_config_updated or 'syn_ack_seq' not in settings_db or 'syn_ack_ack' not in settings_db:
-                        try:
-                            ip_data = None
-                            with shelve_lock:
-                                with shelve.open('IP.db', 'r') as ip_db:
-                                    ip_data = ip_db.get("IP", {})
+                if ip_config_updated or 'syn_ack_seq' not in settings_db or 'syn_ack_ack' not in settings_db:
+                    try:
+                        ip_data = None
+                        with shelve_lock:
+                            with shelve.open('IP.db', 'r') as ip_db:
+                                ip_data = ip_db.get("IP", {})
 
-                            source = ip_data.get("source")
-                            destination = ip_data.get("destination")
+                        source = ip_data.get("source")
+                        destination = ip_data.get("destination")
 
-                            port = settings_db.get('Port')
-                            if source and destination and port:
-                                start_syn_packet_thread(source, destination, port, 50000)
-                                send_udp_packet(source, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
-                                print("[VALIDATE] SYN/ACK packets sent after IP config.")
-                            else:
-                                print("[VALIDATE WARNING] Could not send SYN/ACK packets due to missing source/destination/port.")
+                        port = settings_db.get('Port')
+                        if source and destination and port:
+                            start_syn_packet_thread(source, destination, port, 50000)
+                            send_udp_packet(source, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
+                            print("[VALIDATE] SYN/ACK packets sent after IP config.")
+                        else:
+                            print("[VALIDATE WARNING] Could not send SYN/ACK packets due to missing source/destination/port.")
 
-                        except Exception as e:
-                            print(f"[VALIDATE ERROR] Failed to generate SYN/ACK packets: {e}")
+                    except Exception as e:
+                        print(f"[VALIDATE ERROR] Failed to generate SYN/ACK packets: {e}")
 
-        except Exception as e:
-            print(f"[VALIDATE ERROR] {e}")
+    except Exception as e:
+        print(f"[VALIDATE ERROR] {e}")
 
-        time.sleep(2)
+    time.sleep(2)
 
 def video_processing_loop():
     global freshest_frame, object_count, frame_data, latest_processed_frame
@@ -518,7 +534,6 @@ def save_chart_data(total_count, feeding_time_str):
     except Exception as e:
         print(f"[ERROR] Failed to save feeding data: {e}")
 
-@login_required
 def generate_frames():
     global latest_processed_frame, frame_data
     count = 1
@@ -571,6 +586,7 @@ login_manager.login_view = 'login'
 scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
+csrf = CSRFProtect(app)
 
 # Initialize Flask-Mail
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -618,10 +634,14 @@ def role_required(role):
         return decorated_function
     return decorator
 
-@app.route("/Breached", methods=['GET'])
+@app.route("/breached", methods=['GET'])
 def breached():
     session.clear()
-    return render_template("Breached.html")
+    return render_template("breached.html")
+
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('404.html'), 404
 
 # User loader callback for Flask-Login
 @login_manager.user_loader
@@ -649,30 +669,52 @@ def load_user(user_id):
 def index():
     return redirect(url_for('logout'))
 
-# Function to open shelve safely
-def open_shelve(filename, mode='c'):
-    try:
-        shelf = shelve.open(filename, mode)
-        return shelf
-    except Exception as e:
-        print(f"Error opening shelve: {e}")
-        return None
+def seed_admin_account():
+    with shelve.open('users.db', 'c') as db:
+        has_admin = False
+        for key, user_data in db.items():
+            if user_data.get('role') == 'Admin':
+                has_admin = True
+                break
 
-# Routes for Registration and Login using shelve
+        if not has_admin:
+            hashed = generate_password_hash('Password1!', method='pbkdf2:sha256')
+            admin = User(
+                username='admin',
+                email='testproject064@gmail.com',
+                password=hashed,
+                role='Admin'
+            )
+            db['admin'] = {
+                'uuid': str(uuid.uuid4()),
+                'username': admin.username,
+                'email': admin.email.lower(),
+                'password': admin.password,
+                'role': admin.role,
+                'status': admin.status,
+                'user_first_feed': "",
+                'user_second_feed': "",
+                'user_feeding_duration': 0,
+                'user_interval_seconds': 0,
+                'user_pellets': 0
+            }
+            print("Admin account seeded successfully.")
+
+seed_admin_account()
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm()  # Create an instance of RegisterForm
 
     if form.validate_on_submit():
-        username = form.username.data
-        email = form.email.data
+        username = form.username.data.strip()
+        email = form.email.data.strip().lower()
         password = form.password.data
         role = form.role.data
 
         # Check if the username or email already exists in the database
         with shelve.open('users.db', 'c') as db:
             username_exists = username in db
-            email_exists = any(user_data['email'] == email for user_data in db.values())
+            email_exists = any(user_data['email'].lower() == email for user_data in db.values())
 
             if username_exists or email_exists:
                 flash('Username or email already in use', 'danger')
@@ -696,7 +738,7 @@ def register():
                 flash('You are now registered and can log in', 'success')
                 return redirect(url_for('login'))
 
-    return render_template('register.html', form=form)
+    return render_template('register.html', form=form, hide_sidebar=True)
 
 @app.route('/register2', methods=['GET', 'POST'])
 @login_required
@@ -705,15 +747,15 @@ def register2():
     form = RegisterForm()  # Create an instance of RegisterForm
 
     if form.validate_on_submit():
-        username = form.username.data
-        email = form.email.data
+        username = form.username.data.strip()
+        email = form.email.data.strip().lower()
         password = form.password.data
         role = form.role.data
 
         # Check if the username or email already exists in the database
         with shelve.open('users.db', 'c') as db:
             username_exists = username in db
-            email_exists = any(user_data['email'] == email for user_data in db.values())
+            email_exists = any(user_data['email'].lower() == email for user_data in db.values())
 
             if username_exists or email_exists:
                     flash('Username or email already in use', 'danger')
@@ -738,118 +780,380 @@ def register2():
 
     return render_template('register2.html', form=form)
 
+def find_user(identifier: str):
+    identifier = identifier.strip().lower()
+    with shelve.open('users.db', 'r') as db:
+        # 1) Username matching
+        for uname in db:
+            if uname.lower() == identifier:
+                user = db[uname]
+                user['username'] = uname
+                return user
+
+        # 2) Email matching
+        for uname, udata in db.items():
+            if udata.get('email', '').lower() == identifier:
+                udata['username'] = uname
+                return udata
+
+    return None
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
+        # ← now reads from form.identifier, which can be either
+        identifier = form.identifier.data.strip().lower()
+        password   = form.password.data
 
-        try:
-            with shelve.open('users.db', 'c') as db:
-                if username in db:
-                    user = db[username]  # Get the user data as a dictionary
-                    role = user['role']
-                    stored_password_hash = user['password']
+        user = find_user(identifier)
+        if user and check_password_hash(user['password'], password):
+            if user['status'] in ["Suspended", "Breached"]:
+                flash(f"Your account is {user['status']}. Access denied.", "danger")
+                return redirect(url_for('login'))
 
-                    if check_password_hash(stored_password_hash, password):
-                        if user['status'] in ["Suspended", "Breached"]:  # Check user status
-                            flash(f"Your account is {user['status']}. Access denied.", "danger")
-                            return redirect(url_for("login"))
+            session['username'] = user['username']
+            session['email']    = user['email']
+            session['role']     = user['role']
+            with shelve.open('settings.db', writeback=True) as settings_db:
+                settings_db['CurrentUserEmail'] = user['email']
+            return redirect(url_for('mfa_verify'))
 
-                        # Passwords match, proceed with MFA
-                        user_email = user['email']
+        flash('Invalid login credentials', 'danger')
 
-                        # Generate a 6-digit MFA code
-                        mfa_code = str(secrets.randbelow(899999) + 100000)
-                        session['email'] = user_email  # Save email in session
-                        session['mfa_code'] = mfa_code  # Store in session
-                        session['username'] = username  # Save username for next steps
-                        session['role'] = role
+    return render_template('login.html', form=form, hide_sidebar=True)
 
-                        # Save current logged in user email to shelve
-                        with shelve.open('settings.db', writeback=True) as settings_db:
-                            settings_db['CurrentUserEmail'] = user_email
 
-                        # Send the code via email
-                        msg =  flask_mail.Message(subject = 'MFA Code',
-                                      recipients=[user_email])
-                        msg.body = f'Your 6-digit MFA code is {mfa_code}'
+# send OTP (Login)
+from datetime import datetime, timezone
 
-                        try:
-                            print(mfa_code)
-                            mail.send(msg)
-                            flash('An authentication code has been sent to your email.', 'info')
-                            print(session)
-                            return redirect(url_for('mfa_verify'))  # Redirect to MFA verification page
-                        except Exception as e:
-                            print(f"Email send error: {e}")
-                            flash("Error sending MFA", 'danger')
-                    else:
-                        flash('Invalid login credentials', 'danger')
-                else:
-                    flash('Invalid login credentials', 'danger')
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
+def send_mfa_code():
+    # 1) generate code & timestamps
+    code = str(secrets.randbelow(900_000) + 100_000)
+    print("The MFA Code: ",code)
+    now = datetime.now(timezone.utc)
+    session['mfa_code']       = code
+    session['mfa_sent_at']    = now.isoformat()
+    session['last_resend_at'] = now.isoformat()
+    current_app.logger.debug(f"[DEBUG] Login MFA code is: {code}")
 
-    return render_template('login.html', form=form)
+    # 2) build plain-text body
+    text_body = (
+        "I@FAD MFA Verification\n\n"
+        f"Your 6-digit code is: {code}\n"
+        "It expires in 60 seconds.\n\n"
+        "If you didn’t request this, ignore this email."
+    )
 
-@app.route('/forgetpassword', methods=['GET', 'POST'])
+    # 3) load & format static HTML
+    html_path = current_app.root_path + '/templates/email/login_mfa.html'
+    with open(html_path, 'r') as f:
+        html_body = f.read().format(
+            code=code,
+            expires=60,
+            year=now.year
+        )
+
+    # 4) construct Message and send
+    try:
+        msg = flask_mail.Message(
+            subject="I@FAD Code",
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients=[ session.get('email') ],
+            body=text_body,
+            html=html_body
+        )
+        mail.send(msg)
+        return True
+
+    except Exception as e:
+        current_app.logger.error(f"[ERROR] Failed to send MFA email: {e}")
+        return False
+
+
+
+@app.route('/mfa-verify', methods=['GET', 'POST'])
+def mfa_verify():
+    # 1) Ensure user just logged in
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    form     = MFAForm()
+    now      = datetime.now(timezone.utc)
+    sent_iso = session.get('mfa_sent_at')
+
+    # 2) Check if existing code is expired
+    expired = True
+    if sent_iso:
+        sent_at = datetime.fromisoformat(sent_iso)
+        expired = (now - sent_at).total_seconds() > 60
+
+    # 3) On GET: generate & send when missing or expired
+    if request.method == 'GET':
+        if not sent_iso or expired:
+            if not send_mfa_code():
+                flash(
+                    "Unable to send authentication code right now. "
+                    "Please try logging in again later.",
+                    'danger'
+                )
+                return redirect(url_for('login'))
+
+            # only flash the “code sent” info on the very first GET
+            if not sent_iso:
+                flash('An authentication code has been sent to your email.', 'info')
+            # if expired, we’re re-sending silently (the POST already showed “Code expired…”)
+
+    # 4) On POST: validate the code
+    if form.validate_on_submit():
+        entered = form.code.data
+        sent_iso = session.get('mfa_sent_at')
+
+        if not sent_iso:
+            flash('No code found. Please wait for the new one.', 'danger')
+            return redirect(url_for('mfa_verify'))
+
+        sent_at = datetime.fromisoformat(sent_iso)
+        now     = datetime.now(timezone.utc)
+
+        if (now - sent_at).total_seconds() > 60:
+            flash('Code expired. A new code has been sent.', 'danger')
+            return redirect(url_for('mfa_verify'))
+
+        if entered == session.get('mfa_code'):
+            # clear MFA session data
+            for k in ('mfa_code', 'mfa_sent_at', 'last_resend_at'):
+                session.pop(k, None)
+
+            # reload user object and log them in
+            with shelve.open('users.db', 'r') as db:
+                stored = db.get(session['username'])
+                user_uuid=stored['uuid']
+            user = User(
+                username= session['username'],
+                email=    stored['email'],
+                password= stored['password'],
+                role=     stored['role'],
+                status=   stored.get('status', 'Active')
+            )
+            login_user(user)
+            session["uuid"] = user_uuid 
+            return redirect(url_for('set_ip'))
+
+        flash('Invalid authentication code', 'danger')
+
+    # 5) Compute timers for template rendering
+    expiry_timer = 0
+    if (sent_iso := session.get('mfa_sent_at')):
+        sent    = datetime.fromisoformat(sent_iso)
+        elapsed = (datetime.now(timezone.utc) - sent).total_seconds()
+        expiry_timer = int(max(0, 60 - elapsed))
+
+    resend_timer = 0
+    if (last_iso := session.get('last_resend_at')):
+        last    = datetime.fromisoformat(last_iso)
+        elapsed = (datetime.now(timezone.utc) - last).total_seconds()
+        resend_timer = int(max(0, 5 - elapsed))
+
+    return render_template(
+        'mfa_verify.html',
+        form=           form,
+        expiry_timer=   expiry_timer,
+        resend_timer=   resend_timer,
+        hide_sidebar=True
+    )
+  
+@app.route('/resend-mfa', methods=['POST'])
+def resend_mfa():
+    last_iso = session.get('last_resend_at')
+    now      = datetime.now(timezone.utc)
+
+    # only allow resend if ≥ 5 s have passed
+    if not last_iso or (now - datetime.fromisoformat(last_iso)).total_seconds() >= 5:
+        send_mfa_code()
+        return ('', 204)
+
+    retry_after = 5 - (now - datetime.fromisoformat(last_iso)).total_seconds()
+    return (
+        jsonify({
+            'error': 'Too many requests',
+            'retry_after': int(retry_after)
+        }),
+        429
+    )
+
+
+#mfa for forget_password
+def send_reset_mfa_code():
+    """
+    Generate/store a 6-digit code for password-reset MFA and email it.
+    """
+    code = str(secrets.randbelow(900_000) + 100_000)
+    print("The MFA Code: ", code)
+    now = datetime.now(timezone.utc)
+
+    session['reset_mfa_code']       = code
+    session['reset_mfa_sent_at']    = now.isoformat()
+    session['reset_last_resend_at'] = now.isoformat()
+    current_app.logger.debug(f"[DEBUG] Reset MFA code is: {code}")
+
+    text_body = (
+        "I@FAD Password Reset Verification\n\n"
+        f"Your 6-digit code is: {code}\n"
+        "It expires in 60 seconds.\n\n"
+        "If you didn’t request this, ignore this email."
+    )
+    html_body = render_template(
+        'email/reset_mfa.html',
+        code=code,
+        expires=60,
+        year=now.year
+    )
+
+    try:
+        msg = flask_mail.Message(
+            subject="I@FAD Password Reset Code",
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients=[session.get('email')],
+            body=text_body,
+            html=html_body
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        current_app.logger.error(f"[ERROR] Failed to send reset-MFA email: {e}")
+        return False
+
+
+@app.route('/forgetpassword', methods=['GET','POST'])
 def forget_password():
-    form = forgetpassword()  # Instantiate the form
+    form = forgetpassword()
     if form.validate_on_submit():
         foremail = form.email.data
 
-        try:
-            with shelve.open('users.db', 'r') as db:
-                for username, user_data in db.items():
-                    if user_data['email'] == foremail:
-                        user_email = foremail
-                        mfa_code = str(secrets.randbelow(899999) + 100000)
+        # lookup user by email
+        with shelve.open('users.db', 'r') as db:
+            match = next(
+                (u for u, data in db.items() if data.get('email') == foremail),
+                None
+            )
 
-                        # Store details in session
-                        session['mfa_code'] = mfa_code
-                        session['email'] = user_email
-                        session['username'] = username
+        if not match:
+            flash('Email not found.', 'danger')
+            return render_template('forget_password.html', form=form)
 
-                        msg = flask_mail.Message(subject='MFA Code',
-                                      sender='iatfadteam@gmail.com',
-                                      recipients=[user_email])
-                        msg.body = f'Your 6-digit MFA code is {mfa_code}'
-                        mail.send(msg)
-                        flash('An authentication code has been sent to your email.', 'info')
-                        return redirect(url_for('mfa_verify2'))
+        # stash and send code (no flash here)
+        session['username'] = match
+        session['email']    = foremail
 
-                        # Email not found
-                flash('Email not found', 'danger')
-        except Exception as e:
-                    # Log the error and inform the user
-            app.logger.error(f"Error during password recovery: {str(e)}")
-            flash('An internal error occurred. Please try again later.', 'danger')
+        if not send_reset_mfa_code():
+            flash('Unable to send authentication code right now. Please try again later.', 'danger')
+            return redirect(url_for('forget_password'))
 
-    return render_template('forget_password.html', form=form)
+        return redirect(url_for('mfa_verify2'))
 
-@app.route('/mfa-verify2', methods=['GET', 'POST'])
+    return render_template('forget_password.html', form=form, hide_sidebar=True)
+
+
+@app.route('/mfa-verify2', methods=['GET','POST'])
 def mfa_verify2():
-    form = MFAForm()
+    # ensure they came from forget_password
+    if 'username' not in session or 'email' not in session:
+        flash('Please submit your email first.', 'warning')
+        return redirect(url_for('forget_password'))
 
+    form     = MFAForm()
+    now      = datetime.now(timezone.utc)
+    sent_iso = session.get('reset_mfa_sent_at')
+
+    # determine expired state
+    expired = False
+    if sent_iso:
+        sent_at = datetime.fromisoformat(sent_iso)
+        expired = (now - sent_at).total_seconds() > 60
+
+    # ── GET: only flash on first send, silently re-send on expiry ──────────
+    if request.method == 'GET':
+        # first-ever GET: no code yet
+        if not sent_iso:
+            if not send_reset_mfa_code():
+                flash('Unable to send authentication code right now. Please try again later.', 'danger')
+                return redirect(url_for('forget_password'))
+            flash('An authentication code has been sent to your email.', 'info')
+
+        # subsequent GETs after expiry: re-send silently
+        elif expired:
+            send_reset_mfa_code()
+
+    # ── POST: validate submitted code ───────────────────────────────────────
     if form.validate_on_submit():
-        entered_code = form.code.data
+        entered  = form.code.data
+        sent_iso = session.get('reset_mfa_sent_at')
+        now      = datetime.now(timezone.utc)
 
-        if entered_code == session.get('mfa_code'):
-            # MFA passed, redirect to reset password
-            flash('MFA verification successful. Please reset your password.', 'info')
-            return redirect(url_for('reset_password'))  # Redirect to reset password page
-        else:
-            flash('Invalid authentication code', 'danger')
+        if not sent_iso:
+            flash('No code found. Please wait for the new one.', 'danger')
+            return redirect(url_for('mfa_verify2'))
 
-    return render_template('mfa_verify2.html', form=form)
+        sent_at = datetime.fromisoformat(sent_iso)
+        if (now - sent_at).total_seconds() > 60:
+            flash('Code expired. A new code has been sent.', 'danger')
+            send_reset_mfa_code()
+            return redirect(url_for('mfa_verify2'))
+
+        if entered == session.get('reset_mfa_code'):
+            # clear MFA bits
+            for k in ('reset_mfa_code','reset_mfa_sent_at','reset_last_resend_at'):
+                session.pop(k, None)
+
+            flash('MFA verification successful. Please reset your password.', 'success')
+            return redirect(url_for('reset_password'))
+
+        flash('Invalid authentication code.', 'danger')
+
+    # ── Compute timers for template ───────────────────────────────────────
+    def _timer(key, limit):
+        iso = session.get(key)
+        if not iso:
+            return 0
+        elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(iso)).total_seconds()
+        return int(max(0, limit - elapsed))
+
+    expiry_timer = _timer('reset_mfa_sent_at', 60)
+    resend_timer = _timer('reset_last_resend_at', 5)
+
+    return render_template(
+        'mfa_verify2.html',
+        form=           form,
+        expiry_timer=   expiry_timer,
+        resend_timer=   resend_timer,
+        hide_sidebar=True
+    )
+
+
+@app.route('/resend-mfa2', methods=['POST'])
+def resend_mfa2():
+    last_iso = session.get('reset_last_resend_at')
+    now      = datetime.now(timezone.utc)
+
+    if not last_iso or (now - datetime.fromisoformat(last_iso)).total_seconds() >= 5:
+        send_reset_mfa_code()
+        return ('', 204)
+
+    retry_after = 5 - (now - datetime.fromisoformat(last_iso)).total_seconds()
+    return (
+        jsonify({
+            'error': 'Too many requests',
+            'retry_after': int(retry_after)
+        }), 429
+    )
+# ── 4) Finally, reset the password ───────────────────────────────────────────
 
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
-    form = updatepasswordForm()  # Form for password reset
+    form = updatepasswordForm()
 
-    # Ensure the user has completed MFA
+    # guard: must’ve done MFA
     if 'username' not in session or 'email' not in session:
         flash('You must verify your identity before resetting your password.', 'danger')
         return redirect(url_for('forget_password'))
@@ -857,61 +1161,30 @@ def reset_password():
     username = session['username']
 
     if form.validate_on_submit():
-        new_password = form.password.data
-        confirm_password = form.confirm_password.data
+        p1 = form.password.data
+        p2 = form.confirm_password.data
 
-        if new_password != confirm_password:
+        if p1 != p2:
             flash('Passwords do not match.', 'danger')
         else:
             try:
                 with shelve.open('users.db', 'w') as db:
-                    # Update the user's password
                     if username in db:
-                        user_data = db[username]
-                        hashed_password = generate_password_hash(new_password, method='pbkdf2:sha256')
-                        user_data['password'] = hashed_password
-                        db[username] = user_data  # Save updated password
-
+                        user = db[username]
+                        user['password'] = generate_password_hash(p1, method='pbkdf2:sha256')
+                        db[username] = user
                         flash('Your password has been updated. Please log in with the new password.', 'success')
-                        # Clear session data after password reset
                         session.clear()
-                        return redirect(url_for('login'))  # Redirect to login page
+                        return redirect(url_for('login'))
                     else:
-                        flash('User not found. Please start the process again.', 'danger')
+                        flash('User not found. Please start again.', 'danger')
                         return redirect(url_for('forget_password'))
+
             except Exception as e:
-                flash(f'An error occurred: {str(e)}', 'danger')
+                current_app.logger.error(f"Error resetting password: {e}")
+                flash('An error occurred. Please try again.', 'danger')
 
     return render_template('reset_password.html', form=form)
-
-@app.route('/mfa-verify', methods=['GET', 'POST'])
-def mfa_verify():
-    form = MFAForm()
-
-    if form.validate_on_submit():
-        entered_code = form.code.data
-
-        if entered_code == session.get('mfa_code'):
-            # MFA passed, log the user in
-            username = session.get('username')
-
-            # Use context manager to ensure the shelf is properly opened and closed
-            with shelve.open('users.db', 'r') as db:
-                user_uuid = db[username]['uuid']
-                user_email = db[username]['email']
-                hashed_password = db[username]['password']
-                role = db[username]['role']
-
-            user = User(username, user_email, hashed_password, role)
-            login_user(user)
-            flash('You are now logged in', 'success')
-            session.pop('mfa_code')
-            session["uuid"] = user_uuid 
-            return redirect(url_for('set_ip'))
-        else:
-            flash('Invalid authentication code', 'danger')
-
-    return render_template('mfa_verify.html', form=form)
 
 @app.route('/logout')
 def logout():
@@ -1356,7 +1629,6 @@ def dashboard():
     user_settings = {}
     latest_count = 0
     pellet_data = {}
-
     try:
         with shelve_lock:
             with shelve.open("users.db", "r") as user_db:
@@ -1371,9 +1643,9 @@ def dashboard():
                         }
                         break
 
-        with shelve_lock:
-            with shelve.open('currentcount.db', 'c') as db2:
-                latest_count = db2.get('object_count', 0)
+
+        with shelve.open('currentcount.db', 'c') as db2:
+            latest_count = db2.get('object_count', 0)
 
         print("Fetching pellet data")
         response = get_pellet_data()
@@ -1389,7 +1661,6 @@ def dashboard():
 @app.route('/camera_view',methods=['GET','POST'])
 @login_required
 def camera_view():
-    session['access_video_feed'] = True
     return render_template('camera_view.html')
 
 @app.route('/export_data', methods=['POST'])
@@ -1579,7 +1850,6 @@ def update_setting():
                     setting.second_timer.data = user_data.get("user_second_feed", "")
                     setting.pellets.data = user_data.get("user_pellets", 0)
                     duration_sec = user_data.get("user_feeding_duration", 0)
-                    print(f"Duration that retrieved: {duration_sec}")
                     interval_sec = user_data.get("user_interval_seconds", 0)
 
                     setting.minutes.data = duration_sec // 60
@@ -1743,35 +2013,31 @@ def update_email_settings():
 
         return render_template('email_settings.html', form=setting)
 
-@app.route('/clear_video_feed_access', methods=['POST'])
+@app.route('/clear_video_feed_access', methods=['GET'])
 def clear_video_feed_access():
-    db = shelve.open('settings.db', 'w')
-    db['Generate_Status'] = False
-    db.close()
-    return jsonify({'message': 'Video feed access cleared'}), 200  # Returning JSON response
+    with shelve.open('settings.db', 'w') as db:
+        db['Generate_Status'] = False
+    stop_camera_threads()
+    return '', 204  # No Content (sendBeacon doesn't expect a response body)
 
 @app.route('/video_feed')
-
 def video_feed():
-    db = shelve.open('settings.db', 'w')
-    db['Generate_Status'] = True
-    db.close()
+    with shelve.open('settings.db', 'w') as db:
+        db['Generate_Status'] = True
+    start_camera_threads()
     try:
         return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
     except Exception as e:
         print(f"Error: {e}")
         return "Error generating video feed"
 
-@app.route('/feedback', methods=['GET', 'POST'])
-@login_required
-def feedback():
-    form = FeedbackForm()
-    user_email = session.get('email')  # Retrieve the email from the session
-    user_name = session.get('username')
-
-    if not user_email:
-        flash('Please log in to access the feedback form.', 'danger')
-        return redirect(url_for('login'))
+def send_feedback_notification(name, user_email, message, sent_time=None):
+    """
+    Send a notification email to the I@FAD team with the user's feedback,
+    timestamped in Singapore time.
+    """
+    sg_tz = ZoneInfo("Asia/Singapore")
+    now = sent_time or datetime.now(sg_tz)
     
     try:
         db = shelve.open('settings.db', 'r')
@@ -1789,30 +2055,158 @@ def feedback():
         recipient_email = "iatfadteam@gmail.com"
         app.logger.warning(f"Could not retrieve recipient email, using fallback: {e}")
 
+    # Plain-text body
+    text_body = (
+        "I@FAD New Feedback Received\n\n"
+        f"From: {name} <{user_email}>\n\n"
+        "Message:\n"
+        f"{message}\n\n"
+        f"Sent at {now.isoformat()}"
+    )
 
+    # HTML body
+    html_body = render_template(
+        'email/feedback.html',
+        name=name,
+        email=user_email,
+        message=message,
+        sent_at=now.strftime('%Y-%m-%d %H:%M'),
+        year=now.year
+    )
+
+    msg = flask_mail.Message(
+        subject="I@FAD – New Feedback",
+        sender=recipient_email,
+        recipients=[recipient_email],
+        body=text_body,
+        html=html_body
+    )
+    mail.send(msg)
+
+def send_feedback_confirmation(user_name, user_email, message, sent_time=None):
+    """
+    Send a copy of the user’s feedback back to them as confirmation.
+    """
+    sg_tz = ZoneInfo("Asia/Singapore")
+    now = sent_time or datetime.now(sg_tz)
+    
+    try:
+        db = shelve.open('settings.db', 'r')
+        Email_dict = db.get('Email_Data', {})
+        recipient_email = "iatfadteam@gmail.com"  # Default fallback
+
+        if 'Email_Info' in Email_dict:
+            email_info = Email_dict['Email_Info']
+            if hasattr(email_info, 'get_recipient_email'):
+                configured_email = email_info.get_recipient_email()
+                if configured_email:
+                    recipient_email = configured_email
+        db.close()
+    except Exception as e:
+        recipient_email = "iatfadteam@gmail.com"
+        app.logger.warning(f"Could not retrieve recipient email, using fallback: {e}")
+
+    # Plain-text fallback
+    text_body = (
+        "I@FAD Feedback Confirmation\n\n"
+        f"Hello {user_name},\n\n"
+        "Thanks for your feedback! Here's what we received:\n\n"
+        f"{message}\n\n"
+        f"Submitted at {now.strftime('%Y-%m-%d %H:%M')}\n\n"
+        "We'll review it and get back to you if needed."
+    )
+
+    # HTML version
+    html_body = render_template(
+        'email/feedback_confirm.html',
+        name=user_name,
+        message=message,
+        sent_at=now.strftime('%Y-%m-%d %H:%M'),
+        year=now.year
+    )
+
+    msg = flask_mail.Message(
+        subject="I@FAD – We Received Your Feedback",
+        sender=recipient_email,
+        recipients=[user_email],
+        body=text_body,
+        html=html_body
+    )
+    mail.send(msg)
+
+@app.route('/feedback', methods=['GET', 'POST'])
+@login_required
+def feedback():
+    form = FeedbackForm()
     if form.validate_on_submit():
-        try:
-            # Attempt to compose and send the email
-            msg = flask_mail.Message(
-                subject="New Feedback",
-                sender=user_email,
-                recipients=[recipient_email],
-                body=f"Name: {user_name}\nEmail: {user_email}\nMessage:\n{form.message.data}"
-            )
-            print(f"message sent to {recipient_email}")
-            mail.send(msg)
+        # 1) store feedback
+        store_Feedback.add(
+            user_name=current_user.username,
+            user_email=current_user.email,
+            message=form.message.data
+        )
 
-            # Flash success message and redirect to dashboard
-            flash('Your feedback has been sent successfully!', 'success')
-            return redirect(url_for('feedback'))
+        # 2) notify the team
+        send_feedback_notification(
+            name=current_user.username,
+            user_email=current_user.email,
+            message=form.message.data
+        )
 
-        except Exception as e:
-            # Flash error message in case of failure
-            flash('An error occurred while sending your feedback. Please try again.', 'danger')
-            # Log the error for debugging purposes (optional)
-            app.logger.error(f'Feedback form error: {e}')
+        # 3) send confirmation to the user
+        send_feedback_confirmation(
+            user_name=current_user.username,
+            user_email=current_user.email,
+            message=form.message.data
+        )
+
+        flash('Your feedback has been sent successfully—and a copy has been emailed to you.', 'success')
+        return redirect(url_for('feedback'))
 
     return render_template('feedback.html', form=form)
+
+@app.route('/admin/feedbacks')
+@login_required
+@role_required('Admin')
+def admin_feedbacks():
+    # grab the raw list
+    all_feedbacks = store_Feedback.list_all()
+
+    # pull the search term from ?q=…
+    q = request.args.get('q', '').strip().lower()
+
+    if q:
+        def matches(fb):
+            return (
+                q in fb.get_user_email().lower() or
+                q in fb.get_user_name().lower() or
+                q in fb.get_message().lower() or
+                q in fb.get_submitted_at().strftime('%Y-%m-%d %H:%M').lower()
+            )
+        feedbacks = [fb for fb in all_feedbacks if matches(fb)]
+    else:
+        feedbacks = all_feedbacks
+
+    feedbacks = sorted(
+        feedbacks,
+        key=lambda fb: fb.get_submitted_at(),
+        reverse=True
+    )
+
+    form = DeleteForm()
+    return render_template('admin_feedback.html',
+                           feedbacks=feedbacks,
+                           form=form,
+                           q=q)
+
+@app.route('/admin/feedbacks/delete/<int:fb_id>', methods=['POST'])
+@login_required
+@role_required('Admin')
+def delete_feedback(fb_id):
+    if store_Feedback.delete(fb_id):
+        return jsonify({'success': True, 'message': f'Feedback deleted successfully.'}), 200
+    else:
+        return jsonify({'success': False, 'message': 'Could not find that feedback.'}), 404
 
 @app.route('/changed_password', methods=['GET', 'POST'])
 @login_required
@@ -1999,7 +2393,6 @@ def delete_user(user_uuid):
 
 @app.route('/set_ip', methods=['GET', 'POST'])
 @login_required
-@role_required('Admin')
 def set_ip():
     global latest_set_ip_settings
     setting = ipForm(request.form)
@@ -2174,23 +2567,49 @@ def setup_mail():
     app.config['MAIL_DEFAULT_SENDER'] = ('Admin', 'iatfadteam@gmail.com')
     return Mail(app)
 
+camera_threads = []
+camera_lock = threading.Lock()
+
+def start_camera_threads():
+    global camera_threads
+    with camera_lock:
+        if camera_threads:
+            return camera_threads
+
+        stop_event.clear()
+
+        capture_thread = threading.Thread(target=capture_frames, daemon=True)
+        video_thread = threading.Thread(target=video_processing_loop, daemon=True)
+
+        capture_thread.start()
+        time.sleep(5)
+        video_thread.start()
+
+        camera_threads = [capture_thread, video_thread]
+        print("Camera threads started.")
+        return camera_threads
+
+def stop_camera_threads():
+    global camera_threads
+    with camera_lock:
+        stop_event.set()
+        for thread in camera_threads:
+            if thread.is_alive():
+                thread.join(timeout=2)
+        camera_threads = []
+        print("Camera thread stopped.")
 
 def start_threads():
     print("Starting all system threads...")
 
-    capture_thread = threading.Thread(target=capture_frames) # Capture frames from the camera
-    video_thread = threading.Thread(target=video_processing_loop) # Process the captured frames for video feed
     feeding_thread = threading.Thread(target=feeding_scheduler_loop) # Schedule feeding tasks based on the configured times
     validate_thread = threading.Thread(target=validate_config_thread) # Validate the configuration and settings periodically
 
-    capture_thread.start()
-    time.sleep(5)  # ensure camera is ready
-    video_thread.start()
     feeding_thread.start()
     validate_thread.start()
     reschedule_feeding_alerts()
 
-    return [capture_thread, video_thread, feeding_thread]
+    return [feeding_thread, validate_thread]
 
 
 def cleanup_on_exit():
@@ -2213,7 +2632,6 @@ def cleanup_on_exit():
     except Exception as e:
         print(f"[CLEANUP ERROR] Failed to send RST packet or close ports: {e}")
 
-
 if __name__ == '__main__':
     try:
         # Check if DB is readable
@@ -2227,6 +2645,9 @@ if __name__ == '__main__':
 
     # Setup mail
     mail = setup_mail()
+    
+    #Feedback Store
+    store_Feedback = FeedbackStore()
 
     # Start all system threads
     threads = start_threads()
