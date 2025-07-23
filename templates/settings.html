@@ -694,6 +694,7 @@
             const response = await fetch('/update?mode=manual', {
                 method: 'POST',
                 headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}',
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -820,6 +821,7 @@
             const response = await fetch('/update?mode=auto', {
                 method: 'POST',
                 headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}',
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)

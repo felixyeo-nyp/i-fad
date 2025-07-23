@@ -173,6 +173,10 @@
          class="{% if request.path.startswith('/feedback') %}active{% endif %}">
         <i class="fas fa-comments"></i> Feedback
       </a>
+      <a href="/set_ip"
+         class="{% if request.path == '/set_ip' %}active{% endif %}">
+        <i class="fas fa-network-wired"></i> Set IP
+      </a>
     {% endif %}
   </nav>
 {% endif %}

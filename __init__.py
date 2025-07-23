@@ -81,19 +81,35 @@ class FreshestFrame(threading.Thread):
     def stop(self, timeout=None):
         self.is_running = False
         self.join(timeout=timeout)
-        self.capture.release()
+        if self.capture:
+            self.capture.release()
 
     def run(self):
-        counter = 0
         while self.is_running:
-            (rv, img) = self.capture.read()
-            assert rv
-            counter += 1
-            with self.condition:
-                self.frame = img if rv else None
-                self.condition.notify_all()
-            if self.callback:
-                self.callback(img)
+            try:
+                rv, img = self.capture.read()
+                if not rv or img is None:
+                    if not self.is_running:
+                        break
+                    time.sleep(0.1)
+                    continue
+
+                with self.condition:
+                    self.frame = img
+                    self.pellets_num += 1
+                    self.condition.notify_all()
+
+                if self.callback:
+                    try:
+                        self.callback(img)
+                    except Exception as cb_err:
+                        print(f"[ERROR] Callback failed: {cb_err}")
+
+            except Exception as e:
+                if not self.is_running:
+                    break  # Stop logging if shutting down
+                print(f"[ERROR] Unexpected error in FreshestFrame thread: {e}")
+                time.sleep(0.5)
 
     def read(self, wait=True, sequence_number=None, timeout=None):
         with self.condition:
@@ -234,64 +250,63 @@ def validate_config_thread():
     }
     fallback_email = Email('iatfadteam@gmail.com', 'iatfadteam@gmail.com', 'pmtu cilz uewx xqqi', 3)
 
-    while not stop_event.is_set():
-        try:
-            # Check IP.db
-            ip_config_updated = False
-            with shelve_lock:
-                with shelve.open('IP.db', 'c') as ip_db:
-                    ip_data = ip_db.get("IP", {})
-                    required_keys = ["source", "destination", "camera_ip", "amcrest_username", "amcrest_password"]
+    try:
+        # Check IP.db
+        ip_config_updated = False
+        with shelve_lock:
+            with shelve.open('IP.db', 'c') as ip_db:
+                ip_data = ip_db.get("IP", {})
+                required_keys = ["source", "destination", "camera_ip", "amcrest_username", "amcrest_password"]
 
-                    if not all(k in ip_data and ip_data[k] for k in required_keys):
-                        ip_db["IP"] = latest_set_ip_settings if latest_set_ip_settings else fallback_ip
-                        ip_config_updated = True
-                        print("[VALIDATE] Fallback IP configuration written.")
+                if not all(k in ip_data and ip_data[k] for k in required_keys):
+                    ip_db["IP"] = latest_set_ip_settings if latest_set_ip_settings else fallback_ip
+                    ip_config_updated = True
+                    print("[VALIDATE] Fallback IP configuration written.")
 
-            # Check settings.db
-            with shelve_lock:
-                with shelve.open('settings.db', 'c') as settings_db:
-                    if 'Confidence_Rate' not in settings_db:
-                        settings_db['Confidence_Rate'] = fallback_confidence_rate
-                        print("[VALIDATE] Fallback Confidence_Rate initialized.")
+        # Check settings.db
+        with shelve_lock:
+            with shelve.open('settings.db', 'c') as settings_db:
+                if 'Confidence_Rate' not in settings_db:
+                    settings_db['Confidence_Rate'] = fallback_confidence_rate
+                    print("[VALIDATE] Fallback Confidence_Rate initialized.")
 
-                    if 'Port' not in settings_db:
-                        settings_db['Port'] = 53101
-                        print("[VALIDATE] Missing Port generated.")
+                if 'Port' not in settings_db:
+                    settings_db['Port'] = 53101
+                    print("[VALIDATE] Missing Port generated.")
 
-                    if 'Generate_Status' not in settings_db:
-                        settings_db['Generate_Status'] = False
-                        print("[VALIDATE] Generate_Status set to False.")
+                if 'Generate_Status' not in settings_db:
+                    settings_db['Generate_Status'] = False
+                    print("[VALIDATE] Generate_Status set to False.")
 
-                    if 'Email_Data' not in settings_db:
-                        settings_db['Email_Data'] = {'Email_Info': fallback_email}
-                        print("[VALIDATE] Fallback Email_Data written.")
+                if 'Email_Data' not in settings_db:
+                    settings_db['Email_Data'] = {'Email_Info': fallback_email}
+                    print("[VALIDATE] Fallback Email_Data written.")
 
-                    if ip_config_updated or 'syn_ack_seq' not in settings_db or 'syn_ack_ack' not in settings_db:
-                        try:
-                            ip_data = None
-                            with shelve_lock:
-                                with shelve.open('IP.db', 'r') as ip_db:
-                                    ip_data = ip_db.get("IP", {})
+                if ip_config_updated or 'syn_ack_seq' not in settings_db or 'syn_ack_ack' not in settings_db:
+                    try:
+                        ip_data = None
+                        with shelve_lock:
+                            with shelve.open('IP.db', 'r') as ip_db:
+                                ip_data = ip_db.get("IP", {})
 
-                            source = ip_data.get("source")
-                            destination = ip_data.get("destination")
+                        source = ip_data.get("source")
+                        destination = ip_data.get("destination")
 
-                            port = settings_db.get('Port')
-                            if source and destination and port:
-                                start_syn_packet_thread(source, destination, port, 50000)
-                                send_udp_packet(source, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
-                                print("[VALIDATE] SYN/ACK packets sent after IP config.")
-                            else:
-                                print("[VALIDATE WARNING] Could not send SYN/ACK packets due to missing source/destination/port.")
+                        port = settings_db.get('Port')
+                        if source and destination and port:
+                            start_syn_packet_thread(source, destination, port, 50000)
+                            send_udp_packet(source, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
+                            print("[VALIDATE] SYN/ACK packets sent after IP config.")
+                        else:
+                            print("[VALIDATE WARNING] Could not send SYN/ACK packets due to missing source/destination/port.")
 
-                        except Exception as e:
-                            print(f"[VALIDATE ERROR] Failed to generate SYN/ACK packets: {e}")
+                    except Exception as e:
+                        print(f"[VALIDATE ERROR] Failed to generate SYN/ACK packets: {e}")
 
-        except Exception as e:
-            print(f"[VALIDATE ERROR] {e}")
+    except Exception as e:
+        print(f"[VALIDATE ERROR] {e}")
 
-        time.sleep(2)
+    time.sleep(2)
 
 def video_processing_loop():
     global freshest_frame, object_count, frame_data, latest_processed_frame
@@ -519,7 +534,6 @@ def save_chart_data(total_count, feeding_time_str):
     except Exception as e:
         print(f"[ERROR] Failed to save feeding data: {e}")
 
-@login_required
 def generate_frames():
     global latest_processed_frame, frame_data
     count = 1
@@ -655,27 +669,14 @@ def load_user(user_id):
 def index():
     return redirect(url_for('logout'))
 
-
-# Function to open shelve safely
-def open_shelve(filename, mode='c'):
-    try:
-        shelf = shelve.open(filename, mode)
-        return shelf
-    except Exception as e:
-        print(f"Error opening shelve: {e}")
-        return None
-
-# Routes for Registration and Login using shelve
 def seed_admin_account():
     with shelve.open('users.db', 'c') as db:
-        # 1. Check if any existing user already has the Admin role
         has_admin = False
         for key, user_data in db.items():
             if user_data.get('role') == 'Admin':
                 has_admin = True
                 break
 
-        # 2. If no Admin found, create your static account
         if not has_admin:
             hashed = generate_password_hash('Password1!', method='pbkdf2:sha256')
             admin = User(
@@ -685,13 +686,19 @@ def seed_admin_account():
                 role='Admin'
             )
             db['admin'] = {
+                'uuid': str(uuid.uuid4()),
                 'username': admin.username,
-                'email':    admin.email,
+                'email': admin.email.lower(),
                 'password': admin.password,
-                'role':     admin.role,
-                'status':   admin.status
+                'role': admin.role,
+                'status': admin.status,
+                'user_first_feed': "",
+                'user_second_feed': "",
+                'user_feeding_duration': 0,
+                'user_interval_seconds': 0,
+                'user_pellets': 0
             }
-
+            print("Admin account seeded successfully.")
 
 seed_admin_account()
 @app.route('/register', methods=['GET', 'POST'])
@@ -699,15 +706,15 @@ def register():
     form = RegisterForm()  # Create an instance of RegisterForm
 
     if form.validate_on_submit():
-        username = form.username.data
-        email = form.email.data
+        username = form.username.data.strip()
+        email = form.email.data.strip().lower()
         password = form.password.data
         role = form.role.data
 
         # Check if the username or email already exists in the database
         with shelve.open('users.db', 'c') as db:
             username_exists = username in db
-            email_exists = any(user_data['email'] == email for user_data in db.values())
+            email_exists = any(user_data['email'].lower() == email for user_data in db.values())
 
             if username_exists or email_exists:
                 flash('Username or email already in use', 'danger')
@@ -732,6 +739,7 @@ def register():
                 return redirect(url_for('login'))
 
     return render_template('register.html', form=form, hide_sidebar=True)
+
 @app.route('/register2', methods=['GET', 'POST'])
 @login_required
 @role_required('Admin')
@@ -739,15 +747,15 @@ def register2():
     form = RegisterForm()  # Create an instance of RegisterForm
 
     if form.validate_on_submit():
-        username = form.username.data
-        email = form.email.data
+        username = form.username.data.strip()
+        email = form.email.data.strip().lower()
         password = form.password.data
         role = form.role.data
 
         # Check if the username or email already exists in the database
         with shelve.open('users.db', 'c') as db:
             username_exists = username in db
-            email_exists = any(user_data['email'] == email for user_data in db.values())
+            email_exists = any(user_data['email'].lower() == email for user_data in db.values())
 
             if username_exists or email_exists:
                     flash('Username or email already in use', 'danger')
@@ -773,25 +781,22 @@ def register2():
     return render_template('register2.html', form=form)
 
 def find_user(identifier: str):
-
     identifier = identifier.strip().lower()
     with shelve.open('users.db', 'r') as db:
-        # 1) Direct username lookup (fast hash lookup)
-        if identifier in db:
-            user = db[identifier]
-            user['username'] = identifier
-            return user
+        # 1) Username matching
+        for uname in db:
+            if uname.lower() == identifier:
+                user = db[uname]
+                user['username'] = uname
+                return user
 
-        # 2) Scan values for matching email
+        # 2) Email matching
         for uname, udata in db.items():
             if udata.get('email', '').lower() == identifier:
-                # inject the real username key into the dict
                 udata['username'] = uname
                 return udata
 
-    # not found
     return None
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -825,6 +830,7 @@ from datetime import datetime, timezone
 def send_mfa_code():
     # 1) generate code & timestamps
     code = str(secrets.randbelow(900_000) + 100_000)
+    print("The MFA Code: ",code)
     now = datetime.now(timezone.utc)
     session['mfa_code']       = code
     session['mfa_sent_at']    = now.isoformat()
@@ -983,6 +989,7 @@ def send_reset_mfa_code():
     Generate/store a 6-digit code for password-reset MFA and email it.
     """
     code = str(secrets.randbelow(900_000) + 100_000)
+    print("The MFA Code: ", code)
     now = datetime.now(timezone.utc)
 
     session['reset_mfa_code']       = code
@@ -1636,9 +1643,9 @@ def dashboard():
                         }
                         break
 
-        with shelve_lock:
-            with shelve.open('currentcount.db', 'c') as db2:
-                latest_count = db2.get('object_count', 0)
+
+        with shelve.open('currentcount.db', 'c') as db2:
+            latest_count = db2.get('object_count', 0)
 
         print("Fetching pellet data")
         response = get_pellet_data()
@@ -1654,7 +1661,6 @@ def dashboard():
 @app.route('/camera_view',methods=['GET','POST'])
 @login_required
 def camera_view():
-    session['access_video_feed'] = True
     return render_template('camera_view.html')
 
 @app.route('/export_data', methods=['POST'])
@@ -1844,7 +1850,6 @@ def update_setting():
                     setting.second_timer.data = user_data.get("user_second_feed", "")
                     setting.pellets.data = user_data.get("user_pellets", 0)
                     duration_sec = user_data.get("user_feeding_duration", 0)
-                    print(f"Duration that retrieved: {duration_sec}")
                     interval_sec = user_data.get("user_interval_seconds", 0)
 
                     setting.minutes.data = duration_sec // 60
@@ -2008,19 +2013,18 @@ def update_email_settings():
 
         return render_template('email_settings.html', form=setting)
 
-@app.route('/clear_video_feed_access', methods=['POST'])
+@app.route('/clear_video_feed_access', methods=['GET'])
 def clear_video_feed_access():
-    db = shelve.open('settings.db', 'w')
-    db['Generate_Status'] = False
-    db.close()
-    return jsonify({'message': 'Video feed access cleared'}), 200  # Returning JSON response
+    with shelve.open('settings.db', 'w') as db:
+        db['Generate_Status'] = False
+    stop_camera_threads()
+    return '', 204  # No Content (sendBeacon doesn't expect a response body)
 
 @app.route('/video_feed')
-
 def video_feed():
-    db = shelve.open('settings.db', 'w')
-    db['Generate_Status'] = True
-    db.close()
+    with shelve.open('settings.db', 'w') as db:
+        db['Generate_Status'] = True
+    start_camera_threads()
     try:
         return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
     except Exception as e:
@@ -2029,7 +2033,7 @@ def video_feed():
 
 def send_feedback_notification(name, user_email, message, sent_time=None):
     """
-    Send a notification email to the I@FAD team with the user’s feedback,
+    Send a notification email to the I@FAD team with the user's feedback,
     timestamped in Singapore time.
     """
     sg_tz = ZoneInfo("Asia/Singapore")
@@ -2073,7 +2077,7 @@ def send_feedback_notification(name, user_email, message, sent_time=None):
     msg = flask_mail.Message(
         subject="I@FAD – New Feedback",
         sender=recipient_email,
-        recipients=recipient_email,
+        recipients=[recipient_email],
         body=text_body,
         html=html_body
     )
@@ -2106,10 +2110,10 @@ def send_feedback_confirmation(user_name, user_email, message, sent_time=None):
     text_body = (
         "I@FAD Feedback Confirmation\n\n"
         f"Hello {user_name},\n\n"
-        "Thanks for your feedback! Here’s what we received:\n\n"
+        "Thanks for your feedback! Here's what we received:\n\n"
         f"{message}\n\n"
         f"Submitted at {now.strftime('%Y-%m-%d %H:%M')}\n\n"
-        "We’ll review it and get back to you if needed."
+        "We'll review it and get back to you if needed."
     )
 
     # HTML version
@@ -2200,10 +2204,9 @@ def admin_feedbacks():
 @role_required('Admin')
 def delete_feedback(fb_id):
     if store_Feedback.delete(fb_id):
-        flash(f"Feedback #{fb_id} has been deleted successfully.", "success")
+        return jsonify({'success': True, 'message': f'Feedback deleted successfully.'}), 200
     else:
-        flash("Could not find that feedback.", "warning")
-    return redirect(url_for('admin_feedbacks'))
+        return jsonify({'success': False, 'message': 'Could not find that feedback.'}), 404
 
 @app.route('/changed_password', methods=['GET', 'POST'])
 @login_required
@@ -2390,7 +2393,6 @@ def delete_user(user_uuid):
 
 @app.route('/set_ip', methods=['GET', 'POST'])
 @login_required
-@role_required('Admin')
 def set_ip():
     global latest_set_ip_settings
     setting = ipForm(request.form)
@@ -2565,23 +2567,49 @@ def setup_mail():
     app.config['MAIL_DEFAULT_SENDER'] = ('Admin', 'iatfadteam@gmail.com')
     return Mail(app)
 
+camera_threads = []
+camera_lock = threading.Lock()
+
+def start_camera_threads():
+    global camera_threads
+    with camera_lock:
+        if camera_threads:
+            return camera_threads
+
+        stop_event.clear()
+
+        capture_thread = threading.Thread(target=capture_frames, daemon=True)
+        video_thread = threading.Thread(target=video_processing_loop, daemon=True)
+
+        capture_thread.start()
+        time.sleep(5)
+        video_thread.start()
+
+        camera_threads = [capture_thread, video_thread]
+        print("Camera threads started.")
+        return camera_threads
+
+def stop_camera_threads():
+    global camera_threads
+    with camera_lock:
+        stop_event.set()
+        for thread in camera_threads:
+            if thread.is_alive():
+                thread.join(timeout=2)
+        camera_threads = []
+        print("Camera thread stopped.")
 
 def start_threads():
     print("Starting all system threads...")
 
-    capture_thread = threading.Thread(target=capture_frames) # Capture frames from the camera
-    video_thread = threading.Thread(target=video_processing_loop) # Process the captured frames for video feed
     feeding_thread = threading.Thread(target=feeding_scheduler_loop) # Schedule feeding tasks based on the configured times
     validate_thread = threading.Thread(target=validate_config_thread) # Validate the configuration and settings periodically
 
-    capture_thread.start()
-    time.sleep(5)  # ensure camera is ready
-    video_thread.start()
     feeding_thread.start()
     validate_thread.start()
     reschedule_feeding_alerts()
 
-    return [capture_thread, video_thread, feeding_thread]
+    return [feeding_thread, validate_thread]
 
 
 def cleanup_on_exit():
@@ -2603,7 +2631,6 @@ def cleanup_on_exit():
         print("Port closed successfully.")
     except Exception as e:
         print(f"[CLEANUP ERROR] Failed to send RST packet or close ports: {e}")
-
 
 if __name__ == '__main__':
     try:
