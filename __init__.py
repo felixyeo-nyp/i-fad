@@ -64,71 +64,84 @@ else:
 
 class FreshestFrame(threading.Thread):
     def __init__(self, capture, name='FreshestFrame'):
+        if not capture or not capture.isOpened():
+            raise ValueError("Capture device is not opened.")
+
         self.capture = capture
-        assert self.capture.isOpened()
         self.condition = threading.Condition()
+        self.stop_event = threading.Event()
         self.is_running = False
         self.frame = None
         self.pellets_num = 0
         self.callback = None
-        super().__init__(name=name)
+        super().__init__(name=name, daemon=True)
         self.start()
 
-    def start(self):
-        self.is_running = True
-        super().start()
-
     def stop(self, timeout=None):
+        self.stop_event.set()
         self.is_running = False
         self.join(timeout=timeout)
-        if self.capture:
+        if self.capture and self.capture.isOpened():
             self.capture.release()
 
     def run(self):
-        while self.is_running:
-            try:
-                rv, img = self.capture.read()
-                if not rv or img is None:
-                    if not self.is_running:
+        self.is_running = True
+        print("[FreshestFrame] Thread started.")
+        try:
+            while not self.stop_event.is_set():
+                try:
+                    if not self.capture.isOpened():
+                        print("[WARNING] Capture device closed.")
                         break
-                    time.sleep(0.1)
-                    continue
 
-                with self.condition:
-                    self.frame = img
-                    self.pellets_num += 1
-                    self.condition.notify_all()
+                    rv, img = self.capture.read()
+                    if not rv or img is None:
+                        print("[WARNING] Frame read failed, retrying...")
+                        time.sleep(1)
+                        continue
 
-                if self.callback:
-                    try:
-                        self.callback(img)
-                    except Exception as cb_err:
-                        print(f"[ERROR] Callback failed: {cb_err}")
+                    with self.condition:
+                        self.frame = img
+                        self.pellets_num += 1
+                        self.condition.notify_all()
 
-            except Exception as e:
-                if not self.is_running:
-                    break  # Stop logging if shutting down
-                print(f"[ERROR] Unexpected error in FreshestFrame thread: {e}")
-                time.sleep(0.5)
+                    if self.callback:
+                        try:
+                            self.callback(img)
+                        except Exception as cb_err:
+                            print(f"[ERROR] Callback failed: {cb_err}")
+                except cv2.error as cv_err:
+                    print(f"[OpenCV ERROR] {cv_err}")
+                    traceback.print_exc()
+                    time.sleep(1)
+                except Exception as e:
+                    print(f"[ERROR] Unexpected error in FreshestFrame thread: {e}")
+                    traceback.print_exc()
+                    time.sleep(1)
+        finally:
+            print("[INFO] Releasing capture resource.")
+            if self.capture and self.capture.isOpened():
+                self.capture.release()
+            print("[FreshestFrame] Thread stopped cleanly.")
 
     def read(self, wait=True, sequence_number=None, timeout=None):
         with self.condition:
             if wait:
-                # If sequence_number is not provided, get the next sequence number
                 if sequence_number is None:
                     sequence_number = self.pellets_num + 1
 
                 if sequence_number < 1:
                     sequence_number = 1
 
-                if (sequence_number) > 0:
-                    self.pellets_num = sequence_number
-
-                # Wait until the latest frame's sequence number is greater than or equal to sequence_number
-                rv = self.condition.wait_for(lambda: self.pellets_num >= sequence_number, timeout=timeout) # if there is a pellets. should get "true"
+                rv = self.condition.wait_for(
+                    lambda: self.pellets_num >= sequence_number,
+                    timeout=timeout
+                )
                 if not rv:
-                    return (self.pellets_num, self.frame)  # Return the latest frame if timeout occurs
-            return (self.pellets_num, self.frame)  # Return the latest frame
+                    print("[WARNING] Frame wait timeout, returning latest available frame.")
+                    return (self.pellets_num, self.frame)
+
+            return (self.pellets_num, self.frame)
 
 # define the id "1" for pellets
 # do note that in the pth file, the pellet id also is 1
@@ -140,6 +153,7 @@ class_labels = {
 model_path = './best_model5.pth'
 latest_processed_frame = None  # Stores the latest processed frame
 stop_event = threading.Event()  # Event to stop threads gracefully
+camera_stop_event = threading.Event()
 freshest_frame = None
 
 # Initialize variables for feeding logic
@@ -191,7 +205,7 @@ model.to(device)
 model.eval()
 
 def capture_frames():
-    while not stop_event.is_set():
+    while not camera_stop_event.is_set():
         try:
             with shelve.open('IP.db', 'c') as ip_db:
                 cam = ip_db.get('IP', {})
@@ -215,15 +229,21 @@ def capture_frames():
 
         if not cap.isOpened():
             print("Warning: Cannot open video stream. Retrying in 10s...")
+            cap.release()
             time.sleep(10)
             continue
 
-        global freshest_frame
-        with freshest_frame_lock:
-            freshest_frame = FreshestFrame(cap)
+        try:
+            global freshest_frame
+            with freshest_frame_lock:
+                freshest_frame = FreshestFrame(cap)
+        except Exception as e:
+            print(f"[ERROR] Could not start FreshestFrame thread: {e}")
+            cap.release()
+            continue
 
         global latest_processed_frame
-        while not stop_event.is_set():
+        while not camera_stop_event.is_set():
             if not cap.isOpened():
                 break
 
@@ -250,63 +270,64 @@ def validate_config_thread():
     }
     fallback_email = Email('iatfadteam@gmail.com', 'iatfadteam@gmail.com', 'pmtu cilz uewx xqqi', 3)
 
-    try:
-        # Check IP.db
-        ip_config_updated = False
-        with shelve_lock:
-            with shelve.open('IP.db', 'c') as ip_db:
-                ip_data = ip_db.get("IP", {})
-                required_keys = ["source", "destination", "camera_ip", "amcrest_username", "amcrest_password"]
+    while True:
+        try:
+            # Check IP.db
+            ip_config_updated = False
+            with shelve_lock:
+                with shelve.open('IP.db', 'c') as ip_db:
+                    ip_data = ip_db.get("IP", {})
+                    required_keys = ["source", "destination", "camera_ip", "amcrest_username", "amcrest_password"]
 
-                if not all(k in ip_data and ip_data[k] for k in required_keys):
-                    ip_db["IP"] = latest_set_ip_settings if latest_set_ip_settings else fallback_ip
-                    ip_config_updated = True
-                    print("[VALIDATE] Fallback IP configuration written.")
+                    if not all(k in ip_data and ip_data[k] for k in required_keys):
+                        ip_db["IP"] = latest_set_ip_settings if latest_set_ip_settings else fallback_ip
+                        ip_config_updated = True
+                        print("[VALIDATE] Fallback IP configuration written.")
 
-        # Check settings.db
-        with shelve_lock:
-            with shelve.open('settings.db', 'c') as settings_db:
-                if 'Confidence_Rate' not in settings_db:
-                    settings_db['Confidence_Rate'] = fallback_confidence_rate
-                    print("[VALIDATE] Fallback Confidence_Rate initialized.")
+            # Check settings.db
+            with shelve_lock:
+                with shelve.open('settings.db', 'c') as settings_db:
+                    if 'Confidence_Rate' not in settings_db:
+                        settings_db['Confidence_Rate'] = fallback_confidence_rate
+                        print("[VALIDATE] Fallback Confidence_Rate initialized.")
 
-                if 'Port' not in settings_db:
-                    settings_db['Port'] = 53101
-                    print("[VALIDATE] Missing Port generated.")
+                    if 'Port' not in settings_db:
+                        settings_db['Port'] = 53101
+                        print("[VALIDATE] Missing Port generated.")
 
-                if 'Generate_Status' not in settings_db:
-                    settings_db['Generate_Status'] = False
-                    print("[VALIDATE] Generate_Status set to False.")
+                    if 'Generate_Status' not in settings_db:
+                        settings_db['Generate_Status'] = False
+                        print("[VALIDATE] Generate_Status set to False.")
 
-                if 'Email_Data' not in settings_db:
-                    settings_db['Email_Data'] = {'Email_Info': fallback_email}
-                    print("[VALIDATE] Fallback Email_Data written.")
+                    if 'Email_Data' not in settings_db:
+                        settings_db['Email_Data'] = {'Email_Info': fallback_email}
+                        print("[VALIDATE] Fallback Email_Data written.")
 
-                if ip_config_updated or 'syn_ack_seq' not in settings_db or 'syn_ack_ack' not in settings_db:
-                    try:
-                        ip_data = None
-                        with shelve_lock:
-                            with shelve.open('IP.db', 'r') as ip_db:
-                                ip_data = ip_db.get("IP", {})
+                    if ip_config_updated or 'syn_ack_seq' not in settings_db or 'syn_ack_ack' not in settings_db:
+                        try:
+                            ip_data = None
+                            with shelve_lock:
+                                with shelve.open('IP.db', 'r') as ip_db:
+                                    ip_data = ip_db.get("IP", {})
 
-                        source = ip_data.get("source")
-                        destination = ip_data.get("destination")
+                            source = ip_data.get("source")
+                            destination = ip_data.get("destination")
 
-                        port = settings_db.get('Port')
-                        if source and destination and port:
-                            start_syn_packet_thread(source, destination, port, 50000)
-                            send_udp_packet(source, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
-                            print("[VALIDATE] SYN/ACK packets sent after IP config.")
-                        else:
-                            print("[VALIDATE WARNING] Could not send SYN/ACK packets due to missing source/destination/port.")
+                            port = settings_db.get('Port')
+                            if source and destination and port:
+                                start_syn_packet_thread(source, destination, port, 50000)
+                                send_udp_packet(source, "255.255.255.255", 60000, b"\x00\x00\x00\x00\x00")
+                                print("[VALIDATE] SYN/ACK packets sent after IP config.")
+                            else:
+                                print("[VALIDATE WARNING] Could not send SYN/ACK packets due to missing source/destination/port.")
 
-                    except Exception as e:
-                        print(f"[VALIDATE ERROR] Failed to generate SYN/ACK packets: {e}")
+                        except Exception as e:
+                            print(f"[VALIDATE ERROR] Failed to generate SYN/ACK packets: {e}")
 
-    except Exception as e:
-        print(f"[VALIDATE ERROR] {e}")
+        except Exception as e:
+            print(f"[VALIDATE ERROR] {e}")
 
-    time.sleep(2)
+        time.sleep(2)
 
 def video_processing_loop():
     global freshest_frame, object_count, frame_data, latest_processed_frame
@@ -537,7 +558,7 @@ def save_chart_data(total_count, feeding_time_str):
 def generate_frames():
     global latest_processed_frame, frame_data
     count = 1
-    while not stop_event.is_set():
+    while not camera_stop_event.is_set():
         if count // 60 == 0:
             db = shelve.open('settings.db', 'c')
             if not db.get('Generate_Status', True):
@@ -2576,7 +2597,7 @@ def start_camera_threads():
         if camera_threads:
             return camera_threads
 
-        stop_event.clear()
+        camera_stop_event.clear()
 
         capture_thread = threading.Thread(target=capture_frames, daemon=True)
         video_thread = threading.Thread(target=video_processing_loop, daemon=True)
@@ -2590,13 +2611,20 @@ def start_camera_threads():
         return camera_threads
 
 def stop_camera_threads():
-    global camera_threads
+    global camera_threads, freshest_frame
     with camera_lock:
-        stop_event.set()
+        camera_stop_event.set()
+
+        with freshest_frame_lock:
+            freshest_frame.stop()
+            freshest_frame = None
+
         for thread in camera_threads:
             if thread.is_alive():
-                thread.join(timeout=2)
+                thread.join(timeout=5)
+
         camera_threads = []
+        camera_stop_event.clear()
         print("Camera thread stopped.")
 
 def start_threads():
