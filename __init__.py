@@ -14,11 +14,6 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 import shelve, re
 from flask_wtf import FlaskForm, CSRFProtect
 from wtforms.validators import email
-import win32serviceutil
-import win32service
-import win32event
-import servicemanager
-import subprocess
 from Forms import configurationForm, emailForm, LoginForm, RegisterForm,updatepasswordForm, MFAForm, FeedbackForm, updateemailrole, forgetpassword , ipForm, DeleteForm
 from flask_mail import Mail, Message
 import random
