@@ -64,7 +64,7 @@ class FreshestFrame(threading.Thread):
 
         self.capture = capture
         self.condition = threading.Condition()
-        self.stop_event = threading.Event()
+        self.stop_event = camera_stop_event
         self.is_running = False
         self.frame = None
         self.pellets_num = 0
@@ -582,8 +582,10 @@ def generate_frames():
                     cv2.rectangle(frame_to_use, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
                     cv2.putText(frame_to_use, f'{class_labels[label]}: {score:.2f}', (box[0], box[1] - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1.4, (0, 255, 0), 2)
-
-        ret, jpeg = cv2.imencode('.jpg', frame_to_use)
+        try:
+            ret, jpeg = cv2.imencode('.jpg', frame_to_use)
+        except Exception as e:
+            print("[Generate Frames] Encoding error:", e)
         if ret:
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
@@ -2611,7 +2613,7 @@ def stop_camera_threads():
         camera_stop_event.set()
 
         with freshest_frame_lock:
-            freshest_frame.stop()
+            freshest_frame.stop(5)
             freshest_frame = None
 
         for thread in camera_threads:
