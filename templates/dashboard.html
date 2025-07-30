@@ -196,10 +196,46 @@
     <div class="chart-section hidden-on-load watch-scroll">
         <div class="section-header">
             <h2>Past 7 Days' Feeding Summary</h2>
+            <div style="margin-top: 10px;" class="toggle-btn-wrapper">
+                <button onclick="toggleChart('feed')" class="toggle-btn active" id="feedToggleBtn">Feed Count View</button>
+                <button onclick="toggleChart('rate')" class="toggle-btn" id="rateToggleBtn">Feeding Rate View</button>
+            </div>
         </div>
-        <div class="chart-container">
+
+        <!-- Feed Count Chart -->
+        <div class="chart-container" id="feedChartContainer">
             <canvas id="totalPelletChart"></canvas>
         </div>
+
+        <!-- Feeding Rate Chart -->
+        <div class="chart-container" id="rateChartContainer" style="display: none;">
+            <canvas id="feedingRateChart"></canvas>
+        </div>
+
+        <!-- Data Preview Table -->
+        <div id="dataPreviewWrapper" class="data-preview-table hidden-on-load watch-scroll">
+            <div class="table-header">
+                <h2>Preview of Exported Data</h2>
+            </div>
+            
+            <div class="table-container">
+                <table id="dataPreviewTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Morning Feed Amount</th>
+                            <th>Evening Feed Amount</th>
+                            <th>Total Feed Amount</th>
+                            <th>Feeding Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Filled dynamically below -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="export-btn-wrapper">
             <button class="export-btn" onclick="exportTotalFeedData()">
                 <i class="fas fa-file-export"></i> Export Data
@@ -260,9 +296,26 @@
             }, 200);
         }
     }
+    function toggleChart(type) {
+        const feedBtn = document.getElementById('feedToggleBtn');
+        const rateBtn = document.getElementById('rateToggleBtn');
+
+        if (type === 'feed') {
+            document.getElementById('feedChartContainer').style.display = 'block';
+            document.getElementById('rateChartContainer').style.display = 'none';
+            feedBtn.classList.add('active');
+            rateBtn.classList.remove('active');
+        } else {
+            document.getElementById('feedChartContainer').style.display = 'none';
+            document.getElementById('rateChartContainer').style.display = 'block';
+            feedBtn.classList.remove('active');
+            rateBtn.classList.add('active');
+        }
+    }
 </script>
 <script>
     const checkingInterval = {{ checking_interval }};
+    const expectedFeedCount = {{ user_settings.pellets | float * 100 }};
     let mergedChart;
 
     async function fetchUpdatedData() {
@@ -276,6 +329,28 @@
             mergedChart.data.datasets[2].data = pelletData.total_feed_count;
 
             mergedChart.update();
+
+            const tableBody = document.querySelector('#dataPreviewTable tbody');
+            tableBody.innerHTML = '';
+
+            for (let i = 0; i < pelletData.labels.length; i++) {
+                const row = document.createElement('tr');
+
+                const date = pelletData.labels[i];
+                const morning = pelletData.first_feed_left[i] || 0;
+                const evening = pelletData.second_feed_left[i] || 0;
+                const total = pelletData.total_feed_count[i] || 0;
+                const rate = total ? `${((total / 400) * 100).toFixed(2)}%` : '0.00%';
+
+                row.innerHTML = `
+                    <td>${date}</td>
+                    <td>${morning}</td>
+                    <td>${evening}</td>
+                    <td>${total}</td>
+                    <td>${rate}</td>
+                `;
+                tableBody.appendChild(row);
+            }
         } catch (error) {
             console.error('Error fetching updated pellet data:', error);
         }
@@ -309,16 +384,31 @@
                         {
                             label: 'Total Feed Count',
                             data: pelletData.total_feed_count,
+                            backgroundColor: '#c7609c',
+                            borderColor: '#8e3d6b',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Expected Feed Per Meal',
+                            data: new Array(pelletData.labels.length).fill(expectedFeedCount),
                             type: 'line',
+                            borderColor: '#f57c00',
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            pointRadius: 0,
                             fill: false,
-                            borderWidth: 1,
-                            tension: 0.3,
-                            borderColor: '#00d1ff',
-                            backgroundColor: '#ff6600',
-                            pointBackgroundColor: '#ff6600',
-                            pointBorderColor: '#ffffff',
-                            pointRadius: 7,
-                            pointHoverRadius: 10
+                            tension: 0,
+                        },
+                        {
+                            label: 'Expected Total Feed Amount',
+                            data: new Array(pelletData.labels.length).fill(expectedFeedCount * 2),
+                            type: 'line',
+                            borderColor: '#8e3d6b',
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0,
                         }
                     ]
                 },
@@ -371,6 +461,78 @@
                     }
                 }
             });
+
+            const rateCtx = document.getElementById('feedingRateChart').getContext('2d');
+            const feedingRateChart = new Chart(rateCtx, {
+                type: 'line',
+                data: {
+                    labels: pelletData.labels,
+                    datasets: [
+                        {
+                            label: 'Feeding Rate',
+                            data: pelletData.total_feed_count.map(count => (count / (expectedFeedCount * 2)).toFixed(2)),
+                            borderColor: '#00bcd4',
+                            borderWidth: 2,
+                            pointRadius: 2,
+                            fill: false,
+                            tension: 0,
+                        },
+                        {
+                            label: 'Healthy Feeding Rate',
+                            data: new Array(pelletData.labels.length).fill(1.0),
+                            borderColor: '#388e3c',
+                            borderWidth: 2,
+                            borderDash: [4, 4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 16
+                                },
+                                padding: 20
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 0.25,
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
         } catch (error) {
             console.error('Error initializing chart:', error);
         }
@@ -387,7 +549,8 @@
                 labels: mergedChart.data.labels,
                 first: mergedChart.data.datasets[0].data,
                 second: mergedChart.data.datasets[1].data,
-                total: mergedChart.data.datasets[2].data
+                total: mergedChart.data.datasets[2].data,
+                expectedFeedCount: expectedFeedCount
             })
         })
             .then(response => response.blob())
@@ -407,9 +570,7 @@
 
     window.onload = function () {
         fetchAndInitializeCharts();
-        if (checkingInterval > 5) {
-            setInterval(fetchUpdatedData, checkingInterval * 1000);
-        }
+        fetchUpdatedData();
     };
 </script>
 
@@ -927,6 +1088,7 @@
 
     .section-header {
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
         margin-bottom: 25px;
@@ -937,6 +1099,129 @@
         font-size: 2.4rem;
         font-weight: 800;
         color: var(--text-primary);
+    }
+
+    .toggle-btn-wrapper {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    .toggle-btn {
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+        padding: 12px 25px;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease-in-out;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        border: 2px solid black;
+    }
+
+    .toggle-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    }
+
+    .toggle-btn.active {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        box-shadow: 0 6px 25px rgba(41, 128, 185, 0.5);
+        font-weight: 600;
+        border: 2px solid white;
+    }
+
+    /* Table Styles */
+    .table-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .table-header h2 {
+        text-transform: uppercase;
+        font-size: 2.4rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 5px;
+    }
+
+    .table-container {
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 16px;
+        overflow: auto;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    #dataPreviewTable {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    #dataPreviewTable th {
+        background: rgba(129, 140, 248, 0.15);
+        color: var(--highlight);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+        padding: 16px 12px;
+        text-align: center;
+        border-bottom: 2px solid rgba(129, 140, 248, 0.3);
+    }
+
+    #dataPreviewTable td {
+        padding: 14px 12px;
+        text-align: center;
+        color: var(--text-primary);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    #dataPreviewTable tbody tr:nth-child(even) {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    #dataPreviewTable tbody tr:hover {
+        background: rgba(129, 140, 248, 0.1);
+    }
+
+    #dataPreviewTable tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Pill badges for values */
+    .value-pill {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .morning-pill {
+        background: rgba(251, 192, 45, 0.15);
+        color: #fbc02d;
+    }
+
+    .evening-pill {
+        background: rgba(161, 140, 209, 0.15);
+        color: #a18cd1;
+    }
+
+    .total-pill {
+        background: rgba(199, 96, 156, 0.15);
+        color: #c7609c;
+    }
+
+    .rate-pill {
+        background: rgba(0, 188, 212, 0.15);
+        color: #00bcd4;
     }
 
     .export-btn {
@@ -989,12 +1274,23 @@
 
         .section-header {
             flex-direction: column;
-            align-items: flex-start;
+            justify-content: center;
+            align-items: center;
             gap: 15px;
         }
 
         .export-btn {
-            align-self: flex-start;
+            align-self: center;
+        }
+
+        .toggle-btn-wrapper {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .toggle-btn {
+            width: 100%;
+            justify-content: center;
         }
     }
 </style>

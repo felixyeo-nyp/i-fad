@@ -1591,13 +1591,13 @@ def get_threshold():
 def get_pellet_data():
     # Define test data
     pellet_data = {
-        '03 Jul 2025': {'Morning': 250, 'Evening': 200, 'Total': 450},
-        '04 Jul 2025': {'Morning': 200, 'Evening': 200, 'Total': 400},
-        '05 Jul 2025': {'Morning': 100, 'Evening': 200, 'Total': 300},
-        '06 Jul 2025': {'Morning': 120, 'Evening': 130, 'Total': 250},
-        '07 Jul 2025': {'Morning': 220, 'Evening': 180, 'Total': 400},
-        '08 Jul 2025': {'Morning': 140, 'Evening': 160, 'Total': 300},
-        '09 Jul 2025': {'Morning': 125, 'Evening': 150, 'Total': 275},
+        '24 Jul 2025': {'Morning': 250, 'Evening': 200, 'Total': 450},
+        '25 Jul 2025': {'Morning': 200, 'Evening': 200, 'Total': 400},
+        '26 Jul 2025': {'Morning': 100, 'Evening': 200, 'Total': 300},
+        '27 Jul 2025': {'Morning': 120, 'Evening': 130, 'Total': 250},
+        '28 Jul 2025': {'Morning': 220, 'Evening': 180, 'Total': 400},
+        '29 Jul 2025': {'Morning': 140, 'Evening': 160, 'Total': 300},
+        '30 Jul 2025': {'Morning': 125, 'Evening': 150, 'Total': 275},
     }
     # Check if the database exists, and if not, create and populate it
     db_path = 'mock_chart_data.db'
@@ -1689,28 +1689,48 @@ def export_data():
     first = data.get('first', [])
     second = data.get('second', [])
     total = data.get('total', [])
+    expected_feed_count = data.get('expectedFeedCount', 0)
 
     # Create an Excel workbook and worksheet
     workbook = openpyxl.Workbook()
     sheet = workbook.active
-    sheet.title = ' Leftover Pellets Over The Past Seven Days'
+    todayDate = datetime.today().strftime("%Y-%m-%d")
+    seven_days_ago = (datetime.today() - timedelta(days=6)).strftime("%Y-%m-%d")
+    sheet.title = f"Past 7 Days' Feeding Summary ({seven_days_ago} - {todayDate})"
+
+    # Title
+    sheet.merge_cells("A1:E1")
+    sheet["A1"] = f"Past 7 Days' Feeding Summary ({seven_days_ago} - {todayDate})"
+    sheet["A1"].font = Font(bold=True, size=14)
 
     # Set up the header
-    sheet["A1"] = "Date"
-    sheet["B1"] = "first feed number of pellets left"
-    sheet["C1"] = "second feed number of pellets left"
-    sheet["D1"] = "total feed pellets fed"
-    sheet["A1"].font = Font(bold=True)
-    sheet["B1"].font = Font(bold=True)
-    sheet["C1"].font = Font(bold=True)
-    sheet["D1"].font = Font(bold=True)
+    sheet["A2"] = "Date"
+    sheet["B2"] = "Morning Feed Count"
+    sheet["C2"] = "Evening Feed Count"
+    sheet["D2"] = "Total Feed Count"
+    sheet["E2"] = "Feeding Rate"
+    sheet["A2"].font = Font(bold=True)
+    sheet["B2"].font = Font(bold=True)
+    sheet["C2"].font = Font(bold=True)
+    sheet["D2"].font = Font(bold=True)
+    sheet["E2"].font = Font(bold=True)
 
     # Populate the worksheet with data
-    for index, (label, first,second,total) in enumerate(zip(labels, first,second,total), start=2):
+    for index, (label, first,second,total) in enumerate(zip(labels, first,second,total), start=3):
         sheet[f"A{index}"] = label
         sheet[f"B{index}"] = first
         sheet[f"C{index}"] = second
         sheet[f"D{index}"] = total
+        # Calculate feeding rate as a percentage of the total feed count
+        if total > 0:
+            feeding_rate = (int(total)) / (int(expected_feed_count)*2) * 100
+        else:
+            feeding_rate = 0
+        sheet[f"E{index}"] = f"{feeding_rate:.2f}%"
+
+    column_widths = [20, 22, 22, 20, 22]
+    for i, width in enumerate(column_widths, start=1):
+        sheet.column_dimensions[openpyxl.utils.get_column_letter(i)].width = width
 
     # Save the workbook to a file
     file_path = 'consumption_data.xlsx'
