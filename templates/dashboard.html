@@ -13,14 +13,21 @@
     <div class="stats-grid">
         <!-- Morning Feeding Card -->
         <div class="watch-scroll hidden-on-load">
-            <div class="stat-card morning">
+            <div class="stat-card morning" onclick="toggleInfo(this)">
                 <div class="card-icon">
                     <i class="fas fa-sun"></i>
                 </div>
                 <div class="card-content">
                     <div class="card-label">Morning Feeding Time</div>
                     <div class="card-value">
-                        {{ user_settings.first_timer if user_settings.first_timer else "N/A" }} <span>hours</span>
+                        <div class="primary-info">
+                            {{ user_settings.first_morning_timer + " hours" if user_settings.first_morning_timer and user_settings.first_morning_timer != "N/A" else "N/A" }}
+                            <span>{{ user_settings.second_morning_timer + " hours" if user_settings.second_morning_timer and user_settings.second_morning_timer != "N/A" else "N/A" }}</span>
+                        </div>
+                        <div class="secondary-info" style="display:none;">
+                            {{ user_settings.second_morning_timer + " hours" if user_settings.second_morning_timer and user_settings.second_morning_timer != "N/A" else "N/A" }}
+                            <span>{{ user_settings.first_morning_timer + " hours" if user_settings.first_morning_timer and user_settings.first_morning_timer != "N/A" else "N/A" }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -28,14 +35,21 @@
 
         <!-- Evening Feeding Card -->
         <div class="watch-scroll hidden-on-load">
-            <div class="stat-card evening">
+            <div class="stat-card evening" onclick="toggleInfo(this)">
                 <div class="card-icon">
                     <i class="fas fa-moon"></i>
                 </div>
                 <div class="card-content">
                     <div class="card-label">Evening Feeding Time</div>
                     <div class="card-value">
-                        {{ user_settings.second_timer if user_settings.second_timer else "N/A" }} <span>hours</span>
+                        <div class="primary-info">
+                            {{ user_settings.first_evening_timer + " hours" if user_settings.first_evening_timer and user_settings.first_evening_timer != "N/A" else "N/A" }}
+                            <span>{{ user_settings.second_evening_timer + " hours" if user_settings.second_evening_timer and user_settings.second_evening_timer != "N/A" else "N/A" }}</span>
+                        </div>
+                        <div class="secondary-info" style="display:none;">
+                            {{ user_settings.second_evening_timer + " hours" if user_settings.second_evening_timer and user_settings.second_evening_timer != "N/A" else "N/A" }}
+                            <span>{{ user_settings.first_evening_timer + " hours" if user_settings.first_evening_timer and user_settings.first_evening_timer != "N/A" else "N/A" }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -50,7 +64,7 @@
                 <div class="card-content">
                     <div class="card-label">Feeding Session Duration</div>
                     <div class="card-value">
-                        {{ user_settings.duration_seconds // 60 }} <span>minutes</span> {{ user_settings.duration_seconds % 60 }} <span>seconds</span>
+                        {{ user_settings.minutes * 60 // 60 }} <span>minutes</span> {{ user_settings.minutes * 60 % 60 }} <span>seconds</span>
                     </div>
                 </div>
             </div>
@@ -65,13 +79,8 @@
                 <div class="card-content">
                     <div class="card-label">Estimated Feed Amount</div>
                     <div class="card-value">
-                        <div class="primary-info">
-                            {{ "%.2f"|format(user_settings.pellets | float) }} gram(s)
-                            <span>{{ (user_settings.pellets | float * 100) | int }} pellets</span>
-                        </div>
-                        <div class="secondary-info" style="display:none;">
-                            {{ (user_settings.pellets | float * 100) | int }} pellets
-                            <span>{{ "%.2f"|format(user_settings.pellets | float) }} gram(s)</span>
+                        <div class="card-value">
+                            {{ "%.2f"|format(user_settings.pellets | float) }} <span>gram(s)</span>
                         </div>
                     </div>
                 </div>
@@ -85,15 +94,10 @@
                     <i class="fa-solid fa-circle"></i>
                 </div>
                 <div class="card-content">
-                    <div class="card-label">Current Feed Remaining</div>
+                    <div class="card-label">Pellets Count On Surface</div>
                     <div class="card-value">
-                        <div class="primary-info">
-                            {{ "%.2f"|format(latest_count / 100) }} gram(s)
-                            <span>{{ latest_count }} pellets left</span>
-                        </div>
-                        <div class="secondary-info" style="display:none;">
-                            {{ latest_count }} pellets left
-                            <span>{{ "%.2f"|format(latest_count / 100) }} gram(s)</span>
+                        <div class="card-value">
+                            {{ latest_count }} <span>pellets left</span>
                         </div>
                     </div>
                 </div>
@@ -107,7 +111,7 @@
                     <i class="fas fa-history"></i>
                 </div>
                 <div class="card-content">
-                    <div class="card-label">Feeding Interval</div>
+                    <div class="card-label">Check Interval</div>
                     <div class="card-value">
                         {{ user_settings.interval_seconds // 60 }} <span>minutes</span> {{ user_settings.interval_seconds % 60 }} <span>seconds</span>
                     </div>
@@ -129,24 +133,46 @@
                 <div class="timeline-label tick" style="left: 75%;">18:00</div>
                 <div class="timeline-label end">24:00</div>
 
-                {% if user_settings.first_timer %}
-                    {% set time_morning = user_settings.first_timer | int %}
+                {% if user_settings.first_morning_timer and user_settings.first_morning_timer != "N/A" %}
+                    {% set time_morning = user_settings.first_morning_timer | int %}
                     {% set hours_morning = (time_morning // 100) %}
                     {% set minutes_morning = (time_morning % 100) %}
                     {% set decimal_hours_morning = hours_morning + (minutes_morning / 60) %}
                     <div class="timeline-pin morning" style="left: {{ ((decimal_hours_morning / 24) * 100) }}%;">
-                        <div class="pin-label">Morning Feed ({{ user_settings.first_timer }}H)</div>
+                        <div class="pin-label">Morning Feed ({{ user_settings.first_morning_timer }}H)</div>
                         <i class="fas fa-sun"></i>
                     </div>
                 {% endif %}
 
-                {% if user_settings.second_timer %}
-                    {% set time_evening = user_settings.second_timer | int %}
+                {% if user_settings.second_morning_timer and user_settings.second_morning_timer != "N/A" %}
+                    {% set time_morning2 = user_settings.second_morning_timer | int %}
+                    {% set hours_morning2 = (time_morning2 // 100) %}
+                    {% set minutes_morning2 = (time_morning2 % 100) %}
+                    {% set decimal_hours_morning2 = hours_morning2 + (minutes_morning2 / 60) %}
+                    <div class="timeline-pin morning" style="left: {{ ((decimal_hours_morning2 / 24) * 100) }}%;">
+                        <div class="pin-label">Second Morning Feed ({{ user_settings.second_morning_timer }}H)</div>
+                        <i class="fas fa-sun"></i>
+                    </div>
+                {% endif %}
+
+                {% if user_settings.first_evening_timer and user_settings.first_evening_timer != "N/A" %}
+                    {% set time_evening = user_settings.first_evening_timer | int %}
                     {% set hours_evening = (time_evening // 100) %}
                     {% set minutes_evening = (time_evening % 100) %}
                     {% set decimal_hours_evening = hours_evening + (minutes_evening / 60) %}
                     <div class="timeline-pin evening" style="left: {{ (decimal_hours_evening / 24) * 100 }}%;">
-                        <div class="pin-label">Evening Feed ({{ user_settings.second_timer }}H)</div>
+                        <div class="pin-label">Evening Feed ({{ user_settings.first_evening_timer }}H)</div>
+                        <i class="fas fa-moon"></i>
+                    </div>
+                {% endif %}
+
+                {% if user_settings.second_evening_timer and user_settings.second_evening_timer != "N/A" %}
+                    {% set time_evening2 = user_settings.second_evening_timer | int %}
+                    {% set hours_evening2 = (time_evening2 // 100) %}
+                    {% set minutes_evening2 = (time_evening2 % 100) %}
+                    {% set decimal_hours_evening2 = hours_evening2 + (minutes_evening2 / 60) %}
+                    <div class="timeline-pin evening" style="left: {{ ((decimal_hours_evening2 / 24) * 100) }}%;">
+                        <div class="pin-label">Second Evening Feed ({{ user_settings.second_evening_timer }}H)</div>
                         <i class="fas fa-moon"></i>
                     </div>
                 {% endif %}
@@ -160,7 +186,7 @@
                     <div class="text-wrapper">
                         <div class="stat-label">Total Check Count:</div>
                         <div class="stat-value">
-                            {% set total_duration = user_settings.duration_seconds %}
+                            {% set total_duration = user_settings.minutes * 60 %}
                             {% set interval = user_settings.interval_seconds %}
                             {% set total_check_count = (total_duration / interval) if interval > 0 else 0 %}
                             {{ total_check_count|int if total_check_count > 0 else "N/A" }}
@@ -223,8 +249,10 @@
                     <thead>
                         <tr>
                             <th>Date</th>
-                            <th>Morning Feed Amount</th>
-                            <th>Evening Feed Amount</th>
+                            <th>Morning Feed 1</th>
+                            <th>Morning Feed 2</th>
+                            <th>Evening Feed 1</th>
+                            <th>Evening Feed 2</th>
                             <th>Total Feed Amount</th>
                             <th>Feeding Rate</th>
                         </tr>
@@ -315,18 +343,23 @@
 </script>
 <script>
     const checkingInterval = {{ checking_interval }};
-    const expectedFeedCount = {{ user_settings.pellets | float * 100 }};
+    const expectedFeedCount = {{ user_settings.pellets | float }};
     let mergedChart;
+    let feedingRateChart;
 
     async function fetchUpdatedData() {
         try {
             const response = await fetch('/pellet_data');
             const pelletData = await response.json();
 
+            console.log('Fetched pellet data:', pelletData);
+
             mergedChart.data.labels = pelletData.labels;
-            mergedChart.data.datasets[0].data = pelletData.first_feed_left;
-            mergedChart.data.datasets[1].data = pelletData.second_feed_left;
-            mergedChart.data.datasets[2].data = pelletData.total_feed_count;
+            mergedChart.data.datasets[0].data = pelletData.morning_1.map(val => val === "N/A" ? null : val);
+            mergedChart.data.datasets[1].data = pelletData.morning_2.map(val => val === "N/A" ? null : val);
+            mergedChart.data.datasets[2].data = pelletData.evening_1.map(val => val === "N/A" ? null : val);
+            mergedChart.data.datasets[3].data = pelletData.evening_2.map(val => val === "N/A" ? null : val);
+            mergedChart.data.datasets[4].data = pelletData.total;
 
             mergedChart.update();
 
@@ -334,20 +367,25 @@
             tableBody.innerHTML = '';
 
             for (let i = 0; i < pelletData.labels.length; i++) {
+                const sessionCount = pelletData.session_counts[i] || 1;
+                const expectedTotalForDay = expectedFeedCount * sessionCount;
+                const morning1 = (pelletData.morning_1[i] === "" || pelletData.morning_1[i] === null || pelletData.morning_1[i] === undefined) ? "N/A" : pelletData.morning_1[i];
+                const morning2 = (pelletData.morning_2[i] === "" || pelletData.morning_2[i] === null || pelletData.morning_2[i] === undefined) ? "N/A" : pelletData.morning_2[i];
+                const evening1 = (pelletData.evening_1[i] === "" || pelletData.evening_1[i] === null || pelletData.evening_1[i] === undefined) ? "N/A" : pelletData.evening_1[i];
+                const evening2 = (pelletData.evening_2[i] === "" || pelletData.evening_2[i] === null || pelletData.evening_2[i] === undefined) ? "N/A" : pelletData.evening_2[i];
+                const total = (pelletData.total[i] === "" || pelletData.total[i] === null || pelletData.total[i] === undefined) ? "N/A" : pelletData.total[i];
+                const feedRate = pelletData.total[i] && expectedTotalForDay
+                    ? ((pelletData.total[i] / expectedTotalForDay) * 100).toFixed(2) + "%"
+                    : "0.00%";
                 const row = document.createElement('tr');
-
-                const date = pelletData.labels[i];
-                const morning = pelletData.first_feed_left[i] || 0;
-                const evening = pelletData.second_feed_left[i] || 0;
-                const total = pelletData.total_feed_count[i] || 0;
-                const rate = total ? `${((total / 400) * 100).toFixed(2)}%` : '0.00%';
-
                 row.innerHTML = `
-                    <td>${date}</td>
-                    <td>${morning}</td>
-                    <td>${evening}</td>
+                    <td>${pelletData.labels[i]}</td>
+                    <td>${morning1}</td>
+                    <td>${morning2}</td>
+                    <td>${evening1}</td>
+                    <td>${evening2}</td>
                     <td>${total}</td>
-                    <td>${rate}</td>
+                    <td>${total ? ((total / (expectedFeedCount * pelletData.session_counts[i]))).toFixed(2) : "0.00"}</td>
                 `;
                 tableBody.appendChild(row);
             }
@@ -368,22 +406,36 @@
                     labels: pelletData.labels,
                     datasets: [
                         {
-                            label: 'Morning Feed Count',
-                            data: pelletData.first_feed_left,
+                            label: 'Morning Feed 1',
+                            data: pelletData.morning_1.map(val => (val === "N/A" || val === "") ? null : Number(val)),
                             backgroundColor: '#fbc02d',
                             borderColor: '#b8860b',
                             borderWidth: 1
                         },
                         {
-                            label: 'Evening Feed Count',
-                            data: pelletData.second_feed_left,
+                            label: 'Morning Feed 2',
+                            data: pelletData.morning_2.map(val => (val === "N/A" || val === "") ? null : Number(val)),
+                            backgroundColor: '#fdd835',
+                            borderColor: '#c49a09',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Evening Feed 1',
+                            data: pelletData.evening_1.map(val => (val === "N/A" || val === "") ? null : Number(val)),
                             backgroundColor: '#7f69c3',
                             borderColor: '#4b3f87',
                             borderWidth: 1
                         },
                         {
+                            label: 'Evening Feed 2',
+                            data: pelletData.evening_2.map(val => (val === "N/A" || val === "") ? null : Number(val)),
+                            backgroundColor: '#9c88e0',
+                            borderColor: '#5e4b99',
+                            borderWidth: 1
+                        },
+                        {
                             label: 'Total Feed Count',
-                            data: pelletData.total_feed_count,
+                            data: [],
                             backgroundColor: '#c7609c',
                             borderColor: '#8e3d6b',
                             borderWidth: 1
@@ -401,7 +453,7 @@
                         },
                         {
                             label: 'Expected Total Feed Amount',
-                            data: new Array(pelletData.labels.length).fill(expectedFeedCount * 2),
+                            data: pelletData.session_counts.map(sessionCount => expectedFeedCount * sessionCount),
                             type: 'line',
                             borderColor: '#8e3d6b',
                             borderWidth: 2,
@@ -463,14 +515,18 @@
             });
 
             const rateCtx = document.getElementById('feedingRateChart').getContext('2d');
-            const feedingRateChart = new Chart(rateCtx, {
+            feedingRateChart = new Chart(rateCtx, {
                 type: 'line',
                 data: {
                     labels: pelletData.labels,
                     datasets: [
                         {
                             label: 'Feeding Rate',
-                            data: pelletData.total_feed_count.map(count => (count / (expectedFeedCount * 2)).toFixed(2)),
+                            data: pelletData.total.map((count, i) => {
+                                const sessionCount = pelletData.session_counts[i] || 1;
+                                const expected = expectedFeedCount * sessionCount;
+                                return expected ? (count / expected).toFixed(2) : 0;
+                            }),
                             borderColor: '#00bcd4',
                             borderWidth: 2,
                             pointRadius: 2,
@@ -547,10 +603,12 @@
             },
             body: JSON.stringify({
                 labels: mergedChart.data.labels,
-                first: mergedChart.data.datasets[0].data,
-                second: mergedChart.data.datasets[1].data,
-                total: mergedChart.data.datasets[2].data,
-                expectedFeedCount: expectedFeedCount
+                morning_1: mergedChart.data.datasets[0].data,
+                morning_2: mergedChart.data.datasets[1].data,
+                evening_1: mergedChart.data.datasets[2].data,
+                evening_2: mergedChart.data.datasets[3].data,
+                total: mergedChart.data.datasets[4].data,
+                feeding_rate: feedingRateChart.data.datasets[0].data,
             })
         })
             .then(response => response.blob())
@@ -558,7 +616,7 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'leftover_feed_data.xlsx';
+                a.download = 'feed_summary_data.xlsx';
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
