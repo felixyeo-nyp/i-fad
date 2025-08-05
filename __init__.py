@@ -64,7 +64,7 @@ class FreshestFrame(threading.Thread):
 
         self.capture = capture
         self.condition = threading.Condition()
-        self.stop_event = threading.Event()
+        self.stop_event = camera_stop_event
         self.is_running = False
         self.frame = None
         self.pellets_num = 0
@@ -380,8 +380,11 @@ def feeding_scheduler_loop():
     feeding = False
     feed_start_time = None
     total_count = 0
-    last_check_index = -1
-    active_feeding_time_str = None
+    current_feeding_session = None
+    feed_cycle_start_time = None
+    is_feeding_phase = False
+    feeding_amount_storage = 0
+    current_cycle = 0
     port = server_isn = server_ack = source_ip = destination_ip = None
 
     while True:
@@ -393,19 +396,57 @@ def feeding_scheduler_loop():
             time.sleep(1)
             continue
 
-        tz = pytz.timezone("Asia/Singapore")  # Use your actual timezone
+        tz = pytz.timezone("Asia/Singapore")
         now = datetime.now(tz)
 
         try:
-            first_timer = config.get("user_first_feed", "")
-            second_timer = config.get("user_second_feed", "")
-            interval = max(int(config.get("user_interval_seconds", 10)), 10)
-            duration = int(config.get("user_feeding_duration", 0))
-            pellet_threshold = (int(config.get("user_pellets", 0)) * 100) // 10
-            check_count = duration // interval
+            # Get feeding times
+            morning_feed_1 = config.get("user_morning_feed_1", "")
+            morning_feed_2 = config.get("user_morning_feed_2", "")
+            evening_feed_1 = config.get("user_evening_feed_1", "")
+            evening_feed_2 = config.get("user_evening_feed_2", "")
+            
+            # Get feeding parameters
+            feeding_duration = int(config.get("user_minutes", 0)) * 60
+            check_interval = int(config.get("user_interval_seconds", 2))
+            user_pellets = int(config.get("user_pellets", 0))
+            feeding_threshold = int(config.get("user_feeding_threshold", 0))
+            pellets_per_second = int(config.get("user_pellets_per_second", 1))
+            
+            required_feed_time = user_pellets / pellets_per_second
+            required_feed_time = math.ceil(required_feed_time)
+            available_check_time = feeding_duration - required_feed_time
+            
+            if available_check_time <= 0:
+                max_checks = 0
+                feed_per_cycle = required_feed_time
+                check_per_cycle = 0
+                total_cycles = 1
+                print(f"[CALC] No check time available. Continuous feeding for {feed_per_cycle}s")
+            else:
+                max_checks = available_check_time // check_interval
+                
+                if max_checks == 0:
+                    max_checks = 1
+                    feed_per_cycle = required_feed_time
+                    check_per_cycle = available_check_time
+                    total_cycles = 1
+                else:
+                    feed_per_cycle = math.ceil(required_feed_time / max_checks)
+                    check_per_cycle = check_interval
+                    total_cycles = max_checks
 
-            scheduled1 = now.replace(hour=int(first_timer[:2]), minute=int(first_timer[2:]))
-            scheduled2 = now.replace(hour=int(second_timer[:2]), minute=int(second_timer[2:]))
+            pellets_per_feed_cycle = feed_per_cycle * pellets_per_second
+            
+            scheduled_times = []
+            if morning_feed_1 and morning_feed_1 != "N/A":
+                scheduled_times.append((now.replace(hour=int(morning_feed_1[:2]), minute=int(morning_feed_1[2:]), second=0, microsecond=0), "morning_feed_1"))
+            if morning_feed_2 and morning_feed_2 != "N/A":
+                scheduled_times.append((now.replace(hour=int(morning_feed_2[:2]), minute=int(morning_feed_2[2:]), second=0, microsecond=0), "morning_feed_2"))
+            if evening_feed_1 and evening_feed_1 != "N/A":
+                scheduled_times.append((now.replace(hour=int(evening_feed_1[:2]), minute=int(evening_feed_1[2:]), second=0, microsecond=0), "evening_feed_1"))
+            if evening_feed_2 and evening_feed_2 != "N/A":
+                scheduled_times.append((now.replace(hour=int(evening_feed_2[:2]), minute=int(evening_feed_2[2:]), second=0, microsecond=0), "evening_feed_2"))
 
         except Exception as e:
             print(f"[ERROR] Invalid feeding config: {e}")
@@ -416,91 +457,18 @@ def feeding_scheduler_loop():
             current_count = object_count[1]
 
         # Check if feeding should start
-        if not feeding and (now == scheduled1 or now == scheduled2):
-            print(f"[FEED TRIGGER] Starting feeding session at {now.strftime('%H:%M:%S')}")
-            active_feeding_time_str = first_timer if now == scheduled1 else second_timer
-            try:
-                with shelve_lock:
-                    with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
-                        port = db.get('Port')
-                        server_isn = db.get('syn_ack_seq')
-                        server_ack = db.get('syn_ack_ack')
-                        ip_data = ip_db.get('IP', {})
-                        source_ip = ip_data.get('source')
-                        destination_ip = ip_data.get('destination')
-
-                feeding = True
-                feed_start_time = time.time()
-                last_check_index = -1
-                with object_count_lock:
-                    total_count += object_count[1]
-            except Exception as e:
-                print(f"[ERROR] Failed to retrieve database settings: {e}")
-
-        # If in feeding mode, manage interval checks
-        if feeding and feed_start_time is not None:
-            elapsed = int(time.time() - feed_start_time)
-            current_check_index = elapsed // interval
-            with object_count_lock:
-                total_count += object_count[1]
-
-            if current_check_index > last_check_index and current_check_index < check_count:
-                last_check_index = current_check_index
-
-                with object_count_lock:
-                    current_count = object_count[1]
-
-                if current_count < pellet_threshold:
+        if not feeding:
+            for scheduled_time, session_name in scheduled_times:
+                if scheduled_time.strftime('%H:%M:%S') <= now.strftime('%H:%M:%S') <= str((scheduled_time + timedelta(seconds=5)).strftime('%H:%M:%S')):
+                    print(f"[FEED TRIGGER] Starting feeding session {session_name} at {now.strftime('%H:%M:%S')}")
+                    current_feeding_session = session_name
+                    # Start camera threads for pellets detection
                     try:
-                        print("[RE-FEED] Pellet low, continuing feed")
-                        try:
-                            with shelve_lock:
-                                with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
-                                    port = db.get('Port')
-                                    server_isn = db.get('syn_ack_seq')
-                                    server_ack = db.get('syn_ack_ack')
-                                    ip_data = ip_db.get('IP', {})
-                                    source_ip = ip_data.get('source')
-                                    destination_ip = ip_data.get('destination')
-                            print("[RE-FEED] Pellet low, continuing feed")
-                            success = start_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-                            if success:
-                                print("[RE-FEED] Feed continued successfully")
-                            else:
-                                print("[RE-FEED ERROR] Failed to continue feed")
-                        except Exception as e:
-                            print(f"[ERROR] Failed to continue feed: {e}")
-                        print("[RE-FEED] Feed continued successfully")
+                        start_camera_threads()
                     except Exception as e:
-                        print(f"[ERROR] Failed to continue feed: {e}")
-                else:
-                    try:
-                        print("[RE-FEED] Pellet level sufficient. Stopping feed.")
-                        try:
-                            with shelve_lock:
-                                with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
-                                    port = db.get('Port')
-                                    server_isn = db.get('syn_ack_seq')
-                                    server_ack = db.get('syn_ack_ack')
-                                    ip_data = ip_db.get('IP', {})
-                                    source_ip = ip_data.get('source')
-                                    destination_ip = ip_data.get('destination')
-                            print("[RE-FEED] Pellet level sufficient. Stopping feed.")
-                            success = stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-                            if success:
-                                print("[RE-FEED] Feed stopped successfully")
-                            else:
-                                print("[RE-FEED ERROR] Failed to stop feed")
-                        except Exception as e:
-                            print(f"[ERROR] Failed to stop feed early: {e}")
-                        print("[RE-FEED] Feed stopped successfully")
-                    except Exception as e:
-                        print(f"[ERROR] Failed to stop feed early: {e}")
-
-            # End feeding session if duration complete
-            if elapsed >= duration:
-                print("[FEED END] Duration complete. Ending session.")
-                try:
+                        print(f"[ERROR] Failed to start camera threads: {e}")
+                        continue
+                    
                     try:
                         with shelve_lock:
                             with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
@@ -510,28 +478,216 @@ def feeding_scheduler_loop():
                                 ip_data = ip_db.get('IP', {})
                                 source_ip = ip_data.get('source')
                                 destination_ip = ip_data.get('destination')
+
+                        feeding = True
+                        feed_start_time = time.time()
+                        feed_cycle_start_time = time.time()
+                        is_feeding_phase = True
+                        total_count = 0
+                        feeding_amount_storage = 0
+                        current_cycle = 1
+                        
+                        # Start first feeding phase
+                        success = start_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                        if success:
+                            print(f"[FEED START] Started feeding phase of cycle {current_cycle}/{total_cycles} ({feed_per_cycle}s)")
+                            # Add pellets for this feeding cycle to storage
+                            feeding_amount_storage += pellets_per_feed_cycle
+                            print(f"[COUNT] Added {pellets_per_feed_cycle}g to storage. Total: {feeding_amount_storage}g")
+                        else:
+                            print(f"[FEED ERROR] Failed to start feeding")
+                            
+                    except Exception as e:
+                        print(f"[ERROR] Failed to retrieve database settings: {e}")
+                    break
+
+        # If in feeding mode, manage feed/check cycles
+        if feeding and feed_start_time is not None and feed_cycle_start_time is not None:
+            cycle_elapsed = time.time() - feed_cycle_start_time
+            
+            with object_count_lock:
+                total_count += object_count[1]
+
+            # Feeding phase
+            if is_feeding_phase and cycle_elapsed >= feed_per_cycle:
+                # End feeding phase, start check phase (if check time > 0)
+                try:
+                    with shelve_lock:
+                        with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
+                            port = db.get('Port')
+                            server_isn = db.get('syn_ack_seq')
+                            server_ack = db.get('syn_ack_ack')
+                            ip_data = ip_db.get('IP', {})
+                            source_ip = ip_data.get('source')
+                            destination_ip = ip_data.get('destination')
+                    
+                    success = stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                    if success:
+                        print(f"[FEED PAUSE] Completed feeding cycle {current_cycle}/{total_cycles}")
+                    else:
+                        print(f"[FEED ERROR] Failed to pause feeding")
+                    
+                    # If there's no check time or this is the last cycle, end session
+                    if check_per_cycle == 0 or current_cycle >= total_cycles:
+                        print(f"[FEED END] All feeding cycles completed.")
+                        # Stop camera threads
+                        try:
+                            stop_camera_threads()
+                        except Exception as e:
+                            print(f"[ERROR] Failed to stop camera threads: {e}")
+                            continue
+                        feeding = False
+                        feed_start_time = None
+                        feed_cycle_start_time = None
+                        if current_feeding_session:
+                            session_times = {
+                                'morning_feed_1': morning_feed_1,
+                                'morning_feed_2': morning_feed_2,
+                                'evening_feed_1': evening_feed_1,
+                                'evening_feed_2': evening_feed_2
+                            }
+                            feeding_time_str = session_times.get(current_feeding_session, "")
+                            save_chart_data(feeding_amount_storage, current_feeding_session, feeding_time_str)
+                            print(f"[FEED END] Session {current_feeding_session} ended with {feeding_amount_storage}g dispensed.")
+                            feeding_amount_storage = 0
+                            current_feeding_session = None
+                    else:
+                        is_feeding_phase = False
+                        
+                except Exception as e:
+                    print(f"[ERROR] Failed to pause feed: {e}")
+
+            # Check phase
+            elif not is_feeding_phase and cycle_elapsed >= (feed_per_cycle + check_per_cycle):
+                # Check phase completed, decide whether to continue
+                with object_count_lock:
+                    current_count = object_count[1]
+
+                feeding_threshold_with_buffer = feeding_threshold + 5  # Add a buffer for unexpected counts (E.g. Water Reflection, Camera Glitches, etc.)
+
+                print(f"[FEED CHECK] Cycles: {current_cycle}/{total_cycles}, Count: {current_count}/{feeding_threshold_with_buffer}")
+                if current_cycle >= total_cycles:
+                    # End feeding session
+                    print(f"[FEED END] Feeding session completed. Cycles: {current_cycle}/{total_cycles}, Count: {current_count}/{feeding_threshold_with_buffer}")
+                    # Stop camera threads
+                    try:
+                        stop_camera_threads()
+                    except Exception as e:
+                        print(f"[ERROR] Failed to stop camera threads: {e}")
+                        continue
+                    feeding = False
+                    feed_start_time = None
+                    feed_cycle_start_time = None
+                    if current_feeding_session:
+                        session_times = {
+                            'morning_feed_1': morning_feed_1,
+                            'morning_feed_2': morning_feed_2,
+                            'evening_feed_1': evening_feed_1,
+                            'evening_feed_2': evening_feed_2
+                        }
+                        feeding_time_str = session_times.get(current_feeding_session, "")
+                        save_chart_data(feeding_amount_storage, current_feeding_session, feeding_time_str)
+                        print(f"[FEED END] Session {current_feeding_session} ended with {feeding_amount_storage}g dispensed.")
+                        feeding_amount_storage = 0
+                        current_feeding_session = None
+                else:
+                    # Continue to next cycle if pellets are below threshold
+                    if current_count < feeding_threshold_with_buffer:
+                        try:
+                            with shelve_lock:
+                                with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
+                                    port = db.get('Port')
+                                    server_isn = db.get('syn_ack_seq')
+                                    server_ack = db.get('syn_ack_ack')
+                                    ip_data = ip_db.get('IP', {})
+                                    source_ip = ip_data.get('source')
+                                    destination_ip = ip_data.get('destination')
+                            
+                            current_cycle += 1
+                            success = start_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                            if success:
+                                print(f"[FEED CONTINUE] Started feeding cycle {current_cycle}/{total_cycles} ({feed_per_cycle}s)")
+                                # Add pellets for this feeding cycle to storage
+                                feeding_amount_storage += pellets_per_feed_cycle
+                                print(f"[COUNT] Added {pellets_per_feed_cycle}g to storage. Total: {feeding_amount_storage}g")
+                            else:
+                                print(f"[FEED ERROR] Failed to continue feeding")
+                                
+                            feed_cycle_start_time = time.time()
+                            is_feeding_phase = True
+                            
+                        except Exception as e:
+                            print(f"[ERROR] Failed to continue feed: {e}")
+                    else:
+                        # Pellet level sufficient, skip this feeding cycle and wait for next check
+                        print(f"[FEED SKIP] Pellet threshold reached. Skipping cycle {current_cycle + 1}, waiting for next check.")
+                        current_cycle += 1
+                        feed_cycle_start_time = time.time()
+                        is_feeding_phase = False  # Go directly to next check phase
+
+            # Safety check - if total duration exceeds feeding_duration, force stop
+            if feed_start_time is not None:
+                total_elapsed = time.time() - feed_start_time
+                if total_elapsed >= feeding_duration:
+                    print(f"[FEED TIMEOUT] Maximum duration exceeded. Force stopping.")
+                    try:
+                        with shelve_lock:
+                            with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
+                                port = db.get('Port')
+                                server_isn = db.get('syn_ack_seq')
+                                server_ack = db.get('syn_ack_ack')
+                                ip_data = ip_db.get('IP', {})
+                                source_ip = ip_data.get('source')
+                                destination_ip = ip_data.get('destination')
+                        
                         success = stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
                         if success:
-                            print("[FEED-END] Feed stopped successfully")
+                            print("[FEED TIMEOUT] Feed stopped successfully")
                         else:
-                            print("[FEED-END ERROR] Failed to stop feed")
+                            print("[FEED TIMEOUT ERROR] Failed to stop feed")
+                            
                     except Exception as e:
-                        print(f"[ERROR] Failed to stop final feed: {e}")
-                except Exception as e:
-                    print(f"[ERROR] Failed to stop final feed: {e}")
-                feeding = False
-                feed_start_time = None
-                if active_feeding_time_str:
-                    save_chart_data(total_count, active_feeding_time_str)
-                    print(f"[FEED END] Feeding session ended at {now.strftime('%H:%M:%S')} with {total_count} pellets.")
-                    total_count = 0
+                        print(f"[ERROR] Failed to force stop feed: {e}")
+
+                    # Stop camerat threads
+                    try:
+                        stop_camera_threads()
+                    except Exception as e:
+                        print(f"[ERROR] Failed to stop camera threads: {e}")
+                        continue
+                        
+                    feeding = False
+                    feed_start_time = None
+                    feed_cycle_start_time = None
+                    if current_feeding_session:
+                        session_times = {
+                            'morning_feed_1': morning_feed_1,
+                            'morning_feed_2': morning_feed_2,
+                            'evening_feed_1': evening_feed_1,
+                            'evening_feed_2': evening_feed_2
+                        }
+                        feeding_time_str = session_times.get(current_feeding_session, "")
+                        save_chart_data(feeding_amount_storage, current_feeding_session, feeding_time_str)
+                        print(f"[FEED TIMEOUT] Session {current_feeding_session} ended with timeout at {feeding_amount_storage}g dispensed.")
+                        feeding_amount_storage = 0
+                        current_feeding_session = None
 
         time.sleep(1)
 
-def save_chart_data(total_count, feeding_time_str):
+def save_chart_data(feeding_amount_storage, feeding_session, feeding_time_str):
+    """
+    Save chart data based on the feeding_amount_storage (actual pellets dispensed during feeding cycles)
+    """
     try:
-        hour = int(feeding_time_str[:2])
-        session = 'Morning' if 6 <= hour < 12 else 'Evening'
+        # Convert session name to display format
+        session_display = {
+            'morning_feed_1': 'Morning Feed 1',
+            'morning_feed_2': 'Morning Feed 2', 
+            'evening_feed_1': 'Evening Feed 1',
+            'evening_feed_2': 'Evening Feed 2'
+        }
+        
+        session = session_display.get(feeding_session, feeding_session)
 
         with shelve_lock:
             with shelve.open('mock_chart_data.db', 'c') as db:
@@ -541,12 +697,13 @@ def save_chart_data(total_count, feeding_time_str):
                     db[date_str] = {}
 
                 day_data = db[date_str]
-                day_data[session] = day_data.get(session, 0) + int(total_count)
-                day_data['Total'] = day_data.get('Total', 0) + int(total_count)
+                day_data[session] = day_data.get(session, 0) + int(feeding_amount_storage)
+                day_data['Total'] = day_data.get('Total', 0) + int(feeding_amount_storage)
 
                 db[date_str] = day_data
 
-        print(f"[SAVE] {session} session ({feeding_time_str}) recorded with {total_count} pellets.")
+        print(f"[SAVE] {session} session ({feeding_time_str}) recorded with {feeding_amount_storage} pellets.")
+        
     except Exception as e:
         print(f"[ERROR] Failed to save feeding data: {e}")
 
@@ -582,8 +739,10 @@ def generate_frames():
                     cv2.rectangle(frame_to_use, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
                     cv2.putText(frame_to_use, f'{class_labels[label]}: {score:.2f}', (box[0], box[1] - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1.4, (0, 255, 0), 2)
-
-        ret, jpeg = cv2.imencode('.jpg', frame_to_use)
+        try:
+            ret, jpeg = cv2.imencode('.jpg', frame_to_use)
+        except Exception as e:
+            print("[Generate Frames] Encoding error:", e)
         if ret:
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
@@ -708,11 +867,16 @@ def seed_admin_account():
                 'password': admin.password,
                 'role': admin.role,
                 'status': admin.status,
-                'user_first_feed': "",
-                'user_second_feed': "",
-                'user_feeding_duration': 0,
+                'user_morning_feed_1': "",
+                'user_morning_feed_2': "",
+                'user_evening_feed_1': "",
+                'user_evening_feed_2': "",
+                'user_minutes': 0,
                 'user_interval_seconds': 0,
-                'user_pellets': 0
+                'user_pellets': 0,
+                'user_feeding_threshold': 0,
+                'user_pellet_size': 1,
+                'user_pellets_per_second': 1
             }
             print("Admin account seeded successfully.")
 
@@ -745,11 +909,16 @@ def register():
                     'password': new_user.password,
                     'role': new_user.role,
                     'status': new_user.status,
-                    'user_first_feed': "",
-                    'user_second_feed': "",
-                    'user_feeding_duration': 0,
+                    'user_morning_feed_1': "",
+                    'user_morning_feed_2': "",
+                    'user_evening_feed_1': "",
+                    'user_evening_feed_2': "",
+                    'user_minutes': 0,
                     'user_interval_seconds': 0,
-                    'user_pellets': 0
+                    'user_pellets': 0,
+                    'user_feeding_threshold': 0,
+                    'user_pellet_size': 1,
+                    'user_pellets_per_second': 1
                 }
                 flash('You are now registered and can log in', 'success')
                 return redirect(url_for('login'))
@@ -786,11 +955,16 @@ def register2():
                     'password': new_user.password,
                     'role': new_user.role,
                     'status': new_user.status,
-                    'user_first_feed': "",
-                    'user_second_feed': "",
-                    'user_feeding_duration': 0,
+                    'user_morning_feed_1': "",
+                    'user_morning_feed_2': "",
+                    'user_evening_feed_1': "",
+                    'user_evening_feed_2': "",
+                    'user_minutes': 0,
                     'user_interval_seconds': 0,
-                    'user_pellets': 0
+                    'user_pellets': 0,
+                    'user_feeding_threshold': 0,
+                    'user_pellet_size': 1,
+                    'user_pellets_per_second': 1
                 }
                 return redirect(url_for('retrieve_users'))
 
@@ -1584,18 +1758,24 @@ def get_threshold():
     except Exception as e:
         app.logger.error(f"An error occurred while retrieving threshold: {str(e)}")
         return jsonify({'error': 'An error occurred while retrieving threshold.'}), 500
+    
+def is_valid(val):
+    try:
+        return float(val) >= 0
+    except:
+        return False
 
 @app.route('/pellet_data')
 def get_pellet_data():
     # Define test data
     pellet_data = {
-        '03 Jul 2025': {'Morning': 250, 'Evening': 200, 'Total': 450},
-        '04 Jul 2025': {'Morning': 200, 'Evening': 200, 'Total': 400},
-        '05 Jul 2025': {'Morning': 100, 'Evening': 200, 'Total': 300},
-        '06 Jul 2025': {'Morning': 120, 'Evening': 130, 'Total': 250},
-        '07 Jul 2025': {'Morning': 220, 'Evening': 180, 'Total': 400},
-        '08 Jul 2025': {'Morning': 140, 'Evening': 160, 'Total': 300},
-        '09 Jul 2025': {'Morning': 125, 'Evening': 150, 'Total': 275},
+        '26 Jul 2025': {'Morning Feed 1': 250, 'Morning Feed 2': "", 'Evening Feed 1': 200, 'Evening Feed 2': 250, 'Total': 750},
+        '27 Jul 2025': {'Morning Feed 1': 200, 'Morning Feed 2': 250, 'Evening Feed 1': 200, 'Evening Feed 2': 200, 'Total': 850},
+        '28 Jul 2025': {'Morning Feed 1': 100, 'Morning Feed 2': 0, 'Evening Feed 1': 200, 'Evening Feed 2': 250, 'Total': 550},
+        '29 Jul 2025': {'Morning Feed 1': 120, 'Morning Feed 2': 180, 'Evening Feed 1': 130, 'Evening Feed 2': 170, 'Total': 600},
+        '30 Jul 2025': {'Morning Feed 1': 220, 'Morning Feed 2': "N/A", 'Evening Feed 1': 180, 'Evening Feed 2': 230, 'Total': 630},
+        '31 Jul 2025': {'Morning Feed 1': 140, 'Morning Feed 2': 190, 'Evening Feed 1': 160, 'Evening Feed 2': 210, 'Total': 700},
+        '1 Aug 2025': {'Morning Feed 1': 125, 'Morning Feed 2': 175, 'Evening Feed 1': 150, 'Evening Feed 2': 200, 'Total': 650},
     }
     # Check if the database exists, and if not, create and populate it
     db_path = 'mock_chart_data.db'
@@ -1611,33 +1791,40 @@ def get_pellet_data():
     last_7_days = [(current_day - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
 
     # Initialize lists to hold pellet counts
-    first_feed_counts = []
-    second_feed_counts = []
-    total_feed_counts = []
+    morning_1 = []
+    morning_2 = []
+    evening_1 = []
+    evening_2 = []
+    total = []
+    session_counts = []
 
-    # Open the shelve database and retrieve data
     with shelve.open(db_path, 'r') as db:
         for day in last_7_days:
-            if day in db:
-                day_data = db[day]
-                morning_count = day_data.get('Morning', 0)
-                evening_count = day_data.get('Evening', 0)
-                total = day_data.get('Total', 0)
-            else:
-                morning_count = evening_count = total = 0
+            data = db.get(day, {})
+            morning_feed_1 = data.get('Morning Feed 1', 'N/A')
+            morning_feed_2 = data.get('Morning Feed 2', 'N/A')
+            evening_feed_1 = data.get('Evening Feed 1', 'N/A')
+            evening_feed_2 = data.get('Evening Feed 2', 'N/A')
 
-            first_feed_counts.append(morning_count)
-            second_feed_counts.append(evening_count)
-            total_feed_counts.append(total)
+            morning_1.append(morning_feed_1)
+            morning_2.append(morning_feed_2)
+            evening_1.append(evening_feed_1)
+            evening_2.append(evening_feed_2)
 
-    response_data = {
+            valid_values = [v for v in [morning_feed_1, morning_feed_2, evening_feed_1, evening_feed_2] if is_valid(v)]
+            valid_total = sum(float(v) for v in valid_values)
+            total.append(valid_total)
+            session_counts.append(len(valid_values))
+
+    return jsonify({
         'labels': [datetime.strptime(day, "%Y-%m-%d").strftime("%d %b") for day in last_7_days],
-        'first_feed_left': first_feed_counts,
-        'second_feed_left': second_feed_counts,
-        'total_feed_count': total_feed_counts
-    }
-
-    return jsonify(response_data)
+        'morning_1': morning_1,
+        'morning_2': morning_2,
+        'evening_1': evening_1,
+        'evening_2': evening_2,
+        'total': total,
+        'session_counts': session_counts
+    })
 
 @app.route('/dashboard', methods=['GET'])
 @login_required
@@ -1651,11 +1838,16 @@ def dashboard():
                 for user_data in user_db.values():
                     if user_data.get("uuid") == session.get("uuid"):
                         user_settings = {
-                            "first_timer": user_data.get("user_first_feed"),
-                            "second_timer": user_data.get("user_second_feed"),
-                            "duration_seconds": user_data.get("user_feeding_duration", 0),
+                            "first_morning_timer": user_data.get("user_morning_feed_1", ""),
+                            "first_evening_timer": user_data.get("user_evening_feed_1", ""),
+                            "second_morning_timer": user_data.get("user_morning_feed_2", ""),
+                            "second_evening_timer": user_data.get("user_evening_feed_2", ""),
+                            "minutes": user_data.get("user_minutes", 0),
                             "interval_seconds": user_data.get("user_interval_seconds", 0),
-                            "pellets": user_data.get("user_pellets", 0)
+                            "pellets": user_data.get("user_pellets", 0),
+                            "pellet_size": user_data.get("pellet_size", 1),
+                            "pellets_per_second": user_data.get("pellets_per_second", 1),
+                            "feeding_threshold": user_data.get("feeding_threshold", 0),
                         }
                         break
 
@@ -1681,40 +1873,64 @@ def camera_view():
 
 @app.route('/export_data', methods=['POST'])
 def export_data():
-    # Get data from the request
-    data = request.get_json()
-    labels = data.get('labels', [])
-    first = data.get('first', [])
-    second = data.get('second', [])
-    total = data.get('total', [])
 
-    # Create an Excel workbook and worksheet
+    data = request.get_json()
+    print(f"Received data for export: {data}")
+    labels = data.get('labels', [])
+    morning_1 = data.get('morning_1', [])
+    morning_2 = data.get('morning_2', [])
+    evening_1 = data.get('evening_1', [])
+    evening_2 = data.get('evening_2', [])
+    total = data.get('total', [])
+    feeding_rate = data.get('feeding_rate', [])
+
     workbook = openpyxl.Workbook()
     sheet = workbook.active
-    sheet.title = ' Leftover Pellets Over The Past Seven Days'
 
-    # Set up the header
-    sheet["A1"] = "Date"
-    sheet["B1"] = "first feed number of pellets left"
-    sheet["C1"] = "second feed number of pellets left"
-    sheet["D1"] = "total feed pellets fed"
-    sheet["A1"].font = Font(bold=True)
-    sheet["B1"].font = Font(bold=True)
-    sheet["C1"].font = Font(bold=True)
-    sheet["D1"].font = Font(bold=True)
+    todayDate = datetime.today().strftime("%Y-%m-%d")
+    seven_days_ago = (datetime.today() - timedelta(days=6)).strftime("%Y-%m-%d")
+    sheet.title = f"Feeding Summary ({seven_days_ago} - {todayDate})"
 
-    # Populate the worksheet with data
-    for index, (label, first,second,total) in enumerate(zip(labels, first,second,total), start=2):
-        sheet[f"A{index}"] = label
-        sheet[f"B{index}"] = first
-        sheet[f"C{index}"] = second
-        sheet[f"D{index}"] = total
+    # Title Row
+    sheet.merge_cells("A1:G1")
+    sheet["A1"] = f"Past 7 Days' Feeding Summary ({seven_days_ago} - {todayDate})"
+    sheet["A1"].font = Font(bold=True, size=14)
 
-    # Save the workbook to a file
-    file_path = 'consumption_data.xlsx'
+    # Header Row
+    headers = ["Date", "Morning Feed 1", "Morning Feed 2", "Evening Feed 1", "Evening Feed 2", "Total Feed Amount", "Feeding Rate"]
+    for col, header in enumerate(headers, start=1):
+        cell = sheet.cell(row=2, column=col)
+        cell.value = header
+        cell.font = Font(bold=True)
+
+    # Populate data
+    for i in range(len(labels)):
+        row = i + 3
+        morning_feed_1 = morning_1[i]
+        morning_feed_2 = morning_2[i]
+        evening_feed_1 = evening_1[i]
+        evening_feed_2 = evening_2[i]
+        total_feed = total[i] if isinstance(total[i], (int, float)) else 0
+        day_feeding_rate = feeding_rate[i]
+        
+
+        sheet.cell(row=row, column=1, value=labels[i])
+        sheet.cell(row=row, column=2, value=morning_feed_1 if morning_feed_1 != "" else "N/A")
+        sheet.cell(row=row, column=3, value=morning_feed_2 if morning_feed_2 != "" else "N/A")
+        sheet.cell(row=row, column=4, value=evening_feed_1 if evening_feed_1 != "" else "N/A")
+        sheet.cell(row=row, column=5, value=evening_feed_2 if evening_feed_2 != "" else "N/A")
+        sheet.cell(row=row, column=6, value=total_feed)
+        sheet.cell(row=row, column=7, value=f"{day_feeding_rate}%")
+
+    # Column width adjustment
+    column_widths = [20, 20, 20, 20, 20, 20, 20]
+    for i, width in enumerate(column_widths, start=1):
+        sheet.column_dimensions[openpyxl.utils.get_column_letter(i)].width = width
+
+    file_path = 'feed_summary_data.xlsx'
     workbook.save(file_path)
 
-    return send_file(file_path, as_attachment=True, download_name='leftover_feed_data.xlsx')
+    return send_file(file_path, as_attachment=True, download_name='feed_summary_data.xlsx')
 
 import re
 latest_valid_settings = None
@@ -1781,67 +1997,62 @@ def update_setting():
 
                 # AUTO FEED BLOCK
                 elif mode == "auto":
-                    required_fields = ['first_timer', 'second_timer', 'minutes', 'interval_minutes', 'interval_seconds', 'pellets']
+                    required_fields = [
+                        "user_morning_feed_1", "user_evening_feed_1", "user_morning_feed_2","user_evening_feed_2", "user_minutes", "user_interval_seconds", "user_pellets",
+                        "user_feeding_threshold", "user_pellet_size", "user_pellets_per_second"]
                     if not all(k in data for k in required_fields):
                         return jsonify({"status": "error", "message": "Missing required fields."}), 400
-
-                    first_timer = data['first_timer']
-                    second_timer = data['second_timer']
-                    pattern = r'^(?:[01]\d[0-5]\d|2[0-3][0-5]\d)$'
-
-                    if not re.match(pattern, first_timer) or not re.match(pattern, second_timer):
-                        return jsonify({"status": "error", "message": "Time format must be HHMM (e.g. 0830)."}), 400
-
+                    
+                    print(f"[DEBUG] Received required fields: {required_fields}")
+                    
                     try:
-                        first_hour = int(first_timer[:2])
-                        second_hour = int(second_timer[:2])
-                    except ValueError:
-                        return jsonify({"status": "error", "message": "Invalid numeric values in time."}), 400
+                        # Save all form inputs
+                        config_values = {
+                            "user_morning_feed_1": data['user_morning_feed_1'],
+                            "user_morning_feed_2": data['user_morning_feed_2'] or "N/A",
+                            "user_evening_feed_1": data['user_evening_feed_1'],
+                            "user_evening_feed_2": data['user_evening_feed_2'] or "N/A",
+                            "user_minutes": int(data['user_minutes']),
+                            "user_interval_seconds": int(data['user_interval_seconds'] or 1),
+                            "user_pellets": int(data['user_pellets'] or 0),
+                            "user_feeding_threshold": int(data['user_feeding_threshold'] or 0),
+                            "user_pellet_size": int(data['user_pellet_size'] or 1),
+                            "user_pellets_per_second": int(data['user_pellets_per_second'] or 1)
+                        }
+                        print(f"[DEBUG] Config values to save: {config_values}")
 
-                    if not (6 <= first_hour <= 12) or not (12 <= second_hour <= 24):
-                        return jsonify({"status": "error", "message": "Morning feed must be between 06:00–12:00, and evening feed must be between 12:00–24:00."}), 400
-
-                    try:
-                        interval_minutes = int(str(data.get('interval_minutes', '0')).strip())
-                        interval_seconds = int(str(data.get('interval_seconds', '0')).strip())
-                        interval_sec = interval_minutes * 60 + interval_seconds
-                        duration_minutes = int(str(data.get('minutes', '0')).strip())
-                        print(f"Duration: {duration_minutes} minutes")
-                        duration_sec = duration_minutes * 60
-                        print(f"Duration in seconds: {duration_sec}")
-                        pellet_count = int(data.get("pellets", 0))
-
+                        # Save to user DB
                         with shelve.open("users.db", 'w') as user_db:
                             for username, user_data in user_db.items():
                                 if user_data.get("uuid") == session.get("uuid"):
-                                    user_data["user_first_feed"] = first_timer
-                                    user_data["user_second_feed"] = second_timer
-                                    user_data["user_feeding_duration"] = duration_sec
-                                    user_data["user_interval_seconds"] = interval_sec
-                                    print(f"Saved user feeding duration: {duration_sec} seconds")
-                                    user_data["user_pellets"] = pellet_count
+                                    user_data["user_morning_feed_1"] = data['user_morning_feed_1'] or "N/A"
+                                    user_data["user_morning_feed_2"] = data['user_morning_feed_2'] or "N/A"
+                                    user_data["user_evening_feed_1"] = data['user_evening_feed_1'] or "N/A"
+                                    user_data["user_evening_feed_2"] = data['user_evening_feed_2'] or "N/A"
+
+                                    user_data["user_minutes"] = int(data['user_minutes'] or 0)
+                                    user_data["user_interval_seconds"] = int(data['user_interval_seconds'] or 0)
+                                    user_data["user_pellets"] = int(data['user_pellets'] or 0)
+                                    user_data["user_feeding_threshold"] = int(data['user_feeding_threshold'] or 0)  # no user_ prefix per your initial data
+                                    user_data["user_pellet_size"] = int(data['user_pellet_size'] or 1)
+                                    user_data["user_pellets_per_second"] = int(data['user_pellets_per_second'] or 1)
+                                    print(f"[USER FEED SETTINGS] Updated for {username}")
+                                    print(f"[USER FEED SETTINGS] Data: {user_data}")
                                     user_db[username] = user_data
-                                    print(f"[USER FEED SETTINGS] Updated feed settings for user {username}")
                                     break
 
-                        feeding_config = {
-                            "user_first_feed": first_timer,
-                            "user_second_feed": second_timer,
-                            "user_feeding_duration": duration_sec,
-                            "user_interval_seconds": interval_sec,
-                            "user_pellets": pellet_count,
-                        }
-                        print(f"[FEEDING CONFIG] Updated feeding config: {feeding_config}")
-                        set_active_feeding_user(session.get("uuid"), session.get('email'), feeding_config)
+                        # Activate in-memory user feeding config
+                        set_active_feeding_user(session.get("uuid"), session.get('email'), config_values)
 
+                        # Check system dependencies
                         with shelve.open("settings.db", 'r') as db, shelve.open("IP.db", 'r') as ip_db:
                             config = {
                                 'Port': db.get('Port'),
                                 'syn_ack_seq': db.get('syn_ack_seq'),
                                 'syn_ack_ack': db.get('syn_ack_ack'),
                                 'source': ip_db.get("IP", {}).get("source"),
-                                'destination': ip_db.get("IP", {}).get("destination")}
-
+                                'destination': ip_db.get("IP", {}).get("destination")
+                            }
                         for key, value in config.items():
                             if not value:
                                 location = 'IP.db' if key in ['source', 'destination'] else 'settings'
@@ -1849,7 +2060,7 @@ def update_setting():
 
                         reschedule_feeding_alerts()
                         return jsonify({"status": "success", "message": "Feeding schedule updated."})
-                    
+
                     except Exception as e:
                         return jsonify({"status": "error", "message": f"Auto feed setup failed: {e}"}), 500
 
@@ -1862,15 +2073,17 @@ def update_setting():
         with shelve.open("users.db", 'r') as db:
             for user_data in db.values():
                 if user_data.get("uuid") == session.get("uuid"):
-                    setting.first_timer.data = user_data.get("user_first_feed", "")
-                    setting.second_timer.data = user_data.get("user_second_feed", "")
+                    print(user_data)
+                    setting.morning_feed_1.data = user_data.get("user_morning_feed_1", "")
+                    setting.morning_feed_2.data = user_data.get("user_morning_feed_2", "")
+                    setting.evening_feed_1.data = user_data.get("user_evening_feed_1", "")
+                    setting.evening_feed_2.data = user_data.get("user_evening_feed_2", "")
+                    setting.minutes.data = user_data.get("user_minutes", 0)
+                    setting.interval_seconds.data = user_data.get("user_interval_seconds", 0)
                     setting.pellets.data = user_data.get("user_pellets", 0)
-                    duration_sec = user_data.get("user_feeding_duration", 0)
-                    interval_sec = user_data.get("user_interval_seconds", 0)
-
-                    setting.minutes.data = duration_sec // 60
-                    setting.interval_minutes.data = interval_sec // 60
-                    setting.interval_seconds.data = interval_sec % 60
+                    setting.feeding_threshold.data = user_data.get("user_feeding_threshold", 0)
+                    setting.pellet_size.data = user_data.get("user_pellet_size", 0)
+                    setting.pellets_per_second.data = user_data.get("user_pellets_per_second", 0)
                     break
 
         return render_template('settings.html', form=setting, mode=mode)
@@ -1933,54 +2146,49 @@ def reschedule_feeding_alerts():
             print("[RESCHEDULE] No active feeding user. Skipping alert scheduling.")
             return
 
-        first_timer = str(config.get("user_first_feed", "")).zfill(4)
-        second_timer = str(config.get("user_second_feed", "")).zfill(4)
-        duration_raw = config.get("user_feeding_duration", "")
+        timers = {
+            "morning_feed_1": config.get("user_morning_feed_1", ""),
+            "morning_feed_2": config.get("user_morning_feed_2", ""),
+            "evening_feed_1": config.get("user_evening_feed_1", ""),
+            "evening_feed_2": config.get("user_evening_feed_2", "")
+        }
 
-        if not first_timer or not second_timer or not str(duration_raw).strip():
-            print(f"[RESCHEDULE] Missing timer or duration for {user_email}")
-            return
-
-        feeding_duration_sec = int(duration_raw)
+        feeding_duration_sec = int(config.get("user_minutes", 0)) * 60
         if feeding_duration_sec <= 0:
             print(f"[RESCHEDULE] Duration is zero or invalid for {user_email}")
             return
 
-        # Compute end times
-        first_end = (datetime(2000, 1, 1, int(first_timer[:2]), int(first_timer[2:]))) + timedelta(seconds=feeding_duration_sec)
-        second_end = (datetime(2000, 1, 1, int(second_timer[:2]), int(second_timer[2:]))) + timedelta(seconds=feeding_duration_sec)
+        for feed_key, time_str in timers.items():
+            feed_id = f"{feed_key}_alert"
 
-        first_id = "first_feeding_alert"
-        second_id = "second_feeding_alert"
+            if not time_str or not time_str.isdigit() or len(time_str) != 4:
+                if scheduler.get_job(feed_id):
+                    scheduler.remove_job(feed_id)
+                    print(f"[RESCHEDULE] Removed existing job for {feed_key}")
+                print(f"[RESCHEDULE] Skipping {feed_key} (empty or invalid)")
+                continue
 
-        # Remove any old global alert jobs
-        if scheduler.get_job(first_id):
-            scheduler.remove_job(first_id)
-        if scheduler.get_job(second_id):
-            scheduler.remove_job(second_id)
+            hour = int(time_str[:2])
+            minute = int(time_str[2:])
+            feed_end = (datetime(2000, 1, 1, hour, minute) + timedelta(seconds=feeding_duration_sec))
 
-        scheduler.add_job(
-            func=send_feeding_complete_email,
-            trigger='cron',
-            hour=first_end.hour,
-            minute=first_end.minute,
-            args=[user_email, first_timer, "Morning"],
-            id=first_id,
-            replace_existing=True,
-            misfire_grace_time=3600
-        )
-        scheduler.add_job(
-            func=send_feeding_complete_email,
-            trigger='cron',
-            hour=second_end.hour,
-            minute=second_end.minute,
-            args=[user_email, second_timer, "Evening"],
-            id=second_id,
-            replace_existing=True,
-            misfire_grace_time=3600
-        )
+            session_label = "Morning" if "morning" in feed_key else "Evening"
 
-        print(f"[RESCHEDULE] Email alerts scheduled at {first_end.strftime('%H:%M')} and {second_end.strftime('%H:%M')} for {user_email}")
+            if scheduler.get_job(feed_id):
+                scheduler.remove_job(feed_id)
+
+            scheduler.add_job(
+                func=send_feeding_complete_email,
+                trigger='cron',
+                hour=feed_end.hour,
+                minute=feed_end.minute,
+                args=[user_email, time_str, session_label],
+                id=feed_id,
+                replace_existing=True,
+                misfire_grace_time=3600
+            )
+
+            print(f"[RESCHEDULE] Scheduled {feed_key} at {feed_end.strftime('%H:%M')} for {user_email}")
 
     except Exception as e:
         print(f"[RESCHEDULE ERROR] {e}")
@@ -2526,9 +2734,9 @@ def send_udp_packet(source, destination, port, message):
             fallback_ip = get_valid_local_ip()
             sock.bind((fallback_ip, 0))
             print(f"Fallback: Socket bound to device IP: {fallback_ip}")
-        except Exception as e2:
+        except Exception as e:
             # If fallback also fails, bind to any interface which will handle by the OS
-            print(f"Fallback failed. Binding to any interface. Error: {e2}")
+            print(f"Fallback failed. Binding to any interface. Error: {e}")
             sock.bind(("", 0))
 
     sock.sendto(message, (destination, port))
@@ -2611,7 +2819,7 @@ def stop_camera_threads():
         camera_stop_event.set()
 
         with freshest_frame_lock:
-            freshest_frame.stop()
+            freshest_frame.stop(5)
             freshest_frame = None
 
         for thread in camera_threads:
@@ -2677,7 +2885,7 @@ if __name__ == '__main__':
 
     # Start Flask app
     try:
-        app.run(host='0.0.0.0', port=5000, debug=False)
+        app.run(host='0.0.0.0', port=5001, debug=False)
     finally:
         cleanup_on_exit()
         for t in threads:

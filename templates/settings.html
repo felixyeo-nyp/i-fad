@@ -35,7 +35,7 @@
 
     .settings-form-container {
         width: 100%;
-        max-width: 800px;
+        max-width: 1100px;
         padding: 30px;
         background: var(--card-bg);
         border-radius: 16px;
@@ -434,18 +434,34 @@
             <div class="settings-input-group">
                 <div class="feeding-time-row full-width">
                     <div class="full">
-                        <label for="first_timer">Morning Feeding Time (0600-1200)</label>
+                        <label for="morning_feed_1">Morning Feed 1</label>
                         <div class="settings-input-with-icon">
                             <i class="fas fa-clock fa-icon"></i>
-                            {{ render_field(form.first_timer, class="form-control", placeholder="e.g. 0800") }}
+                            {{ render_field(form.morning_feed_1, class="form-control", placeholder="E.g. 0000-1159") }}
                             <span class="unit-label">HHMM</span>
                         </div>
                     </div>
                     <div class="full">
-                        <label for="second_timer">Evening Feeding Time (1200-2400)</label>
+                        <label for="morning_feed_2">Morning Feed 2</label>
                         <div class="settings-input-with-icon">
                             <i class="fas fa-clock fa-icon"></i>
-                            {{ render_field(form.second_timer, class="form-control", placeholder="e.g. 1800") }}
+                            {{ render_field(form.morning_feed_2, class="form-control", placeholder="E.g. 0000-1159") }}
+                            <span class="unit-label">HHMM</span>
+                        </div>
+                    </div>
+                    <div class="full">
+                        <label for="evening_feed_1">Evening Feed 1</label>
+                        <div class="settings-input-with-icon">
+                            <i class="fas fa-clock fa-icon"></i>
+                            {{ render_field(form.evening_feed_1, class="form-control", placeholder="E.g. 1200-2359") }}
+                            <span class="unit-label">HHMM</span>
+                        </div>
+                    </div>
+                    <div class="full">
+                        <label for="evening_feed_2">Evening Feed 2</label>
+                        <div class="settings-input-with-icon">
+                            <i class="fas fa-clock fa-icon"></i>
+                            {{ render_field(form.evening_feed_2, class="form-control", placeholder="E.g. 1200-2359") }}
                             <span class="unit-label">HHMM</span>
                         </div>
                     </div>
@@ -460,25 +476,18 @@
                         <label for="duration">Feeding Duration</label>
                         <div class="settings-input-with-icon">
                             <i class="fas fa-stopwatch fa-icon"></i>
-                            {{ render_field(form.minutes, class="form-control", placeholder="") }}
+                            {{ render_field(form.minutes, class="form-control", placeholder="E.g 1") }}
                             <span class="unit-label">minutes</span>
                         </div>
                     </div>
 
-                    <!-- Interval Check (Right Side) -->
+                    <!-- Estimated Feed Amount (Right Side) -->
                     <div class="full">
-                        <label for="interval">Interval Check</label>
-                        <div class="compound-fields">
-                            <div class="settings-input-with-icon">
-                                <i class="fas fa-hourglass-half fa-icon"></i>
-                                {{ render_field(form.interval_minutes, class="form-control", placeholder="") }}
-                                <span class="unit-label">minutes</span>
-                            </div>
-                            <div class="settings-input-with-icon">
-                                <i class="fas fa-hourglass-half fa-icon"></i>
-                                {{ render_field(form.interval_seconds, class="form-control", placeholder="") }}
-                                <span class="unit-label">seconds</span>
-                            </div>
+                        <label for="pellets">Estimated Feed Amount</label>
+                        <div class="settings-input-with-icon">
+                            <i class="fas fa-weight fa-icon"></i>
+                            {{ render_field(form.pellets, class="form-control", id="pelletsInput", placeholder="E.g 100") }}
+                            <span class="unit-label">grams (g)</span>
                         </div>
                     </div>
                 </div>
@@ -503,19 +512,43 @@
             </div>
 
             <div class="settings-input-group">
-                <label for="pellets">Estimated Feed Amount</label>
-                <div class="input-and-info">
-                    <div class="half-width">
+                <div class="feeding-time-row full-width">
+                    <div class="full">
+                        <label for="interval">Check Interval</label>
                         <div class="settings-input-with-icon">
-                            <i class="fas fa-weight fa-icon"></i>
-                            {{ render_field(form.pellets, class="form-control", id="pelletsInput", placeholder="Amount")
-                            }}
-                            <span class="unit-label">grams (g)</span>
+                            <i class="fas fa-hourglass-half fa-icon"></i>
+                            {{ render_field(form.interval_seconds, class="form-control", placeholder="E.g. 2") }}
+                            <span class="unit-label">seconds</span>
                         </div>
                     </div>
-                    <div class="info-badge info" id="pellet-info">
-                        <i class="fas fa-info-circle"></i>
-                        <span id="pelletCalculation">0 g : 0 pellets (100 pellets/g)</span>
+                    <div class="full">
+                        <label>Feeding Threshold</label>
+                        <div class="settings-input-with-icon">
+                            <i class="fas fa-balance-scale-left fa-icon"></i>
+                            {{ render_field(form.feeding_threshold, class="form-control", placeholder="E.g. 10") }}
+                            <span class="unit-label">pellets</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-input-group">
+                <div class="feeding-time-row full-width">
+                    <div class="full">
+                        <label>Pellet Size</label>
+                        <div class="settings-input-with-icon">
+                            <i class="fas fa-dot-circle fa-icon"></i>
+                            {{ render_field(form.pellet_size, class="form-control", placeholder="E.g. 5") }}
+                            <span class="unit-label">mm</span>
+                        </div>
+                    </div>
+                    <div class="full">
+                        <label>Pellets Per Second</label>
+                        <div class="settings-input-with-icon">
+                            <i class="fas fa-tachometer-alt fa-icon"></i>
+                            {{ render_field(form.pellets_per_second, class="form-control", placeholder="E.g. 2") }}
+                            <span class="unit-label">pellets/s</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -575,9 +608,6 @@
 </div>
 
 <script>
-    const intervalMinutesInput = document.querySelector('[name="interval_minutes"]');
-    const intervalSecondsInput = document.querySelector('[name="interval_seconds"]');
-    const feedingMinutesInput = document.querySelector('[name="minutes"]');
     const intervalWarning = document.getElementById('interval-warning');
     const saveBtn = document.querySelector('.settings-btn-primary');
     const toggleLink = document.getElementById('toggleMode');
@@ -618,66 +648,6 @@
         e.preventDefault();
         toggleMode();
     });
-
-    function calculateDurations() {
-        const intervalMinutes = parseInt(intervalMinutesInput.value) || 0;
-        const intervalSeconds = parseInt(intervalSecondsInput.value) || 0;
-        const feedingMinutes = parseInt(feedingMinutesInput.value) || 0;
-
-        const totalInterval = (intervalMinutes * 60) + intervalSeconds;
-        const totalFeeding = (feedingMinutes * 60);
-
-        const zeroWarning = document.getElementById('zero-values-warning');
-        const intervalWarning = document.getElementById('interval-warning');
-        const info = document.getElementById('interval-info');
-        const count = document.getElementById('interval-count');
-
-        // Show zero values warning if both feeding duration and interval are zero
-        if (totalFeeding === 0 && totalInterval === 0) {
-            zeroWarning.style.display = 'block';
-            intervalWarning.style.display = 'none';
-            info.style.display = 'none';
-            saveBtn.disabled = true;
-            return;
-        } else {
-            zeroWarning.style.display = 'none';
-        }
-
-        if (totalInterval === 0) {
-            intervalWarning.style.display = 'none';
-            info.style.display = 'none';
-            saveBtn.disabled = true;
-            return;
-        }
-
-        if (totalInterval > totalFeeding) {
-            intervalWarning.style.display = 'block';
-            info.style.display = 'none';
-            saveBtn.disabled = true;
-        } else {
-            intervalWarning.style.display = 'none';
-            info.style.display = 'block';
-            const estimatedChecks = Math.floor(totalFeeding / totalInterval);
-            count.textContent = estimatedChecks;
-            saveBtn.disabled = false;
-        }
-    }
-
-    intervalMinutesInput.addEventListener('input', calculateDurations);
-    intervalSecondsInput.addEventListener('input', calculateDurations);
-    feedingMinutesInput.addEventListener('input', calculateDurations);
-
-    const pelletsInput = document.getElementById('pelletsInput');
-    const pelletCalculationElement = document.getElementById('pelletCalculation');
-
-    pelletsInput.addEventListener('input', function () {
-        const grams = parseInt(this.value) || 0;
-        const totalPellets = grams * 100;
-        pelletCalculationElement.textContent = `${grams} g : ${totalPellets} pellets (100 pellets/g)`;
-    });
-
-    calculateDurations();
-    pelletsInput.dispatchEvent(new Event('input'));
 
     document.getElementById('manualFeedStartBtn').addEventListener('click', (e) => {
         e.preventDefault();
@@ -809,12 +779,16 @@
         e.preventDefault();
 
         const formData = {
-            first_timer: document.querySelector('[name="first_timer"]').value.trim(),
-            second_timer: document.querySelector('[name="second_timer"]').value.trim(),
-            minutes: document.querySelector('[name="minutes"]').value.trim(),
-            interval_minutes: document.querySelector('[name="interval_minutes"]').value.trim(),
-            interval_seconds: document.querySelector('[name="interval_seconds"]').value.trim(),
-            pellets: document.querySelector('[name="pellets"]').value.trim()
+            user_morning_feed_1: document.querySelector('[name="morning_feed_1"]').value.trim(),
+            user_morning_feed_2: document.querySelector('[name="morning_feed_2"]').value.trim(),
+            user_evening_feed_1: document.querySelector('[name="evening_feed_1"]').value.trim(),
+            user_evening_feed_2: document.querySelector('[name="evening_feed_2"]').value.trim(),
+            user_minutes: document.querySelector('[name="minutes"]').value.trim(),
+            user_interval_seconds: document.querySelector('[name="interval_seconds"]').value.trim(),
+            user_pellets: document.querySelector('[name="pellets"]').value.trim(),
+            user_feeding_threshold: document.querySelector('[name="feeding_threshold"]').value.trim(),
+            user_pellet_size: document.querySelector('[name="pellet_size"]').value.trim(),
+            user_pellets_per_second: document.querySelector('[name="pellets_per_second"]').value.trim()
         };
 
         try {

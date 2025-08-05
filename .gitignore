@@ -12,3 +12,4 @@ __pycache__/
 *.dat
 *.dir
 virt/
+*.xlsx
