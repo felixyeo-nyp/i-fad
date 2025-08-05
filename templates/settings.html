@@ -791,8 +791,6 @@
             user_pellets_per_second: document.querySelector('[name="pellets_per_second"]').value.trim()
         };
 
-        console.log("Submitting form data:", formData);
-
         try {
             const response = await fetch('/update?mode=auto', {
                 method: 'POST',
