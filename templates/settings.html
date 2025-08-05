@@ -608,9 +608,6 @@
 </div>
 
 <script>
-    // const intervalMinutesInput = document.querySelector('[name="interval_minutes"]');
-    // const intervalSecondsInput = document.querySelector('[name="interval_seconds"]');
-    // const feedingMinutesInput = document.querySelector('[name="minutes"]');
     const intervalWarning = document.getElementById('interval-warning');
     const saveBtn = document.querySelector('.settings-btn-primary');
     const toggleLink = document.getElementById('toggleMode');
@@ -651,66 +648,6 @@
         e.preventDefault();
         toggleMode();
     });
-
-    // function calculateDurations() {
-    //     const intervalMinutes = parseInt(intervalMinutesInput.value) || 0;
-    //     const intervalSeconds = parseInt(intervalSecondsInput.value) || 0;
-    //     const feedingMinutes = parseInt(feedingMinutesInput.value) || 0;
-
-    //     const totalInterval = (intervalMinutes * 60) + intervalSeconds;
-    //     const totalFeeding = (feedingMinutes * 60);
-
-    //     const zeroWarning = document.getElementById('zero-values-warning');
-    //     const intervalWarning = document.getElementById('interval-warning');
-    //     const info = document.getElementById('interval-info');
-    //     const count = document.getElementById('interval-count');
-
-    //     // Show zero values warning if both feeding duration and interval are zero
-    //     if (totalFeeding === 0 && totalInterval === 0) {
-    //         zeroWarning.style.display = 'block';
-    //         intervalWarning.style.display = 'none';
-    //         info.style.display = 'none';
-    //         saveBtn.disabled = true;
-    //         return;
-    //     } else {
-    //         zeroWarning.style.display = 'none';
-    //     }
-
-    //     if (totalInterval === 0) {
-    //         intervalWarning.style.display = 'none';
-    //         info.style.display = 'none';
-    //         saveBtn.disabled = true;
-    //         return;
-    //     }
-
-    //     if (totalInterval > totalFeeding) {
-    //         intervalWarning.style.display = 'block';
-    //         info.style.display = 'none';
-    //         saveBtn.disabled = true;
-    //     } else {
-    //         intervalWarning.style.display = 'none';
-    //         info.style.display = 'block';
-    //         const estimatedChecks = Math.floor(totalFeeding / totalInterval);
-    //         count.textContent = estimatedChecks;
-    //         saveBtn.disabled = false;
-    //     }
-    // }
-
-    // intervalMinutesInput.addEventListener('input', calculateDurations);
-    // intervalSecondsInput.addEventListener('input', calculateDurations);
-    // feedingMinutesInput.addEventListener('input', calculateDurations);
-
-    // const pelletsInput = document.getElementById('pelletsInput');
-    // const pelletCalculationElement = document.getElementById('pelletCalculation');
-
-    // pelletsInput.addEventListener('input', function () {
-    //     const grams = parseInt(this.value) || 0;
-    //     const totalPellets = grams * 100;
-    //     pelletCalculationElement.textContent = `${grams} g : ${totalPellets} pellets (100 pellets/g)`;
-    // });
-
-    // calculateDurations();
-    // pelletsInput.dispatchEvent(new Event('input'));
 
     document.getElementById('manualFeedStartBtn').addEventListener('click', (e) => {
         e.preventDefault();
