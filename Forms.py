@@ -33,12 +33,12 @@ class configurationForm(FlaskForm):
 
     pellets = IntegerField("", validators=[
         DataRequired(),
-        NumberRange(min=1, max=1000, message="Pellets must be between 1 and 1000 grams.")
+        NumberRange(min=1, max=1000, message="Feeding amount must be between 1 and 1000 grams.")
     ])
 
     minutes = IntegerField("", validators=[
         Optional(),
-        NumberRange(min=1, max=60, message="Minutes must be non-negative.")
+        NumberRange(min=1, max=60, message="Feeding duration must be non-negative.")
     ])
 
     feeding_threshold = IntegerField("", validators=[
