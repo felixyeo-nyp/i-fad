@@ -1804,14 +1804,14 @@ def get_pellet_data():
             morning_feed_1 = data.get('Morning Feed 1', 'N/A')
             morning_feed_2 = data.get('Morning Feed 2', 'N/A')
             evening_feed_1 = data.get('Evening Feed 1', 'N/A')
-            evenin_feed_2 = data.get('Evening Feed 2', 'N/A')
+            evening_feed_2 = data.get('Evening Feed 2', 'N/A')
 
             morning_1.append(morning_feed_1)
             morning_2.append(morning_feed_2)
             evening_1.append(evening_feed_1)
-            evening_2.append(evenin_feed_2)
+            evening_2.append(evening_feed_2)
 
-            valid_values = [v for v in [morning_feed_1, morning_feed_2, evening_feed_1, evenin_feed_2] if is_valid(v)]
+            valid_values = [v for v in [morning_feed_1, morning_feed_2, evening_feed_1, evening_feed_2] if is_valid(v)]
             valid_total = sum(float(v) for v in valid_values)
             total.append(valid_total)
             session_counts.append(len(valid_values))
@@ -1909,7 +1909,7 @@ def export_data():
         morning_feed_1 = morning_1[i]
         morning_feed_2 = morning_2[i]
         evening_feed_1 = evening_1[i]
-        evenin_feed_2 = evening_2[i]
+        evening_feed_2 = evening_2[i]
         total_feed = total[i] if isinstance(total[i], (int, float)) else 0
         day_feeding_rate = feeding_rate[i]
         
@@ -1918,7 +1918,7 @@ def export_data():
         sheet.cell(row=row, column=2, value=morning_feed_1 if morning_feed_1 != "" else "N/A")
         sheet.cell(row=row, column=3, value=morning_feed_2 if morning_feed_2 != "" else "N/A")
         sheet.cell(row=row, column=4, value=evening_feed_1 if evening_feed_1 != "" else "N/A")
-        sheet.cell(row=row, column=5, value=evenin_feed_2 if evenin_feed_2 != "" else "N/A")
+        sheet.cell(row=row, column=5, value=evening_feed_2 if evening_feed_2 != "" else "N/A")
         sheet.cell(row=row, column=6, value=total_feed)
         sheet.cell(row=row, column=7, value=f"{day_feeding_rate}%")
 
@@ -2734,9 +2734,9 @@ def send_udp_packet(source, destination, port, message):
             fallback_ip = get_valid_local_ip()
             sock.bind((fallback_ip, 0))
             print(f"Fallback: Socket bound to device IP: {fallback_ip}")
-        except Exception as evenin_feed_2:
+        except Exception as e:
             # If fallback also fails, bind to any interface which will handle by the OS
-            print(f"Fallback failed. Binding to any interface. Error: {evenin_feed_2}")
+            print(f"Fallback failed. Binding to any interface. Error: {e}")
             sock.bind(("", 0))
 
     sock.sendto(message, (destination, port))
