@@ -74,13 +74,11 @@ class configurationForm(FlaskForm):
         # Total time needed for requested pellets
         required_feed_time = total_feed_grams / dispense_rate
 
-        # Total session time includes feed + check intervals
-        num_intervals = int(required_feed_time // check_interval)
-        total_time_with_checks = required_feed_time + num_intervals * threshold / dispense_rate
+        total_required_time = required_feed_time + check_interval
 
-        if total_time_with_checks > duration:
+        if total_required_time > duration:
             self.duration_seconds.errors.append(
-                f"Feeding session too short. Requires at least {int(total_time_with_checks)} seconds for {total_feed_grams}g feed amount."
+                f"Feeding session too short. Requires at least {int(total_required_time)} seconds for {total_feed_grams}g feed amount."
             )
             return False
         
