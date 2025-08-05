@@ -400,61 +400,44 @@ def feeding_scheduler_loop():
         now = datetime.now(tz)
 
         try:
-            # Get feeding times from new structure
+            # Get feeding times
             morning_feed_1 = config.get("user_morning_feed_1", "")
             morning_feed_2 = config.get("user_morning_feed_2", "")
             evening_feed_1 = config.get("user_evening_feed_1", "")
             evening_feed_2 = config.get("user_evening_feed_2", "")
             
             # Get feeding parameters
-            feeding_duration = int(config.get("user_minutes", 0)) * 60  # Total session duration (e.g., 120s)
-            check_interval = int(config.get("user_interval_seconds", 2))  # Check interval (e.g., 2s or 5s)
-            user_pellets = int(config.get("user_pellets", 0))  # Total pellets to dispense (e.g., 200g)
+            feeding_duration = int(config.get("user_minutes", 0)) * 60
+            check_interval = int(config.get("user_interval_seconds", 2))
+            user_pellets = int(config.get("user_pellets", 0))
             feeding_threshold = int(config.get("user_feeding_threshold", 0))
             pellets_per_second = int(config.get("user_pellets_per_second", 1))
             
-            # SMART CALCULATION OF FEEDING PARAMETERS
-            # Calculate how long we need to actually feed to dispense all pellets
-            required_feed_time = user_pellets / pellets_per_second  # e.g., 200g / 2g/s = 100s
-            required_feed_time = math.ceil(required_feed_time)  # Round up if there's remainder
-            
-            # Calculate remaining time for checking
-            available_check_time = feeding_duration - required_feed_time  # e.g., 120s - 100s = 20s
+            required_feed_time = user_pellets / pellets_per_second
+            required_feed_time = math.ceil(required_feed_time)
+            available_check_time = feeding_duration - required_feed_time
             
             if available_check_time <= 0:
-                # If no time left for checking, just feed continuously
                 max_checks = 0
                 feed_per_cycle = required_feed_time
                 check_per_cycle = 0
                 total_cycles = 1
                 print(f"[CALC] No check time available. Continuous feeding for {feed_per_cycle}s")
             else:
-                # Calculate how many check intervals we can fit
-                max_checks = available_check_time // check_interval  # e.g., 20s / 5s = 4 checks
+                max_checks = available_check_time // check_interval
                 
                 if max_checks == 0:
-                    # If check interval is too large, just do one check at the end
                     max_checks = 1
                     feed_per_cycle = required_feed_time
                     check_per_cycle = available_check_time
                     total_cycles = 1
                 else:
-                    # Distribute feeding time across the available checks
-                    feed_per_cycle = math.ceil(required_feed_time / max_checks)  # e.g., 100s / 4 = 25s
+                    feed_per_cycle = math.ceil(required_feed_time / max_checks)
                     check_per_cycle = check_interval
                     total_cycles = max_checks
-                
-                print(f"[CALC] {total_cycles} cycles: {feed_per_cycle}s feed + {check_per_cycle}s check")
-            
-            # Calculate pellets dispensed per feeding cycle
+
             pellets_per_feed_cycle = feed_per_cycle * pellets_per_second
             
-            print(f"[CALC] Total duration: {feeding_duration}s, Required feed time: {required_feed_time}s")
-            print(f"[CALC] Available check time: {available_check_time}s, Check interval: {check_interval}s")
-            print(f"[CALC] Cycles: {total_cycles}, Feed/cycle: {feed_per_cycle}s, Check/cycle: {check_per_cycle}s")
-            print(f"[CALC] Pellets per feed cycle: {pellets_per_feed_cycle}g")
-            
-            # Create scheduled times
             scheduled_times = []
             if morning_feed_1 and morning_feed_1 != "N/A":
                 scheduled_times.append((now.replace(hour=int(morning_feed_1[:2]), minute=int(morning_feed_1[2:]), second=0, microsecond=0), "morning_feed_1"))
@@ -476,9 +459,15 @@ def feeding_scheduler_loop():
         # Check if feeding should start
         if not feeding:
             for scheduled_time, session_name in scheduled_times:
-                if now == scheduled_time:  # Exact match for scheduled time
+                if scheduled_time.strftime('%H:%M:%S') <= now.strftime('%H:%M:%S') <= str((scheduled_time + timedelta(seconds=5)).strftime('%H:%M:%S')):
                     print(f"[FEED TRIGGER] Starting feeding session {session_name} at {now.strftime('%H:%M:%S')}")
                     current_feeding_session = session_name
+                    # Start camera threads for pellets detection
+                    try:
+                        start_camera_threads()
+                    except Exception as e:
+                        print(f"[ERROR] Failed to start camera threads: {e}")
+                        continue
                     
                     try:
                         with shelve_lock:
@@ -495,7 +484,7 @@ def feeding_scheduler_loop():
                         feed_cycle_start_time = time.time()
                         is_feeding_phase = True
                         total_count = 0
-                        feeding_amount_storage = 0  # Reset feeding count storage
+                        feeding_amount_storage = 0
                         current_cycle = 1
                         
                         # Start first feeding phase
@@ -519,7 +508,7 @@ def feeding_scheduler_loop():
             with object_count_lock:
                 total_count += object_count[1]
 
-            # Handle feeding phase
+            # Feeding phase
             if is_feeding_phase and cycle_elapsed >= feed_per_cycle:
                 # End feeding phase, start check phase (if check time > 0)
                 try:
@@ -541,11 +530,16 @@ def feeding_scheduler_loop():
                     # If there's no check time or this is the last cycle, end session
                     if check_per_cycle == 0 or current_cycle >= total_cycles:
                         print(f"[FEED END] All feeding cycles completed.")
+                        # Stop camera threads
+                        try:
+                            stop_camera_threads()
+                        except Exception as e:
+                            print(f"[ERROR] Failed to stop camera threads: {e}")
+                            continue
                         feeding = False
                         feed_start_time = None
                         feed_cycle_start_time = None
                         if current_feeding_session:
-                            # Get the feeding time string for this session
                             session_times = {
                                 'morning_feed_1': morning_feed_1,
                                 'morning_feed_2': morning_feed_2,
@@ -563,23 +557,28 @@ def feeding_scheduler_loop():
                 except Exception as e:
                     print(f"[ERROR] Failed to pause feed: {e}")
 
-            # Handle check phase
+            # Check phase
             elif not is_feeding_phase and cycle_elapsed >= (feed_per_cycle + check_per_cycle):
                 # Check phase completed, decide whether to continue
                 with object_count_lock:
                     current_count = object_count[1]
 
-                feeding_threshold_with_buffer = feeding_threshold + 5 # Add a buffer for unexpected counts (E.g. Water Reflection, Camera Glitches, etc.)
+                feeding_threshold_with_buffer = feeding_threshold + 5  # Add a buffer for unexpected counts (E.g. Water Reflection, Camera Glitches, etc.)
 
-                # Check if we've completed all cycles or if we have enough pellets
-                if current_cycle >= total_cycles or current_count >= feeding_threshold_with_buffer:
+                print(f"[FEED CHECK] Cycles: {current_cycle}/{total_cycles}, Count: {current_count}/{feeding_threshold_with_buffer}")
+                if current_cycle >= total_cycles:
                     # End feeding session
                     print(f"[FEED END] Feeding session completed. Cycles: {current_cycle}/{total_cycles}, Count: {current_count}/{feeding_threshold_with_buffer}")
+                    # Stop camera threads
+                    try:
+                        stop_camera_threads()
+                    except Exception as e:
+                        print(f"[ERROR] Failed to stop camera threads: {e}")
+                        continue
                     feeding = False
                     feed_start_time = None
                     feed_cycle_start_time = None
                     if current_feeding_session:
-                        # Get the feeding time string for this session
                         session_times = {
                             'morning_feed_1': morning_feed_1,
                             'morning_feed_2': morning_feed_2,
@@ -626,49 +625,54 @@ def feeding_scheduler_loop():
                         feed_cycle_start_time = time.time()
                         is_feeding_phase = False  # Go directly to next check phase
 
-            # Safety check - if total duration exceeds feeding_duration + buffer, force stop
-            total_elapsed = time.time() - feed_start_time
-            max_expected_duration = feeding_duration + 30  # Add 30s buffer
-            if total_elapsed >= max_expected_duration:
-                print(f"[FEED TIMEOUT] Maximum duration exceeded. Force stopping.")
-                try:
-                    with shelve_lock:
-                        with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
-                            port = db.get('Port')
-                            server_isn = db.get('syn_ack_seq')
-                            server_ack = db.get('syn_ack_ack')
-                            ip_data = ip_db.get('IP', {})
-                            source_ip = ip_data.get('source')
-                            destination_ip = ip_data.get('destination')
-                    
-                    success = stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
-                    if success:
-                        print("[FEED TIMEOUT] Feed stopped successfully")
-                    else:
-                        print("[FEED TIMEOUT ERROR] Failed to stop feed")
+            # Safety check - if total duration exceeds feeding_duration, force stop
+            if feed_start_time is not None:
+                total_elapsed = time.time() - feed_start_time
+                if total_elapsed >= feeding_duration:
+                    print(f"[FEED TIMEOUT] Maximum duration exceeded. Force stopping.")
+                    try:
+                        with shelve_lock:
+                            with shelve.open('IP.db', 'r') as ip_db, shelve.open('settings.db', 'r') as db:
+                                port = db.get('Port')
+                                server_isn = db.get('syn_ack_seq')
+                                server_ack = db.get('syn_ack_ack')
+                                ip_data = ip_db.get('IP', {})
+                                source_ip = ip_data.get('source')
+                                destination_ip = ip_data.get('destination')
                         
-                except Exception as e:
-                    print(f"[ERROR] Failed to force stop feed: {e}")
-                    
-                feeding = False
-                feed_start_time = None
-                feed_cycle_start_time = None
-                if current_feeding_session:
-                    # Get the feeding time string for this session
-                    session_times = {
-                        'morning_feed_1': morning_feed_1,
-                        'morning_feed_2': morning_feed_2,
-                        'evening_feed_1': evening_feed_1,
-                        'evening_feed_2': evening_feed_2
-                    }
-                    feeding_time_str = session_times.get(current_feeding_session, "")
-                    save_chart_data(feeding_amount_storage, current_feeding_session, feeding_time_str)
-                    print(f"[FEED TIMEOUT] Session {current_feeding_session} ended with timeout at {feeding_amount_storage}g dispensed.")
-                    feeding_amount_storage = 0
-                    current_feeding_session = None
+                        success = stop_send_manual_feed(port, server_isn, server_ack, source_ip, destination_ip)
+                        if success:
+                            print("[FEED TIMEOUT] Feed stopped successfully")
+                        else:
+                            print("[FEED TIMEOUT ERROR] Failed to stop feed")
+                            
+                    except Exception as e:
+                        print(f"[ERROR] Failed to force stop feed: {e}")
+
+                    # Stop camerat threads
+                    try:
+                        stop_camera_threads()
+                    except Exception as e:
+                        print(f"[ERROR] Failed to stop camera threads: {e}")
+                        continue
+                        
+                    feeding = False
+                    feed_start_time = None
+                    feed_cycle_start_time = None
+                    if current_feeding_session:
+                        session_times = {
+                            'morning_feed_1': morning_feed_1,
+                            'morning_feed_2': morning_feed_2,
+                            'evening_feed_1': evening_feed_1,
+                            'evening_feed_2': evening_feed_2
+                        }
+                        feeding_time_str = session_times.get(current_feeding_session, "")
+                        save_chart_data(feeding_amount_storage, current_feeding_session, feeding_time_str)
+                        print(f"[FEED TIMEOUT] Session {current_feeding_session} ended with timeout at {feeding_amount_storage}g dispensed.")
+                        feeding_amount_storage = 0
+                        current_feeding_session = None
 
         time.sleep(1)
-
 
 def save_chart_data(feeding_amount_storage, feeding_session, feeding_time_str):
     """
@@ -2881,7 +2885,7 @@ if __name__ == '__main__':
 
     # Start Flask app
     try:
-        app.run(host='0.0.0.0', port=5001, debug=True)
+        app.run(host='0.0.0.0', port=5001, debug=False)
     finally:
         cleanup_on_exit()
         for t in threads:
