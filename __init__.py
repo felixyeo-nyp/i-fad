@@ -1845,9 +1845,9 @@ def dashboard():
                             "minutes": user_data.get("user_minutes", 0),
                             "interval_seconds": user_data.get("user_interval_seconds", 0),
                             "pellets": user_data.get("user_pellets", 0),
-                            "pellet_size": user_data.get("pellet_size", 1),
-                            "pellets_per_second": user_data.get("pellets_per_second", 1),
-                            "feeding_threshold": user_data.get("feeding_threshold", 0),
+                            "pellet_size": user_data.get("user_pellet_size", 1),
+                            "pellets_per_second": user_data.get("user_pellets_per_second", 1),
+                            "feeding_threshold": user_data.get("user_feeding_threshold", 0),
                         }
                         break
 
