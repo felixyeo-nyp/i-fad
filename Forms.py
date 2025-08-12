@@ -28,7 +28,7 @@ class configurationForm(FlaskForm):
 
     interval_seconds = IntegerField("", validators=[
         DataRequired(),
-        NumberRange(min=1, max=59, message="Interval seconds must be between 1 and 59.")
+        NumberRange(min=1, max=60, message="Interval seconds must be between 1 and 60 seconds.")
     ])
 
     pellets = IntegerField("", validators=[
@@ -38,12 +38,12 @@ class configurationForm(FlaskForm):
 
     minutes = IntegerField("", validators=[
         Optional(),
-        NumberRange(min=1, max=60, message="Feeding duration must be non-negative.")
+        NumberRange(min=1, max=60, message="Feeding duration must be between 1 and 60 minutes")
     ])
 
     feeding_threshold = IntegerField("", validators=[
         DataRequired(),
-        NumberRange(min=1, max=1000, message="Feeding threshold must be between 1 and 1000 grams.")
+        NumberRange(min=1, max=1000, message="Feeding threshold must be between 1 and 1000 pellets.")
     ])
 
     pellet_size = IntegerField("", validators=[
@@ -53,7 +53,7 @@ class configurationForm(FlaskForm):
 
     pellets_per_second = IntegerField("", validators=[
         DataRequired(),
-        NumberRange(min=1, max=1000, message="Pellets dispense out per second must be between 1 to 1000.")
+        NumberRange(min=1, max=1000, message="Pellets dispense out per second must be between 1 to 1000 gram(s)/s.")
     ])
 
     def validate(self):
