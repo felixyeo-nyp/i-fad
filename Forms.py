@@ -8,62 +8,86 @@ from flask_wtf import FlaskForm
 import re
 
 class configurationForm(FlaskForm):
-    first_timer = StringField("", validators=[
+    morning_feed_1 = StringField("", validators=[
         DataRequired(),
-        Regexp(r'^(0[6-9]|1[0-2])[0-5]\d$', message="First timer must be between 0600 and 1200 (24Hr format).")
+        Regexp(r'^(0[0-9]|1[0-1])[0-5]\d$', message="Morning Feed 1 must be between 0000 and 1159.")
     ])
-    second_timer = StringField("", validators=[
-        DataRequired(),
-        Regexp(r'^(1[2-9]|2[0-3])[0-5]\d$', message="Second timer must be between 1200 and 2400 (24Hr format).")
+    morning_feed_2 = StringField("", validators=[
+        Optional(),
+        Regexp(r'^(0[0-9]|1[0-1])[0-5]\d$', message="Morning Feed 2 must be between 0000 and 1159.")
     ])
 
-    interval_minutes = IntegerField("", validators=[
-        Optional(),
-        NumberRange(min=0, max=60, message="Minutes must be non-negative.")
+    evening_feed_1 = StringField("", validators=[
+        DataRequired(),
+        Regexp(r'^(1[2-9]|2[0-3])[0-5]\d$', message="Evening Feed 1 must be between 1200 and 2359.")
     ])
-    interval_seconds = IntegerField("", validators=[
+    evening_feed_2 = StringField("", validators=[
         Optional(),
-        NumberRange(min=0, max=59, message="Seconds must be between 0 and 59.")
+        Regexp(r'^(1[2-9]|2[0-3])[0-5]\d$', message="Evening Feed 2 must be between 1200 and 2359.")
+    ])
+
+    interval_seconds = IntegerField("", validators=[
+        DataRequired(),
+        NumberRange(min=1, max=59, message="Interval seconds must be between 1 and 59.")
     ])
 
     pellets = IntegerField("", validators=[
         DataRequired(),
-        NumberRange(min=1, max=1000, message="Pellets must be between 1 and 1000 grams.")
+        NumberRange(min=1, max=1000, message="Feeding amount must be between 1 and 1000 grams.")
     ])
+
     minutes = IntegerField("", validators=[
         Optional(),
-        NumberRange(min=0, max=60, message="Minutes must be non-negative.")
+        NumberRange(min=1, max=60, message="Feeding duration must be non-negative.")
+    ])
+
+    feeding_threshold = IntegerField("", validators=[
+        DataRequired(),
+        NumberRange(min=1, max=1000, message="Feeding threshold must be between 1 and 1000 grams.")
+    ])
+
+    pellet_size = IntegerField("", validators=[
+        DataRequired(),
+        NumberRange(min=1, max=8, message="Pellet size must be between 1 to 8 mm.")
+    ])
+
+    pellets_per_second = IntegerField("", validators=[
+        DataRequired(),
+        NumberRange(min=1, max=1000, message="Pellets dispense out per second must be between 1 to 1000.")
     ])
 
     def validate(self):
-        # Call the parent class validate method first
         is_valid = super().validate()
-
-        # Custom validation logic: Ensure at least one of minutes or seconds is entered
-        if not self.minutes.data:
-            self.minutes.errors.append("At least one of 'minutes' or 'seconds' must be entered.")
+        if not is_valid:
             return False
 
-        return is_valid
-    def intervalvalidate(self):
-        # Call the parent class validate method first
-        is_valid = super().validate()
+        total_feed_grams = self.pellets.data
+        dispense_rate = self.pellets_per_second.data
+        threshold = self.feeding_threshold.data
+        check_interval = self.interval_seconds.data
+        duration = self.duration_seconds.data
 
-        # Custom validation logic: Ensure at least one of minutes or seconds is entered
-        if not self.interval_minutes.data:
-            self.interval_minutes.errors.append("Please enter the data.")
-
+        if dispense_rate <= 0:
+            self.pellets_per_second.errors.append("Pellets per second must be greater than 0.")
             return False
 
+        # Total time needed for requested pellets
+        required_feed_time = total_feed_grams / dispense_rate
 
-    def totalintervalvalidcheck(self):
-        is_valid = super().validate()
-        interval_total = (self.interval_minutes.data or 0) * 60
-        feeding_total = (self.minutes.data or 0) * 60
+        total_required_time = required_feed_time + check_interval
 
-        if interval_total > feeding_total:
-            self.interval_minutes.errors.append("Interval check duration cannot exceed total feeding duration.")
+        if total_required_time > duration:
+            self.duration_seconds.errors.append(
+                f"Feeding session too short. Requires at least {int(total_required_time)} seconds for {total_feed_grams}g feed amount."
+            )
             return False
+        
+        if total_feed_grams < threshold:
+            self.feeding_threshold.errors.append(
+                "Feeding threshold must be less than the total feed amount."
+            )
+            return False
+
         return is_valid
 
 class RegisterForm(FlaskForm):

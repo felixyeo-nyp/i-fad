@@ -13,14 +13,21 @@
     <div class="stats-grid">
         <!-- Morning Feeding Card -->
         <div class="watch-scroll hidden-on-load">
-            <div class="stat-card morning">
+            <div class="stat-card morning" onclick="toggleInfo(this)">
                 <div class="card-icon">
                     <i class="fas fa-sun"></i>
                 </div>
                 <div class="card-content">
                     <div class="card-label">Morning Feeding Time</div>
                     <div class="card-value">
-                        {{ user_settings.first_timer if user_settings.first_timer else "N/A" }} <span>hours</span>
+                        <div class="primary-info">
+                            {{ user_settings.first_morning_timer + " hours" if user_settings.first_morning_timer and user_settings.first_morning_timer != "N/A" else "N/A" }}
+                            <span>{{ user_settings.second_morning_timer + " hours" if user_settings.second_morning_timer and user_settings.second_morning_timer != "N/A" else "N/A" }}</span>
+                        </div>
+                        <div class="secondary-info" style="display:none;">
+                            {{ user_settings.second_morning_timer + " hours" if user_settings.second_morning_timer and user_settings.second_morning_timer != "N/A" else "N/A" }}
+                            <span>{{ user_settings.first_morning_timer + " hours" if user_settings.first_morning_timer and user_settings.first_morning_timer != "N/A" else "N/A" }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -28,14 +35,21 @@
 
         <!-- Evening Feeding Card -->
         <div class="watch-scroll hidden-on-load">
-            <div class="stat-card evening">
+            <div class="stat-card evening" onclick="toggleInfo(this)">
                 <div class="card-icon">
                     <i class="fas fa-moon"></i>
                 </div>
                 <div class="card-content">
                     <div class="card-label">Evening Feeding Time</div>
                     <div class="card-value">
-                        {{ user_settings.second_timer if user_settings.second_timer else "N/A" }} <span>hours</span>
+                        <div class="primary-info">
+                            {{ user_settings.first_evening_timer + " hours" if user_settings.first_evening_timer and user_settings.first_evening_timer != "N/A" else "N/A" }}
+                            <span>{{ user_settings.second_evening_timer + " hours" if user_settings.second_evening_timer and user_settings.second_evening_timer != "N/A" else "N/A" }}</span>
+                        </div>
+                        <div class="secondary-info" style="display:none;">
+                            {{ user_settings.second_evening_timer + " hours" if user_settings.second_evening_timer and user_settings.second_evening_timer != "N/A" else "N/A" }}
+                            <span>{{ user_settings.first_evening_timer + " hours" if user_settings.first_evening_timer and user_settings.first_evening_timer != "N/A" else "N/A" }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -50,7 +64,7 @@
                 <div class="card-content">
                     <div class="card-label">Feeding Session Duration</div>
                     <div class="card-value">
-                        {{ user_settings.duration_seconds // 60 }} <span>minutes</span> {{ user_settings.duration_seconds % 60 }} <span>seconds</span>
+                        {{ user_settings.minutes * 60 // 60 }} <span>minutes</span> {{ user_settings.minutes * 60 % 60 }} <span>seconds</span>
                     </div>
                 </div>
             </div>
@@ -58,42 +72,15 @@
 
         <!-- Feed Amount Card -->
         <div class="watch-scroll hidden-on-load">
-            <div class="stat-card amount" onclick="toggleInfo(this)">
+            <div class="stat-card amount">
                 <div class="card-icon">
                     <i class="fa-solid fa-weight-scale"></i>
                 </div>
                 <div class="card-content">
                     <div class="card-label">Estimated Feed Amount</div>
                     <div class="card-value">
-                        <div class="primary-info">
-                            {{ "%.2f"|format(user_settings.pellets | float) }} gram(s)
-                            <span>{{ (user_settings.pellets | float * 100) | int }} pellets</span>
-                        </div>
-                        <div class="secondary-info" style="display:none;">
-                            {{ (user_settings.pellets | float * 100) | int }} pellets
-                            <span>{{ "%.2f"|format(user_settings.pellets | float) }} gram(s)</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pellet Count Card -->
-        <div class="watch-scroll hidden-on-load">
-            <div class="stat-card count" onclick="toggleInfo(this)">
-                <div class="card-icon">
-                    <i class="fa-solid fa-circle"></i>
-                </div>
-                <div class="card-content">
-                    <div class="card-label">Current Feed Remaining</div>
-                    <div class="card-value">
-                        <div class="primary-info">
-                            {{ "%.2f"|format(latest_count / 100) }} gram(s)
-                            <span>{{ latest_count }} pellets left</span>
-                        </div>
-                        <div class="secondary-info" style="display:none;">
-                            {{ latest_count }} pellets left
-                            <span>{{ "%.2f"|format(latest_count / 100) }} gram(s)</span>
+                        <div class="card-value">
+                            {{ "%.2f"|format(user_settings.pellets | float) }} <span>gram(s)</span>
                         </div>
                     </div>
                 </div>
@@ -107,9 +94,39 @@
                     <i class="fas fa-history"></i>
                 </div>
                 <div class="card-content">
-                    <div class="card-label">Feeding Interval</div>
+                    <div class="card-label">Check Interval</div>
                     <div class="card-value">
                         {{ user_settings.interval_seconds // 60 }} <span>minutes</span> {{ user_settings.interval_seconds % 60 }} <span>seconds</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feeding Threshold Card -->
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card threshold">
+                <div class="card-icon">
+                    <i class="fas fa-balance-scale-left fa-icon"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Feeding Threshold</div>
+                    <div class="card-value">
+                        {{ user_settings.feeding_threshold }} <span>pellets</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dispense Speed Card -->
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card dispense-speed">
+                <div class="card-icon">
+                    <i class="fas fa-tachometer-alt fa-icon"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Dispense Speed</div>
+                    <div class="card-value">
+                        {{ user_settings.pellets_per_second }} <span>gram(s)/second</span>
                     </div>
                 </div>
             </div>
@@ -119,6 +136,7 @@
     <!-- Feeding Timeline & Feeding Stats Summary with Notice Text -->
     <div class="watch-scroll hidden-on-load">
         <div class="feeding-timeline-container">
+             <h1 class="component-title">FEEDING SCHEDULE VISUALISATION</h1>
             <div class="feeding-timeline">
                 <div class="timeline-line"></div>
 
@@ -129,65 +147,55 @@
                 <div class="timeline-label tick" style="left: 75%;">18:00</div>
                 <div class="timeline-label end">24:00</div>
 
-                {% if user_settings.first_timer %}
-                    {% set time_morning = user_settings.first_timer | int %}
+                {% if user_settings.first_morning_timer and user_settings.first_morning_timer != "N/A" %}
+                    {% set time_morning = user_settings.first_morning_timer | int %}
                     {% set hours_morning = (time_morning // 100) %}
                     {% set minutes_morning = (time_morning % 100) %}
                     {% set decimal_hours_morning = hours_morning + (minutes_morning / 60) %}
                     <div class="timeline-pin morning" style="left: {{ ((decimal_hours_morning / 24) * 100) }}%;">
-                        <div class="pin-label">Morning Feed ({{ user_settings.first_timer }}H)</div>
+                        <div class="pin-label">Morning Feed ({{ user_settings.first_morning_timer }}H)</div>
                         <i class="fas fa-sun"></i>
                     </div>
                 {% endif %}
 
-                {% if user_settings.second_timer %}
-                    {% set time_evening = user_settings.second_timer | int %}
+                {% if user_settings.second_morning_timer and user_settings.second_morning_timer != "N/A" %}
+                    {% set time_morning2 = user_settings.second_morning_timer | int %}
+                    {% set hours_morning2 = (time_morning2 // 100) %}
+                    {% set minutes_morning2 = (time_morning2 % 100) %}
+                    {% set decimal_hours_morning2 = hours_morning2 + (minutes_morning2 / 60) %}
+                    <div class="timeline-pin morning" style="left: {{ ((decimal_hours_morning2 / 24) * 100) }}%;">
+                        <div class="pin-label">Second Morning Feed ({{ user_settings.second_morning_timer }}H)</div>
+                        <i class="fas fa-sun"></i>
+                    </div>
+                {% endif %}
+
+                {% if user_settings.first_evening_timer and user_settings.first_evening_timer != "N/A" %}
+                    {% set time_evening = user_settings.first_evening_timer | int %}
                     {% set hours_evening = (time_evening // 100) %}
                     {% set minutes_evening = (time_evening % 100) %}
                     {% set decimal_hours_evening = hours_evening + (minutes_evening / 60) %}
                     <div class="timeline-pin evening" style="left: {{ (decimal_hours_evening / 24) * 100 }}%;">
-                        <div class="pin-label">Evening Feed ({{ user_settings.second_timer }}H)</div>
+                        <div class="pin-label">Evening Feed ({{ user_settings.first_evening_timer }}H)</div>
+                        <i class="fas fa-moon"></i>
+                    </div>
+                {% endif %}
+
+                {% if user_settings.second_evening_timer and user_settings.second_evening_timer != "N/A" %}
+                    {% set time_evening2 = user_settings.second_evening_timer | int %}
+                    {% set hours_evening2 = (time_evening2 // 100) %}
+                    {% set minutes_evening2 = (time_evening2 % 100) %}
+                    {% set decimal_hours_evening2 = hours_evening2 + (minutes_evening2 / 60) %}
+                    <div class="timeline-pin evening" style="left: {{ ((decimal_hours_evening2 / 24) * 100) }}%;">
+                        <div class="pin-label">Second Evening Feed ({{ user_settings.second_evening_timer }}H)</div>
                         <i class="fas fa-moon"></i>
                     </div>
                 {% endif %}
             </div>
-
-            <div class="combined-feed-stats-card">
-                <div class="stat-row total-check-count">
-                    <div class="icon-wrapper">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="text-wrapper">
-                        <div class="stat-label">Total Check Count:</div>
-                        <div class="stat-value">
-                            {% set total_duration = user_settings.duration_seconds %}
-                            {% set interval = user_settings.interval_seconds %}
-                            {% set total_check_count = (total_duration / interval) if interval > 0 else 0 %}
-                            {{ total_check_count|int if total_check_count > 0 else "N/A" }}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="stat-row feed-amount-per-check">
-                    <div class="icon-wrapper">
-                        <i class="fa-solid fa-scale-balanced"></i>
-                    </div>
-                    <div class="text-wrapper">
-                        <div class="stat-label">Gram-to-Pallet Ratio:</div>
-                        <div class="stat-value">1 gram = 100 pellets</div>
-                    </div>
-                </div>
-
-                <div class="notice-text">
-                    Pellets are dispensed only if count drops below <strong>10% of the estimated feed amount</strong>.
-                </div>
-
-                <div class="settings-btn-wrapper">
-                    <a href="/update" class="settings-btn">
-                        <i class="fas fa-cog"></i>
-                        Adjust settings here!
-                    </a>
-                </div>
+            <div class="settings-btn-wrapper">
+                <a href="/update" class="settings-btn">
+                    <i class="fas fa-cog"></i>
+                    Adjust settings here!
+                </a>
             </div>
         </div>
     </div>
@@ -196,10 +204,48 @@
     <div class="chart-section hidden-on-load watch-scroll">
         <div class="section-header">
             <h2>Past 7 Days' Feeding Summary</h2>
+            <div style="margin-top: 10px;" class="toggle-btn-wrapper">
+                <button onclick="toggleChart('feed')" class="toggle-btn active" id="feedToggleBtn">Feed Count View</button>
+                <button onclick="toggleChart('rate')" class="toggle-btn" id="rateToggleBtn">Feeding Rate View</button>
+            </div>
         </div>
-        <div class="chart-container">
+
+        <!-- Feed Count Chart -->
+        <div class="chart-container" id="feedChartContainer">
             <canvas id="totalPelletChart"></canvas>
         </div>
+
+        <!-- Feeding Rate Chart -->
+        <div class="chart-container" id="rateChartContainer" style="display: none;">
+            <canvas id="feedingRateChart"></canvas>
+        </div>
+
+        <!-- Data Preview Table -->
+        <div id="dataPreviewWrapper" class="data-preview-table hidden-on-load watch-scroll">
+            <div class="table-header">
+                <h2>Preview of Exported Data</h2>
+            </div>
+            
+            <div class="table-container">
+                <table id="dataPreviewTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Morning Feed 1</th>
+                            <th>Morning Feed 2</th>
+                            <th>Evening Feed 1</th>
+                            <th>Evening Feed 2</th>
+                            <th>Total Feed Amount</th>
+                            <th>Feeding Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Filled dynamically below -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="export-btn-wrapper">
             <button class="export-btn" onclick="exportTotalFeedData()">
                 <i class="fas fa-file-export"></i> Export Data
@@ -260,22 +306,71 @@
             }, 200);
         }
     }
+    function toggleChart(type) {
+        const feedBtn = document.getElementById('feedToggleBtn');
+        const rateBtn = document.getElementById('rateToggleBtn');
+
+        if (type === 'feed') {
+            document.getElementById('feedChartContainer').style.display = 'block';
+            document.getElementById('rateChartContainer').style.display = 'none';
+            feedBtn.classList.add('active');
+            rateBtn.classList.remove('active');
+        } else {
+            document.getElementById('feedChartContainer').style.display = 'none';
+            document.getElementById('rateChartContainer').style.display = 'block';
+            feedBtn.classList.remove('active');
+            rateBtn.classList.add('active');
+        }
+    }
 </script>
 <script>
     const checkingInterval = {{ checking_interval }};
+    const expectedFeedCount = {{ user_settings.pellets | float }};
     let mergedChart;
+    let feedingRateChart;
 
     async function fetchUpdatedData() {
         try {
             const response = await fetch('/pellet_data');
             const pelletData = await response.json();
 
+            console.log('Fetched pellet data:', pelletData);
+
             mergedChart.data.labels = pelletData.labels;
-            mergedChart.data.datasets[0].data = pelletData.first_feed_left;
-            mergedChart.data.datasets[1].data = pelletData.second_feed_left;
-            mergedChart.data.datasets[2].data = pelletData.total_feed_count;
+            mergedChart.data.datasets[0].data = pelletData.morning_1.map(val => val === "N/A" ? null : val);
+            mergedChart.data.datasets[1].data = pelletData.morning_2.map(val => val === "N/A" ? null : val);
+            mergedChart.data.datasets[2].data = pelletData.evening_1.map(val => val === "N/A" ? null : val);
+            mergedChart.data.datasets[3].data = pelletData.evening_2.map(val => val === "N/A" ? null : val);
+            mergedChart.data.datasets[4].data = pelletData.total;
 
             mergedChart.update();
+
+            const tableBody = document.querySelector('#dataPreviewTable tbody');
+            tableBody.innerHTML = '';
+
+            for (let i = 0; i < pelletData.labels.length; i++) {
+                const sessionCount = pelletData.session_counts[i] || 1;
+                const expectedTotalForDay = expectedFeedCount * sessionCount;
+                const morning1 = (pelletData.morning_1[i] === "" || pelletData.morning_1[i] === null || pelletData.morning_1[i] === undefined) ? "N/A" : pelletData.morning_1[i];
+                const morning2 = (pelletData.morning_2[i] === "" || pelletData.morning_2[i] === null || pelletData.morning_2[i] === undefined) ? "N/A" : pelletData.morning_2[i];
+                const evening1 = (pelletData.evening_1[i] === "" || pelletData.evening_1[i] === null || pelletData.evening_1[i] === undefined) ? "N/A" : pelletData.evening_1[i];
+                const evening2 = (pelletData.evening_2[i] === "" || pelletData.evening_2[i] === null || pelletData.evening_2[i] === undefined) ? "N/A" : pelletData.evening_2[i];
+                const total = (pelletData.total[i] === "" || pelletData.total[i] === null || pelletData.total[i] === undefined) ? "N/A" : pelletData.total[i];
+                const feedRate = pelletData.total[i] && expectedTotalForDay
+                    ? ((pelletData.total[i] / expectedTotalForDay) * 100).toFixed(2) + "%"
+                    : "0.00%";
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${pelletData.labels[i]}</td>
+                    <td>${morning1}</td>
+                    <td>${morning2}</td>
+                    <td>${evening1}</td>
+                    <td>${evening2}</td>
+                    <td>${total}</td>
+                    <td>${total ? ((total / (expectedFeedCount * pelletData.session_counts[i]))).toFixed(2) : "0.00"}</td>
+                `;
+                tableBody.appendChild(row);
+            }
         } catch (error) {
             console.error('Error fetching updated pellet data:', error);
         }
@@ -293,32 +388,61 @@
                     labels: pelletData.labels,
                     datasets: [
                         {
-                            label: 'Morning Feed Count',
-                            data: pelletData.first_feed_left,
+                            label: 'Morning Feed 1',
+                            data: pelletData.morning_1.map(val => (val === "N/A" || val === "") ? null : Number(val)),
                             backgroundColor: '#fbc02d',
                             borderColor: '#b8860b',
                             borderWidth: 1
                         },
                         {
-                            label: 'Evening Feed Count',
-                            data: pelletData.second_feed_left,
+                            label: 'Morning Feed 2',
+                            data: pelletData.morning_2.map(val => (val === "N/A" || val === "") ? null : Number(val)),
+                            backgroundColor: '#fdd835',
+                            borderColor: '#c49a09',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Evening Feed 1',
+                            data: pelletData.evening_1.map(val => (val === "N/A" || val === "") ? null : Number(val)),
                             backgroundColor: '#7f69c3',
                             borderColor: '#4b3f87',
                             borderWidth: 1
                         },
                         {
+                            label: 'Evening Feed 2',
+                            data: pelletData.evening_2.map(val => (val === "N/A" || val === "") ? null : Number(val)),
+                            backgroundColor: '#9c88e0',
+                            borderColor: '#5e4b99',
+                            borderWidth: 1
+                        },
+                        {
                             label: 'Total Feed Count',
-                            data: pelletData.total_feed_count,
+                            data: [],
+                            backgroundColor: '#c7609c',
+                            borderColor: '#8e3d6b',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Expected Feed Per Meal',
+                            data: new Array(pelletData.labels.length).fill(expectedFeedCount),
                             type: 'line',
+                            borderColor: '#f57c00',
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            pointRadius: 0,
                             fill: false,
-                            borderWidth: 1,
-                            tension: 0.3,
-                            borderColor: '#00d1ff',
-                            backgroundColor: '#ff6600',
-                            pointBackgroundColor: '#ff6600',
-                            pointBorderColor: '#ffffff',
-                            pointRadius: 7,
-                            pointHoverRadius: 10
+                            tension: 0,
+                        },
+                        {
+                            label: 'Expected Total Feed Amount',
+                            data: pelletData.session_counts.map(sessionCount => expectedFeedCount * sessionCount),
+                            type: 'line',
+                            borderColor: '#8e3d6b',
+                            borderWidth: 2,
+                            borderDash: [6, 4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0,
                         }
                     ]
                 },
@@ -371,6 +495,82 @@
                     }
                 }
             });
+
+            const rateCtx = document.getElementById('feedingRateChart').getContext('2d');
+            feedingRateChart = new Chart(rateCtx, {
+                type: 'line',
+                data: {
+                    labels: pelletData.labels,
+                    datasets: [
+                        {
+                            label: 'Feeding Rate',
+                            data: pelletData.total.map((count, i) => {
+                                const sessionCount = pelletData.session_counts[i] || 1;
+                                const expected = expectedFeedCount * sessionCount;
+                                return expected ? (count / expected).toFixed(2) : 0;
+                            }),
+                            borderColor: '#00bcd4',
+                            borderWidth: 2,
+                            pointRadius: 2,
+                            fill: false,
+                            tension: 0,
+                        },
+                        {
+                            label: 'Healthy Feeding Rate',
+                            data: new Array(pelletData.labels.length).fill(1.0),
+                            borderColor: '#388e3c',
+                            borderWidth: 2,
+                            borderDash: [4, 4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 16
+                                },
+                                padding: 20
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 0.25,
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
         } catch (error) {
             console.error('Error initializing chart:', error);
         }
@@ -385,9 +585,12 @@
             },
             body: JSON.stringify({
                 labels: mergedChart.data.labels,
-                first: mergedChart.data.datasets[0].data,
-                second: mergedChart.data.datasets[1].data,
-                total: mergedChart.data.datasets[2].data
+                morning_1: mergedChart.data.datasets[0].data,
+                morning_2: mergedChart.data.datasets[1].data,
+                evening_1: mergedChart.data.datasets[2].data,
+                evening_2: mergedChart.data.datasets[3].data,
+                total: mergedChart.data.datasets[4].data,
+                feeding_rate: feedingRateChart.data.datasets[0].data,
             })
         })
             .then(response => response.blob())
@@ -395,7 +598,7 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'leftover_feed_data.xlsx';
+                a.download = 'feed_summary_data.xlsx';
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -407,9 +610,7 @@
 
     window.onload = function () {
         fetchAndInitializeCharts();
-        if (checkingInterval > 5) {
-            setInterval(fetchUpdatedData, checkingInterval * 1000);
-        }
+        fetchUpdatedData();
     };
 </script>
 
@@ -496,6 +697,17 @@
         letter-spacing: 1px;
     }
 
+    .component-title {
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 10px 0;
+        line-height: 1;
+        color: #f8fafc;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-align: center;
+    }
+
     .dashboard-subtitle {
         font-size: 1.4rem;
         margin: 10px 0;
@@ -505,23 +717,30 @@
 
     /* Stats grid */
     .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        display: flex;
+        flex-wrap: wrap;
         gap: 25px;
-        margin-bottom: 40px;
+        justify-content: center;
+    }
+
+    .stats-grid > * {
+        flex: 0 1 calc(33.333% - 17px); /* subtract gap/3 for spacing */
+        max-width: calc(33.333% - 17px);
     }
 
     /* For medium screens, go to 2 columns */
-    @media (max-width: 1024px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
+    @media (max-width: 1190px) {
+        .stats-grid > * {
+            flex: 0 1 calc(50% - 12.5px);
+            max-width: calc(50% - 12.5px);
         }
     }
 
     /* For small screens, go to 1 column */
-    @media (max-width: 600px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
+    @media (max-width: 808px) {
+    .stats-grid > * {
+            flex: 0 1 100%;
+            max-width: 100%;
         }
     }
 
@@ -537,8 +756,8 @@
         overflow: hidden;
     }
 
-    .stat-card.count,
-    .stat-card.amount {
+    .stat-card.morning,
+    .stat-card.evening {
         cursor: pointer;
     }
 
@@ -554,31 +773,6 @@
         left: 0;
         right: 0;
         height: 4px;
-    }
-
-    .stat-card.tooltip::after {
-        content: "Click to toggle info";
-        position: absolute;
-        bottom: 12px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #fff;
-        padding: 4px 8px;
-        border-radius: 4px;
-        box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
-        font-size: 13px;
-        color: #333;
-        white-space: nowrap;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-        user-select: none;
-        z-index: 10;
-    }
-
-    .stat-card.tooltip:hover::after {
-        opacity: 1;
-        pointer-events: auto;
     }
 
     .primary-info,
@@ -615,8 +809,12 @@
         background: linear-gradient(90deg, #ff9a9e, #fad0c4);
     }
 
-    .count::before {
+    .threshold::before {
         background: linear-gradient(90deg, #a2836e, #d7ccc8);
+    }
+
+    .dispense-speed::before {
+        background: linear-gradient(90deg, #f857a6, #ff5858);
     }
 
     .card-icon {
@@ -656,9 +854,14 @@
         color: #ff9a9e;
     }
 
-    .count .card-icon {
+    .threshold .card-icon {
         background: rgba(162, 131, 110, 0.15);
         color: #8d6e63;
+    }
+
+    .dispense-speed .card-icon {
+        background: rgba(218, 112, 214, 0.15);
+        color: #da70d6;
     }
 
     .card-label {
@@ -694,7 +897,7 @@
     /* Feeding Timeline */
     .feeding-timeline-container {
         max-width: 800px;
-        margin: 30px auto 60px;
+        margin: 50px auto 60px;
         font-family: Arial, sans-serif;
     }
 
@@ -802,85 +1005,6 @@
         margin-bottom: 4px;
     }
 
-    .combined-feed-stats-card {
-        background: var(--card-bg, #fafafa);
-        padding: 25px 30px;
-        border-radius: 16px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        font-family: Arial, sans-serif;
-        color: var(--text-primary, #444);
-        max-width: 800px;
-        margin: 30px auto;
-        user-select: none;
-        transition: all 0.3s ease;
-    }
-
-    .combined-feed-stats-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
-    }
-
-    .stat-row {
-        display: flex;
-        align-items: center;
-        padding: 12px 0;
-    }
-
-    .icon-wrapper {
-        flex-shrink: 0;
-        width: 48px;
-        height: 48px;
-        border-radius: 16px;
-        background: rgba(91, 134, 229, 0.15);
-        color: #5b86e5;
-        font-size: 28px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-right: 20px;
-    }
-
-    .total-check-count .icon-wrapper {
-        background: rgba(91, 134, 229, 0.15);
-        color: #5b86e5;
-    }
-
-    .feed-amount-per-check .icon-wrapper {
-        background: rgba(132, 250, 176, 0.15);
-        color: #84fab0;
-    }
-
-    .text-wrapper {
-        flex-grow: 1;
-    }
-
-    .stat-label {
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: var(--text-secondary, #777);
-        margin-bottom: 4px;
-        font-weight: 600;
-    }
-
-    .stat-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: var(--text-primary, #222);
-    }
-
-    .notice-text {
-        background: rgba(255, 255, 255, 0.05);
-        color: #f1f1f1;
-        font-size: 14px;
-        border-left: 4px solid #fbc02d;
-        padding: 12px 16px;
-        margin-top: 20px;
-        border-radius: 8px;
-        line-height: 1.6;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    }
-
     .settings-btn {
         background: var(--primary-gradient);
         color: white;
@@ -927,6 +1051,7 @@
 
     .section-header {
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
         margin-bottom: 25px;
@@ -937,6 +1062,129 @@
         font-size: 2.4rem;
         font-weight: 800;
         color: var(--text-primary);
+    }
+
+    .toggle-btn-wrapper {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    .toggle-btn {
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+        padding: 12px 25px;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease-in-out;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        border: 2px solid black;
+    }
+
+    .toggle-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    }
+
+    .toggle-btn.active {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        box-shadow: 0 6px 25px rgba(41, 128, 185, 0.5);
+        font-weight: 600;
+        border: 2px solid white;
+    }
+
+    /* Table Styles */
+    .table-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .table-header h2 {
+        text-transform: uppercase;
+        font-size: 2.4rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 5px;
+    }
+
+    .table-container {
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 16px;
+        overflow: auto;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    #dataPreviewTable {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    #dataPreviewTable th {
+        background: rgba(129, 140, 248, 0.15);
+        color: var(--highlight);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+        padding: 16px 12px;
+        text-align: center;
+        border-bottom: 2px solid rgba(129, 140, 248, 0.3);
+    }
+
+    #dataPreviewTable td {
+        padding: 14px 12px;
+        text-align: center;
+        color: var(--text-primary);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    #dataPreviewTable tbody tr:nth-child(even) {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    #dataPreviewTable tbody tr:hover {
+        background: rgba(129, 140, 248, 0.1);
+    }
+
+    #dataPreviewTable tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Pill badges for values */
+    .value-pill {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .morning-pill {
+        background: rgba(251, 192, 45, 0.15);
+        color: #fbc02d;
+    }
+
+    .evening-pill {
+        background: rgba(161, 140, 209, 0.15);
+        color: #a18cd1;
+    }
+
+    .total-pill {
+        background: rgba(199, 96, 156, 0.15);
+        color: #c7609c;
+    }
+
+    .rate-pill {
+        background: rgba(0, 188, 212, 0.15);
+        color: #00bcd4;
     }
 
     .export-btn {
@@ -952,6 +1200,7 @@
         gap: 10px;
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        margin-top: 10px;
     }
 
     .export-btn-wrapper {
@@ -987,14 +1236,29 @@
             font-size: 2rem;
         }
 
+        .component-title {
+            font-size: 1.5rem;
+        }
+
         .section-header {
             flex-direction: column;
-            align-items: flex-start;
+            justify-content: center;
+            align-items: center;
             gap: 15px;
         }
 
         .export-btn {
-            align-self: flex-start;
+            align-self: center;
+        }
+
+        .toggle-btn-wrapper {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .toggle-btn {
+            width: 100%;
+            justify-content: center;
         }
     }
 </style>
