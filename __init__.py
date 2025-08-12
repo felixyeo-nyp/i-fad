@@ -1769,13 +1769,13 @@ def is_valid(val):
 def get_pellet_data():
     # Define test data
     pellet_data = {
-        '26 Jul 2025': {'Morning Feed 1': 250, 'Morning Feed 2': "", 'Evening Feed 1': 200, 'Evening Feed 2': 250, 'Total': 750},
-        '27 Jul 2025': {'Morning Feed 1': 200, 'Morning Feed 2': 250, 'Evening Feed 1': 200, 'Evening Feed 2': 200, 'Total': 850},
-        '28 Jul 2025': {'Morning Feed 1': 100, 'Morning Feed 2': 0, 'Evening Feed 1': 200, 'Evening Feed 2': 250, 'Total': 550},
-        '29 Jul 2025': {'Morning Feed 1': 120, 'Morning Feed 2': 180, 'Evening Feed 1': 130, 'Evening Feed 2': 170, 'Total': 600},
-        '30 Jul 2025': {'Morning Feed 1': 220, 'Morning Feed 2': "N/A", 'Evening Feed 1': 180, 'Evening Feed 2': 230, 'Total': 630},
-        '31 Jul 2025': {'Morning Feed 1': 140, 'Morning Feed 2': 190, 'Evening Feed 1': 160, 'Evening Feed 2': 210, 'Total': 700},
-        '1 Aug 2025': {'Morning Feed 1': 125, 'Morning Feed 2': 175, 'Evening Feed 1': 150, 'Evening Feed 2': 200, 'Total': 650},
+        '6 Aug 2025': {'Morning Feed 1': 80, 'Morning Feed 2': 100, 'Evening Feed 1': 60, 'Evening Feed 2': 100},
+        '7 Aug 2025': {'Morning Feed 1': 100, 'Morning Feed 2': 80, 'Evening Feed 1': 100, 'Evening Feed 2': 40},
+        '8 Aug 2025': {'Morning Feed 1': 60, 'Morning Feed 2': 100, 'Evening Feed 1': 80, 'Evening Feed 2': 100},
+        '9 Aug 2025': {'Morning Feed 1': 100, 'Morning Feed 2': 40, 'Evening Feed 1': 80, 'Evening Feed 2': 60},
+        '10 Aug 2025': {'Morning Feed 1': 100, 'Morning Feed 2': "N/A", 'Evening Feed 1': 80, 'Evening Feed 2': 100},
+        '11 Aug 2025': {'Morning Feed 1': 100, 'Morning Feed 2': 80, 'Evening Feed 1': 60, 'Evening Feed 2': 100},
+        '12 Aug 2025': {'Morning Feed 1': 80, 'Morning Feed 2': 100, 'Evening Feed 1': 100, 'Evening Feed 2': 40},
     }
     # Check if the database exists, and if not, create and populate it
     db_path = 'mock_chart_data.db'
@@ -1845,9 +1845,9 @@ def dashboard():
                             "minutes": user_data.get("user_minutes", 0),
                             "interval_seconds": user_data.get("user_interval_seconds", 0),
                             "pellets": user_data.get("user_pellets", 0),
-                            "pellet_size": user_data.get("pellet_size", 1),
-                            "pellets_per_second": user_data.get("pellets_per_second", 1),
-                            "feeding_threshold": user_data.get("feeding_threshold", 0),
+                            "pellet_size": user_data.get("user_pellet_size", 1),
+                            "pellets_per_second": user_data.get("user_pellets_per_second", 1),
+                            "feeding_threshold": user_data.get("user_feeding_threshold", 0),
                         }
                         break
 
@@ -2885,7 +2885,7 @@ if __name__ == '__main__':
 
     # Start Flask app
     try:
-        app.run(host='0.0.0.0', port=5001, debug=False)
+        app.run(host='0.0.0.0', port=5000, debug=False)
     finally:
         cleanup_on_exit()
         for t in threads:

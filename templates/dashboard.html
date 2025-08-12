@@ -72,7 +72,7 @@
 
         <!-- Feed Amount Card -->
         <div class="watch-scroll hidden-on-load">
-            <div class="stat-card amount" onclick="toggleInfo(this)">
+            <div class="stat-card amount">
                 <div class="card-icon">
                     <i class="fa-solid fa-weight-scale"></i>
                 </div>
@@ -81,23 +81,6 @@
                     <div class="card-value">
                         <div class="card-value">
                             {{ "%.2f"|format(user_settings.pellets | float) }} <span>gram(s)</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pellet Count Card -->
-        <div class="watch-scroll hidden-on-load">
-            <div class="stat-card count" onclick="toggleInfo(this)">
-                <div class="card-icon">
-                    <i class="fa-solid fa-circle"></i>
-                </div>
-                <div class="card-content">
-                    <div class="card-label">Pellets Count On Surface</div>
-                    <div class="card-value">
-                        <div class="card-value">
-                            {{ latest_count }} <span>pellets left</span>
                         </div>
                     </div>
                 </div>
@@ -118,11 +101,42 @@
                 </div>
             </div>
         </div>
+
+        <!-- Feeding Threshold Card -->
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card threshold">
+                <div class="card-icon">
+                    <i class="fas fa-balance-scale-left fa-icon"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Feeding Threshold</div>
+                    <div class="card-value">
+                        {{ user_settings.feeding_threshold }} <span>pellets</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dispense Speed Card -->
+        <div class="watch-scroll hidden-on-load">
+            <div class="stat-card dispense-speed">
+                <div class="card-icon">
+                    <i class="fas fa-tachometer-alt fa-icon"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-label">Dispense Speed</div>
+                    <div class="card-value">
+                        {{ user_settings.pellets_per_second }} <span>gram(s)/second</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Feeding Timeline & Feeding Stats Summary with Notice Text -->
     <div class="watch-scroll hidden-on-load">
         <div class="feeding-timeline-container">
+             <h1 class="component-title">FEEDING SCHEDULE VISUALISATION</h1>
             <div class="feeding-timeline">
                 <div class="timeline-line"></div>
 
@@ -177,43 +191,11 @@
                     </div>
                 {% endif %}
             </div>
-
-            <div class="combined-feed-stats-card">
-                <div class="stat-row total-check-count">
-                    <div class="icon-wrapper">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="text-wrapper">
-                        <div class="stat-label">Total Check Count:</div>
-                        <div class="stat-value">
-                            {% set total_duration = user_settings.minutes * 60 %}
-                            {% set interval = user_settings.interval_seconds %}
-                            {% set total_check_count = (total_duration / interval) if interval > 0 else 0 %}
-                            {{ total_check_count|int if total_check_count > 0 else "N/A" }}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="stat-row feed-amount-per-check">
-                    <div class="icon-wrapper">
-                        <i class="fa-solid fa-scale-balanced"></i>
-                    </div>
-                    <div class="text-wrapper">
-                        <div class="stat-label">Gram-to-Pallet Ratio:</div>
-                        <div class="stat-value">1 gram = 100 pellets</div>
-                    </div>
-                </div>
-
-                <div class="notice-text">
-                    Pellets are dispensed only if count drops below <strong>10% of the estimated feed amount</strong>.
-                </div>
-
-                <div class="settings-btn-wrapper">
-                    <a href="/update" class="settings-btn">
-                        <i class="fas fa-cog"></i>
-                        Adjust settings here!
-                    </a>
-                </div>
+            <div class="settings-btn-wrapper">
+                <a href="/update" class="settings-btn">
+                    <i class="fas fa-cog"></i>
+                    Adjust settings here!
+                </a>
             </div>
         </div>
     </div>
@@ -715,6 +697,17 @@
         letter-spacing: 1px;
     }
 
+    .component-title {
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 10px 0;
+        line-height: 1;
+        color: #f8fafc;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-align: center;
+    }
+
     .dashboard-subtitle {
         font-size: 1.4rem;
         margin: 10px 0;
@@ -724,23 +717,30 @@
 
     /* Stats grid */
     .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        display: flex;
+        flex-wrap: wrap;
         gap: 25px;
-        margin-bottom: 40px;
+        justify-content: center;
+    }
+
+    .stats-grid > * {
+        flex: 0 1 calc(33.333% - 17px); /* subtract gap/3 for spacing */
+        max-width: calc(33.333% - 17px);
     }
 
     /* For medium screens, go to 2 columns */
-    @media (max-width: 1024px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
+    @media (max-width: 1190px) {
+        .stats-grid > * {
+            flex: 0 1 calc(50% - 12.5px);
+            max-width: calc(50% - 12.5px);
         }
     }
 
     /* For small screens, go to 1 column */
-    @media (max-width: 600px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
+    @media (max-width: 808px) {
+    .stats-grid > * {
+            flex: 0 1 100%;
+            max-width: 100%;
         }
     }
 
@@ -756,8 +756,8 @@
         overflow: hidden;
     }
 
-    .stat-card.count,
-    .stat-card.amount {
+    .stat-card.morning,
+    .stat-card.evening {
         cursor: pointer;
     }
 
@@ -773,31 +773,6 @@
         left: 0;
         right: 0;
         height: 4px;
-    }
-
-    .stat-card.tooltip::after {
-        content: "Click to toggle info";
-        position: absolute;
-        bottom: 12px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #fff;
-        padding: 4px 8px;
-        border-radius: 4px;
-        box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
-        font-size: 13px;
-        color: #333;
-        white-space: nowrap;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-        user-select: none;
-        z-index: 10;
-    }
-
-    .stat-card.tooltip:hover::after {
-        opacity: 1;
-        pointer-events: auto;
     }
 
     .primary-info,
@@ -834,8 +809,12 @@
         background: linear-gradient(90deg, #ff9a9e, #fad0c4);
     }
 
-    .count::before {
+    .threshold::before {
         background: linear-gradient(90deg, #a2836e, #d7ccc8);
+    }
+
+    .dispense-speed::before {
+        background: linear-gradient(90deg, #f857a6, #ff5858);
     }
 
     .card-icon {
@@ -875,9 +854,14 @@
         color: #ff9a9e;
     }
 
-    .count .card-icon {
+    .threshold .card-icon {
         background: rgba(162, 131, 110, 0.15);
         color: #8d6e63;
+    }
+
+    .dispense-speed .card-icon {
+        background: rgba(218, 112, 214, 0.15);
+        color: #da70d6;
     }
 
     .card-label {
@@ -913,7 +897,7 @@
     /* Feeding Timeline */
     .feeding-timeline-container {
         max-width: 800px;
-        margin: 30px auto 60px;
+        margin: 50px auto 60px;
         font-family: Arial, sans-serif;
     }
 
@@ -1019,85 +1003,6 @@
         height: 16px;
         background: #666;
         margin-bottom: 4px;
-    }
-
-    .combined-feed-stats-card {
-        background: var(--card-bg, #fafafa);
-        padding: 25px 30px;
-        border-radius: 16px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        font-family: Arial, sans-serif;
-        color: var(--text-primary, #444);
-        max-width: 800px;
-        margin: 30px auto;
-        user-select: none;
-        transition: all 0.3s ease;
-    }
-
-    .combined-feed-stats-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
-    }
-
-    .stat-row {
-        display: flex;
-        align-items: center;
-        padding: 12px 0;
-    }
-
-    .icon-wrapper {
-        flex-shrink: 0;
-        width: 48px;
-        height: 48px;
-        border-radius: 16px;
-        background: rgba(91, 134, 229, 0.15);
-        color: #5b86e5;
-        font-size: 28px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-right: 20px;
-    }
-
-    .total-check-count .icon-wrapper {
-        background: rgba(91, 134, 229, 0.15);
-        color: #5b86e5;
-    }
-
-    .feed-amount-per-check .icon-wrapper {
-        background: rgba(132, 250, 176, 0.15);
-        color: #84fab0;
-    }
-
-    .text-wrapper {
-        flex-grow: 1;
-    }
-
-    .stat-label {
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: var(--text-secondary, #777);
-        margin-bottom: 4px;
-        font-weight: 600;
-    }
-
-    .stat-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: var(--text-primary, #222);
-    }
-
-    .notice-text {
-        background: rgba(255, 255, 255, 0.05);
-        color: #f1f1f1;
-        font-size: 14px;
-        border-left: 4px solid #fbc02d;
-        padding: 12px 16px;
-        margin-top: 20px;
-        border-radius: 8px;
-        line-height: 1.6;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
 
     .settings-btn {
@@ -1329,6 +1234,10 @@
 
         .dashboard-title {
             font-size: 2rem;
+        }
+
+        .component-title {
+            font-size: 1.5rem;
         }
 
         .section-header {
