@@ -856,7 +856,7 @@ def seed_admin_account():
             hashed = generate_password_hash('Password1!', method='pbkdf2:sha256')
             admin = User(
                 username='admin',
-                email='testproject064@gmail.com',
+                email='iatfadteam@gmail.com',
                 password=hashed,
                 role='Admin'
             )
