@@ -802,17 +802,17 @@ def role_required(role):
                     with shelve.open('users.db', writeback=True) as db:
                         user = db.get(username)
                         if user and user["status"] == "Active":
-                            user["status"] = "Breached"  # Change status to Breached
+                            user["status"] = "Suspended"  # Change status to Suspended
                             db[username] = user  # Save the updated user back to the database
-                return redirect(url_for("breached"))  # Redirect to Breached page
+                return redirect(url_for("suspended"))  # Redirect to Suspended page
             return f(*args, **kwargs)
         return decorated_function
     return decorator
 
-@app.route("/breached", methods=['GET'])
-def breached():
+@app.route("/suspended", methods=['GET'])
+def suspended():
     session.clear()
-    return render_template("breached.html")
+    return render_template("suspended.html")
 
 @app.errorhandler(404)
 def page_not_found(error):
@@ -998,7 +998,7 @@ def login():
 
         user = find_user(identifier)
         if user and check_password_hash(user['password'], password):
-            if user['status'] in ["Suspended", "Breached"]:
+            if user['status'] == "Suspended":
                 flash(f"Your account is {user['status']}. Access denied.", "danger")
                 return redirect(url_for('login'))
 

@@ -57,7 +57,7 @@
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Status</span>
-                        <span class="status {{ 'status-active' if user_data.status == 'Active' else 'status-breached' }}">
+                        <span class="status {{ 'status-active' if user_data.status == 'Active' else 'status-suspended' }}">
                             {{ user_data.status }}
                         </span>
                     </div>
@@ -245,7 +245,7 @@
         --text-primary: #f1f5f9;
         --text-secondary: #94a3b8;
         --active: #48bb78;
-        --breached: #f59e0b;
+        --suspended: #f59e0b;
         --search-bg: #334155;
         --pagination-hover: #475569;
     }
@@ -558,9 +558,9 @@
         border: 1px solid rgba(72, 187, 120, 0.4);
     }
 
-    .status-breached {
+    .status-suspended {
         background: rgba(251, 191, 36, 0.2);
-        color: var(--breached);
+        color: var(--suspended);
         border: 1px solid rgba(251, 191, 36, 0.4);
     }
 
